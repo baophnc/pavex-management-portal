@@ -1,31 +1,59 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
   --background: oklch(0.98 0.002 250);
   --foreground: oklch(0.17 0.006 255);
   --card: oklch(1 0 0);
+  --card-foreground: oklch(0.17 0.006 255);
   --primary: oklch(0.17 0.006 255);
   --primary-foreground: oklch(0.99 0 0);
   --muted: oklch(0.95 0.004 250);
   --muted-foreground: oklch(0.5 0.012 255);
   --brand: oklch(0.55 0.23 27);
+  --destructive: oklch(0.55 0.23 27);
   --border: oklch(0.88 0.006 250);
+}
+
+.dark {
+  --background: oklch(0.13 0.008 255);
+  --foreground: oklch(0.95 0.004 250);
+  --card: oklch(0.17 0.01 255);
+  --card-foreground: oklch(0.95 0.004 250);
+  --primary: oklch(0.95 0.004 250);
+  --primary-foreground: oklch(0.16 0.008 255);
+  --muted: oklch(0.22 0.012 255);
+  --muted-foreground: oklch(0.7 0.014 250);
+  --brand: oklch(0.65 0.22 27);
+  --destructive: oklch(0.65 0.22 27);
+  --border: oklch(0.3 0.014 255);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-brand: var(--brand);
+  --color-destructive: var(--destructive);
   --color-border: var(--border);
 }
 
-* { border-color: var(--border); }
-html { background: var(--background); }
+* {
+  border-color: var(--border);
+}
+
+html {
+  background: var(--background);
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -35,12 +63,60 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
-button, a, input { -webkit-tap-highlight-color: transparent; }
-button, a { touch-action: manipulation; }
-::selection { background: color-mix(in oklab, var(--brand) 22%, transparent); }
+
+button,
+a,
+select,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--brand) 22%, transparent);
+}
+
+:focus-visible {
+  scroll-margin: 6rem;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin {
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 28%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--muted-foreground) 28%, transparent);
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -48,9 +124,19 @@ button, a { touch-action: manipulation; }
 }
 
 @media (pointer: coarse) {
-  button, input { min-height: 44px; }
+  button,
+  [role="button"],
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 639px) {
-  input { font-size: 16px; }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { Providers } from "@/components/providers";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,12 +10,15 @@ export const metadata: Metadata = {
     template: "%s | Pavex Management Portal",
   },
   description: "Cổng quản trị vận hành Pavex Express",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="vi" className="h-full antialiased">
-      <body className="min-h-full">{children}</body>
+    <html lang="vi" className="h-full antialiased" suppressHydrationWarning>
+      <body className="min-h-full">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
