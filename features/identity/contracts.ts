@@ -59,3 +59,15 @@ export const profileStatuses: ProfileStatus[] = [
   "PENDING_VERIFICATION",
   "REJECTED",
 ];
+
+export type Gender = "UNSPECIFIED" | "MALE" | "FEMALE" | "OTHER";
+
+export type CreateUserResponse = {
+  userId: string;
+};
+
+export type UserDetail = UserListItem & {
+  permissions: string[];
+};
+
+export const genders: Gender[] = ["UNSPECIFIED", "MALE", "FEMALE", "OTHER"];
