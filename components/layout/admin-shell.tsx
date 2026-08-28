@@ -4,6 +4,7 @@ import {
   Building2Icon,
   ChevronRightIcon,
   CircleGaugeIcon,
+  CircleUserRoundIcon,
   LogOutIcon,
   MenuIcon,
   MoonIcon,
@@ -76,6 +77,16 @@ const navigationSections: NavigationSection[] = [
       },
     ],
   },
+  {
+    label: "Cá nhân",
+    items: [
+      {
+        href: "/account",
+        label: "Tài khoản của tôi",
+        icon: CircleUserRoundIcon,
+      },
+    ],
+  },
 ];
 
 const navigation = navigationSections.flatMap((section) => section.items);
@@ -143,23 +154,29 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const abort = new AbortController();
     const expired = () => router.replace("/login");
-    window.addEventListener("pavex-management:session-expired", expired);
 
-    fetch("/api/auth/me", { cache: "no-store", signal: abort.signal })
-      .then(async (response) => {
-        if (!response.ok) {
-          expired();
-          return null;
-        }
-        return response.json() as Promise<{ user?: CurrentUser }>;
-      })
-      .then((payload) => setUser(payload?.user ?? null))
-      .catch(() => undefined)
-      .finally(() => setLoaded(true));
+    const loadUser = () => {
+      fetch("/api/auth/me", { cache: "no-store", signal: abort.signal })
+        .then(async (response) => {
+          if (!response.ok) {
+            expired();
+            return null;
+          }
+          return response.json() as Promise<{ user?: CurrentUser }>;
+        })
+        .then((payload) => setUser(payload?.user ?? null))
+        .catch(() => undefined)
+        .finally(() => setLoaded(true));
+    };
+
+    window.addEventListener("pavex-management:session-expired", expired);
+    window.addEventListener("pavex-management:user-updated", loadUser);
+    loadUser();
 
     return () => {
       abort.abort();
       window.removeEventListener("pavex-management:session-expired", expired);
+      window.removeEventListener("pavex-management:user-updated", loadUser);
     };
   }, [router]);
 
@@ -330,16 +347,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </Button>
 
             {sidebarCollapsed ? (
-              <div
-                className="grid place-items-center rounded-xl border bg-muted/35 p-2"
-                title={user?.email ?? "Đang xác thực..."}
+              <Link
+                href="/account"
+                className="grid place-items-center rounded-xl border bg-muted/35 p-2 transition hover:bg-muted"
+                title={user?.email ?? "Tài khoản của tôi"}
+                aria-label="Mở tài khoản của tôi"
               >
                 <span className="grid size-9 place-items-center rounded-full bg-brand/10 text-xs font-black text-brand">
                   {initials}
                 </span>
-              </div>
+              </Link>
             ) : (
-              <div className="rounded-xl border bg-muted/35 p-3">
+              <Link
+                href="/account"
+                className="block rounded-xl border bg-muted/35 p-3 transition hover:bg-muted"
+                aria-label="Mở tài khoản của tôi"
+              >
                 <div className="flex items-center gap-2.5">
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand/10 text-xs font-black text-brand">
                     {initials}
@@ -356,7 +379,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <p className="mt-2 truncate text-[0.58rem] font-black tracking-[0.12em] text-muted-foreground uppercase">
                   {primaryRole(user)}
                 </p>
-              </div>
+              </Link>
             )}
           </div>
         </aside>
@@ -406,7 +429,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 {renderNavigation(false, true)}
               </div>
               <div className="border-t p-3">
-                <div className="flex items-center gap-2.5 rounded-xl bg-muted/45 p-3">
+                <Link
+                  href="/account"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2.5 rounded-xl bg-muted/45 p-3 transition hover:bg-muted"
+                >
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand/10 text-xs font-black text-brand">
                     {initials}
                   </span>
@@ -418,7 +445,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                       {user?.email ?? "Đang xác thực..."}
                     </p>
                   </div>
-                </div>
+                </Link>
               </div>
             </aside>
           </div>
@@ -485,9 +512,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     {user?.email ?? ""}
                   </p>
                 </div>
-                <span className="ml-1 grid size-8 place-items-center rounded-full bg-brand/10 text-xs font-black text-brand ring-1 ring-brand/10">
+                <Link
+                  href="/account"
+                  aria-label="Mở tài khoản của tôi"
+                  className="ml-1 grid size-8 place-items-center rounded-full bg-brand/10 text-xs font-black text-brand ring-1 ring-brand/10 transition hover:bg-brand/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+                >
                   {initials}
-                </span>
+                </Link>
                 <Button
                   variant="ghost"
                   size="icon"
