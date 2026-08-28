@@ -7,9 +7,11 @@ import {
   ChevronRightIcon,
   RefreshCwIcon,
   SearchIcon,
+  UserPlusIcon,
   UserRoundIcon,
   XIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -122,6 +124,9 @@ export function IdentityUsers() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const canReadRoles = hasPermission("identity.roles.read");
+  const canCreateUser =
+    hasPermission("identity.users.create") &&
+    hasPermission("identity.roles.assign");
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const search = searchParams.get("search")?.trim() ?? "";
@@ -244,16 +249,27 @@ export function IdentityUsers() {
             </p>
           </div>
 
-          <Button
-            variant="outline"
-            onClick={() => void loadUsers()}
-            disabled={loading}
-          >
-            <RefreshCwIcon
-              className={cn("size-4", loading && "animate-spin")}
-            />
-            Tải lại
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => void loadUsers()}
+              disabled={loading}
+            >
+              <RefreshCwIcon
+                className={cn("size-4", loading && "animate-spin")}
+              />
+              Tải lại
+            </Button>
+            {canCreateUser ? (
+              <Link
+                href="/identity/users/new"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3.5 text-xs font-bold text-primary-foreground shadow-sm transition hover:opacity-90"
+              >
+                <UserPlusIcon className="size-4" />
+                Tạo tài khoản
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 divide-x divide-y sm:grid-cols-4 sm:divide-y-0">
@@ -405,6 +421,7 @@ export function IdentityUsers() {
                   <th className="px-4 py-3">Hồ sơ</th>
                   <th className="px-4 py-3">Khởi tạo</th>
                   <th className="px-4 py-3">Cập nhật</th>
+                  <th className="px-4 py-3 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -466,6 +483,14 @@ export function IdentityUsers() {
                     </td>
                     <td className="px-4 py-3 align-top text-xs text-muted-foreground">
                       {formatDateTime(user.updatedAt)}
+                    </td>
+                    <td className="px-4 py-3 text-right align-top">
+                      <Link
+                        href={`/identity/users/${user.userId}`}
+                        className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-[0.68rem] font-bold transition hover:bg-muted"
+                      >
+                        Mở hồ sơ
+                      </Link>
                     </td>
                   </tr>
                 ))}
