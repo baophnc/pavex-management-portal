@@ -28,20 +28,20 @@ export default async function LoginPage({
             P
           </span>
           <div>
-            <p className="text-lg font-black">PAVEX Operations</p>
+            <p className="text-lg font-black">PAVEX Management</p>
             <p className="text-xs text-white/60">Control center</p>
           </div>
         </div>
         <div className="relative max-w-xl">
           <p className="text-sm font-bold tracking-[0.2em] text-brand uppercase">
-            Một nguồn dữ liệu vận hành
+            Management workspace
           </p>
           <h1 className="mt-5 text-5xl leading-[1.08] font-black">
-            Quản trị từ mạng lưới đến chặng giao cuối.
+            Quản trị Identity và Partners trong một nơi.
           </h1>
           <p className="mt-6 max-w-lg text-base leading-8 text-white/70">
-            Theo dõi Identity, Partners, Network, Operations và Shipments trên
-            một không gian làm việc.
+            Quản lý tài khoản, role và hồ sơ Merchant bằng đúng các chức năng
+            backend hiện đã sẵn sàng.
           </p>
         </div>
         <p className="relative text-xs text-white/45">© 2026 Pavex Express</p>
@@ -52,7 +52,7 @@ export default async function LoginPage({
             <span className="grid size-10 place-items-center rounded-lg bg-primary font-black italic text-white">
               P
             </span>
-            <p className="font-black">PAVEX Operations</p>
+            <p className="font-black">PAVEX Management</p>
           </div>
           <p className="text-sm font-black text-brand">
             Dành cho đội ngũ Pavex

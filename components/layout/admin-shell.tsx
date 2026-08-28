@@ -10,6 +10,7 @@ import {
   MoonIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  RefreshCwIcon,
   ShieldAlertIcon,
   ShieldCheckIcon,
   SunIcon,
@@ -147,31 +148,56 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useAppTheme();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const mobilePanelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const abort = new AbortController();
-    const expired = () => router.replace("/login");
 
-    const loadUser = () => {
-      fetch("/api/auth/me", { cache: "no-store", signal: abort.signal })
-        .then(async (response) => {
-          if (!response.ok) {
-            expired();
-            return null;
-          }
-          return response.json() as Promise<{ user?: CurrentUser }>;
-        })
-        .then((payload) => setUser(payload?.user ?? null))
-        .catch(() => undefined)
-        .finally(() => setLoaded(true));
+    const expired = () => {
+      const returnTo = `${window.location.pathname}${window.location.search}`;
+      router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+    };
+
+    const loadUser = async () => {
+      setConnectionError(null);
+
+      try {
+        const response = await fetch("/api/auth/me", {
+          cache: "no-store",
+          signal: abort.signal,
+        });
+
+        if (response.status === 401) {
+          expired();
+          return;
+        }
+
+        const payload = (await response.json().catch(() => null)) as
+          | { user?: CurrentUser; message?: string }
+          | null;
+
+        if (!response.ok) {
+          setConnectionError(
+            payload?.message ?? "Không thể kết nối backend Pavex.",
+          );
+          return;
+        }
+
+        setUser(payload?.user ?? null);
+      } catch (reason) {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        setConnectionError("Không thể kết nối Management BFF.");
+      } finally {
+        if (!abort.signal.aborted) setLoaded(true);
+      }
     };
 
     window.addEventListener("pavex-management:session-expired", expired);
     window.addEventListener("pavex-management:user-updated", loadUser);
-    loadUser();
+    void loadUser();
 
     return () => {
       abort.abort();
@@ -483,9 +509,31 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   <h1 className="truncate text-sm font-black">
                     {current?.label ?? "PAVEX Management Portal"}
                   </h1>
-                  <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/15 bg-emerald-500/10 px-2 py-0.5 text-[0.58rem] font-black text-emerald-700 sm:inline-flex dark:text-emerald-300">
-                    <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(34,197,94,0.1)]" />
-                    core-api
+                  <span
+                    className={cn(
+                      "hidden items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.58rem] font-black sm:inline-flex",
+                      connectionError
+                        ? "border-destructive/20 bg-destructive/10 text-destructive"
+                        : loaded
+                          ? "border-emerald-500/15 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        connectionError
+                          ? "bg-destructive"
+                          : loaded
+                            ? "bg-emerald-500 shadow-[0_0_0_3px_rgba(34,197,94,0.1)]"
+                            : "animate-pulse bg-amber-500",
+                      )}
+                    />
+                    {connectionError
+                      ? "backend lỗi"
+                      : loaded
+                        ? "core-api"
+                        : "đang kết nối"}
                   </span>
                 </div>
               </div>
@@ -551,6 +599,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   Đang tải quyền truy cập...
                 </div>
               </div>
+            ) : connectionError ? (
+              <div className="grid min-h-[65vh] place-items-center rounded-2xl border border-dashed border-destructive/25 bg-destructive/5 p-6 text-center">
+                <div className="max-w-md">
+                  <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-destructive/10">
+                    <ShieldAlertIcon className="size-6 text-destructive" />
+                  </span>
+                  <h1 className="mt-4 text-lg font-black">Backend tạm thời không khả dụng</h1>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    {connectionError} Phiên đăng nhập hiện tại chưa bị xóa; hãy
+                    thử kết nối lại trước khi đăng nhập lại.
+                  </p>
+                  <Button
+                    className="mt-5"
+                    variant="outline"
+                    onClick={() => window.dispatchEvent(new Event("pavex-management:user-updated"))}
+                  >
+                    <RefreshCwIcon className="size-4" />
+                    Thử kết nối lại
+                  </Button>
+                </div>
+              </div>
             ) : !allowed ? (
               <div className="grid min-h-[65vh] place-items-center rounded-2xl border border-dashed bg-muted/35 p-6 text-center">
                 <div className="max-w-md">
@@ -564,6 +633,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     Backend chưa cấp permission cần thiết cho tài khoản hiện tại.
                     Hãy kiểm tra role hoặc permission trước khi thử lại.
                   </p>
+                  <Button
+                    className="mt-5"
+                    variant="outline"
+                    onClick={() => router.push("/dashboard")}
+                  >
+                    Về bảng điều hành
+                  </Button>
                 </div>
               </div>
             ) : (
