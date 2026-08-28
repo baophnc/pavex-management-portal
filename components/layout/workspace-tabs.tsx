@@ -50,6 +50,7 @@ function tabIcon(path: string) {
   if (path.startsWith("/identity/roles")) return ShieldCheckIcon;
   if (path.startsWith("/identity")) return UserRoundCogIcon;
   if (path.startsWith("/partners/merchants")) return Building2Icon;
+  if (path === "/account") return UserRoundCogIcon;
   return CircleGaugeIcon;
 }
 
