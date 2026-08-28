@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(0.98 0.002 250);
+  --foreground: oklch(0.17 0.006 255);
+  --card: oklch(1 0 0);
+  --primary: oklch(0.17 0.006 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --muted: oklch(0.95 0.004 250);
+  --muted-foreground: oklch(0.5 0.012 255);
+  --brand: oklch(0.55 0.23 27);
+  --border: oklch(0.88 0.006 250);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-brand: var(--brand);
+  --color-border: var(--border);
+}
+
+* { border-color: var(--border); }
+html { background: var(--background); }
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
+::selection { background: color-mix(in oklab, var(--brand) 22%, transparent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (pointer: coarse) {
+  button, input { min-height: 44px; }
+}
+
+@media (max-width: 639px) {
+  input { font-size: 16px; }
+}
