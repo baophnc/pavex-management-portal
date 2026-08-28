@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Building2Icon,
   CircleGaugeIcon,
   ShieldCheckIcon,
   UserRoundCogIcon,
@@ -48,6 +49,7 @@ function tabIcon(path: string) {
   if (path === "/dashboard") return CircleGaugeIcon;
   if (path.startsWith("/identity/roles")) return ShieldCheckIcon;
   if (path.startsWith("/identity")) return UserRoundCogIcon;
+  if (path.startsWith("/partners/merchants")) return Building2Icon;
   return CircleGaugeIcon;
 }
 
