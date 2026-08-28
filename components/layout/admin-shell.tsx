@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Building2Icon,
   ChevronRightIcon,
   CircleGaugeIcon,
   LogOutIcon,
@@ -61,6 +62,17 @@ const navigationSections: NavigationSection[] = [
         label: "Vai trò & quyền",
         icon: ShieldCheckIcon,
         permission: "identity.roles.read",
+      },
+    ],
+  },
+  {
+    label: "Partners",
+    items: [
+      {
+        href: "/partners/merchants",
+        label: "Merchant",
+        icon: Building2Icon,
+        permission: "partners.merchants.read",
       },
     ],
   },
