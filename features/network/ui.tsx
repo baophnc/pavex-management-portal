@@ -8,6 +8,7 @@ import {
   LoaderCircleIcon,
   RefreshCwIcon,
   ShieldAlertIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
@@ -21,6 +22,122 @@ export const selectClassName =
 
 export const textareaClassName =
   "min-h-24 w-full resize-y rounded-md border bg-background px-3 py-2.5 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-brand/35 disabled:cursor-not-allowed disabled:opacity-50";
+
+
+
+export type ConfirmActionDialogProps = {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  loading?: boolean;
+  destructive?: boolean;
+  reason?: boolean;
+  reasonLabel?: string;
+  reasonPlaceholder?: string;
+  onCancel: () => void;
+  onConfirm: (reason: string) => void | Promise<void>;
+};
+
+export function ConfirmActionDialog({
+  open,
+  title,
+  description,
+  confirmLabel,
+  loading = false,
+  destructive = false,
+  reason = false,
+  reasonLabel = "Lý do (không bắt buộc)",
+  reasonPlaceholder = "Ghi chú để lưu vào nhật ký thay đổi...",
+  onCancel,
+  onConfirm,
+}: ConfirmActionDialogProps) {
+  const [reasonText, setReasonText] = useState("");
+
+  if (!open) return null;
+
+  function cancel() {
+    setReasonText("");
+    onCancel();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] grid place-items-center bg-black/50 p-4"
+      role="presentation"
+      onClick={() => {
+        if (!loading) cancel();
+      }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border bg-card p-5 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={cn(
+              "grid size-10 shrink-0 place-items-center rounded-full",
+              destructive ? "bg-destructive/10 text-destructive" : "bg-brand/10 text-brand",
+            )}
+          >
+            <TriangleAlertIcon className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-black">{title}</h2>
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{description}</p>
+          </div>
+        </div>
+
+        {reason ? (
+          <label className="mt-4 grid gap-1.5 text-xs font-bold">
+            <span>{reasonLabel}</span>
+            <textarea
+              value={reasonText}
+              maxLength={500}
+              disabled={loading}
+              className={textareaClassName}
+              placeholder={reasonPlaceholder}
+              onChange={(event) => setReasonText(event.target.value)}
+            />
+            <span className="text-right text-[0.62rem] font-normal text-muted-foreground">
+              {reasonText.length}/500
+            </span>
+          </label>
+        ) : null}
+
+        <div className="mt-5 flex justify-end gap-2 border-t pt-4">
+          <Button type="button" variant="outline" disabled={loading} onClick={cancel}>
+            Hủy
+          </Button>
+          <Button
+            type="button"
+            variant={destructive ? "destructive" : "default"}
+            disabled={loading}
+            onClick={() => {
+              const value = reasonText.trim();
+              setReasonText("");
+              void onConfirm(value);
+            }}
+          >
+            {loading ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ActionPolicyNote({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-dashed bg-muted/20 px-3 py-2.5 text-[0.68rem] leading-5 text-muted-foreground">
+      {children}
+    </div>
+  );
+}
 
 export function NetworkPageHeader({
   eyebrow,

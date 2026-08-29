@@ -18,9 +18,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import { getHubs, getLanes, getRouteTemplates } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import type { Hub, HubLane, PageResponse, RouteTemplate } from "@/features/network/contracts";
 import { transportModeLabel } from "@/features/network/contracts";
 import {
+  ActionPolicyNote,
+  ConfirmActionDialog,
   EmptyState,
   FormField,
   NetworkError,
@@ -42,6 +45,11 @@ function move<T>(items: T[], from: number, to: number) {
   return next;
 }
 
+type PendingTemplateAction = {
+  kind: "status" | "delete";
+  template: RouteTemplate;
+};
+
 export function NetworkRouteTemplates() {
   const { hasPermission } = useAccess();
   const canManage = hasPermission("network.manage");
@@ -58,6 +66,7 @@ export function NetworkRouteTemplates() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingTemplateAction | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,7 +85,7 @@ export function NetworkRouteTemplates() {
       setLanes(lanePage.items);
       setSelected((current) => current ? templates.items.find((item) => item.id === current.id) ?? current : null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể tải tuyến mẫu.");
+      setError(networkErrorMessage(reason, "Không thể tải tuyến mẫu."));
     } finally {
       setLoading(false);
     }
@@ -142,49 +151,53 @@ export function NetworkRouteTemplates() {
           }),
         },
       )) as RouteTemplate;
-      toast.success(selected ? `Đã cập nhật template · revision ${template.revision}.` : "Đã tạo tuyến mẫu ở trạng thái ngừng hoạt động.");
+      toast.success(selected ? `Đã cập nhật tuyến mẫu · phiên bản ${template.revision}.` : "Đã tạo tuyến mẫu ở trạng thái ngừng hoạt động.");
       setCreating(false);
       await load();
       setSelected(template);
       setLaneIds(template.legs.map((leg) => leg.laneId));
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể lưu Route Template.");
+      toast.error(networkErrorMessage(reason, "Không thể lưu tuyến mẫu."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleStatus(template: RouteTemplate) {
+  async function applyStatus(template: RouteTemplate, reason: string) {
     if (!canManage) return;
     const active = template.status !== "ACTIVE";
-    if (!active && !window.confirm(`Ngừng tuyến mẫu ${template.name}?`)) return;
     setSaving(true);
     try {
       await apiRequest(`admin/network/route-templates/${template.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ active }),
+        body: JSON.stringify({ active, reason: reason || null }),
       });
       toast.success(active ? "Đã kích hoạt tuyến mẫu." : "Đã ngừng tuyến mẫu.");
+      setPendingAction(null);
       await load();
-    } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể đổi trạng thái template.");
+    } catch (reasonValue) {
+      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái tuyến mẫu."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function remove(template: RouteTemplate) {
+  async function remove(template: RouteTemplate, reason: string) {
     if (!canManage || template.status === "ACTIVE") return;
-    if (!window.confirm(`Xóa tuyến mẫu ${template.name}? Nhật ký thay đổi vẫn được giữ.`)) return;
     setSaving(true);
     try {
-      await apiRequest(`admin/network/route-templates/${template.id}`, { method: "DELETE" });
+      const params = new URLSearchParams();
+      if (reason) params.set("reason", reason);
+      const query = params.toString();
+      const suffix = query ? `?${query}` : "";
+      await apiRequest(`admin/network/route-templates/${template.id}${suffix}`, { method: "DELETE" });
       toast.success("Đã xóa tuyến mẫu.");
+      setPendingAction(null);
       setSelected(null);
       setLaneIds([]);
       await load();
-    } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể xóa template.");
+    } catch (reasonValue) {
+      toast.error(networkErrorMessage(reasonValue, "Không thể xóa tuyến mẫu."));
     } finally {
       setSaving(false);
     }
@@ -238,12 +251,48 @@ export function NetworkRouteTemplates() {
                 </div>
 
                 {selected ? <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3"><div><p className="text-xs font-black">Phiên bản {selected.revision}</p><p className="mt-1 text-[0.65rem] text-muted-foreground">Mỗi lần thay đổi hành trình hoặc thông tin tuyến sẽ tăng phiên bản.</p></div><StatusBadge active={selected.status === "ACTIVE"} /></div> : null}
-                {canManage ? <div className="flex flex-wrap gap-2 border-t pt-4"><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}{selected ? "Lưu thay đổi" : "Tạo tuyến mẫu"}</Button>{selected ? <Button type="button" variant={selected.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving} onClick={() => void toggleStatus(selected)}>{selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt tuyến mẫu"}</Button> : null}{selected?.status === "INACTIVE" ? <Button type="button" variant="ghost" disabled={saving} onClick={() => void remove(selected)}><Trash2Icon className="size-4 text-destructive" />Xóa</Button> : null}</div> : null}
+                {canManage ? <div className="flex flex-wrap gap-2 border-t pt-4"><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}{selected ? "Lưu thay đổi" : "Tạo tuyến mẫu"}</Button>{selected ? <Button type="button" variant={selected.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving} onClick={() => setPendingAction({ kind: "status", template: selected })}>{selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt tuyến mẫu"}</Button> : null}{selected?.status === "INACTIVE" ? <Button type="button" variant="ghost" disabled={saving} onClick={() => setPendingAction({ kind: "delete", template: selected })}><Trash2Icon className="size-4 text-destructive" />Xóa tuyến mẫu</Button> : null}</div> : null}
+                {selected ? <ActionPolicyNote>Tuyến mẫu là cấu hình Network duy nhất hiện có API xóa cứng. Backend chỉ cho xóa khi tuyến mẫu đang ngừng hoạt động; nhật ký audit vẫn được giữ.</ActionPolicyNote> : null}
               </form>
             </CardContent>
           )}
         </Card>
       </div>
+
+      <ConfirmActionDialog
+        open={Boolean(pendingAction)}
+        title={
+          pendingAction?.kind === "delete"
+            ? "Xóa tuyến mẫu?"
+            : pendingAction?.template.status === "ACTIVE"
+              ? "Ngừng tuyến mẫu?"
+              : "Kích hoạt tuyến mẫu?"
+        }
+        description={
+          pendingAction?.kind === "delete"
+            ? `Tuyến mẫu ${pendingAction.template.name} sẽ bị xóa khỏi cấu hình. Nhật ký thay đổi vẫn được giữ. Thao tác này chỉ hợp lệ khi tuyến đang ngừng hoạt động.`
+            : pendingAction?.template.status === "ACTIVE"
+              ? `Tuyến mẫu ${pendingAction?.template.name ?? "này"} sẽ không còn được planner ưu tiên.`
+              : `Tuyến mẫu ${pendingAction?.template.name ?? "này"} sẽ được đưa vào danh sách ưu tiên. Backend sẽ kiểm tra toàn bộ hub, lane và lịch chạy trước khi kích hoạt.`
+        }
+        confirmLabel={
+          pendingAction?.kind === "delete"
+            ? "Xóa tuyến mẫu"
+            : pendingAction?.template.status === "ACTIVE"
+              ? "Ngừng hoạt động"
+              : "Kích hoạt"
+        }
+        destructive={pendingAction?.kind === "delete" || pendingAction?.template.status === "ACTIVE"}
+        loading={saving}
+        reason
+        reasonLabel={pendingAction?.kind === "delete" ? "Lý do xóa (không bắt buộc)" : "Lý do thay đổi (không bắt buộc)"}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={(reason) => {
+          if (!pendingAction) return;
+          if (pendingAction.kind === "delete") return remove(pendingAction.template, reason);
+          return applyStatus(pendingAction.template, reason);
+        }}
+      />
     </div>
   );
 }

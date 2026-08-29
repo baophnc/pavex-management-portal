@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import { getHubs, getRegions, getServiceAreas } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import type {
   Hub,
   NetworkRegion,
@@ -22,6 +23,8 @@ import type {
   ServiceAreaStatus,
 } from "@/features/network/contracts";
 import {
+  ActionPolicyNote,
+  ConfirmActionDialog,
   EmptyState,
   FormField,
   NetworkError,
@@ -77,6 +80,7 @@ export function NetworkServiceAreas() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<ServiceArea | null>(null);
 
   const params = useMemo(() => {
     const value = new URLSearchParams({
@@ -107,11 +111,7 @@ export function NetworkServiceAreas() {
           : null,
       );
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Không thể tải Service Area.",
-      );
+      setError(networkErrorMessage(reason, "Không thể tải danh sách vùng phục vụ."));
     } finally {
       setLoading(false);
     }
@@ -141,7 +141,7 @@ export function NetworkServiceAreas() {
       !draft.primaryHubId ||
       (!selected && !draft.code.trim())
     ) {
-      toast.error("Vui lòng nhập đủ thông tin Service Area.");
+      toast.error("Vui lòng nhập đủ thông tin vùng phục vụ.");
       return;
     }
 
@@ -164,32 +164,20 @@ export function NetworkServiceAreas() {
         },
       )) as ServiceArea;
       toast.success(
-        selected ? "Đã cập nhật Service Area." : "Đã tạo Service Area.",
+        selected ? "Đã cập nhật vùng phục vụ." : "Đã tạo vùng phục vụ.",
       );
       await load();
       edit(updated);
     } catch (reason) {
-      toast.error(
-        reason instanceof Error
-          ? reason.message
-          : "Không thể lưu Service Area.",
-      );
+      toast.error(networkErrorMessage(reason, "Không thể lưu vùng phục vụ."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleStatus(area: ServiceArea) {
+  async function applyStatus(area: ServiceArea, reason: string) {
     if (!canManage) return;
     const active = area.status !== "ACTIVE";
-    if (
-      !active &&
-      !window.confirm(
-        `Ngừng hoạt động vùng phục vụ ${area.name}? Phạm vi đã cấu hình vẫn được giữ nhưng sẽ không được dùng để định tuyến.`,
-      )
-    ) {
-      return;
-    }
 
     setSaving(true);
     try {
@@ -197,20 +185,17 @@ export function NetworkServiceAreas() {
         `admin/network/service-areas/${area.id}/status`,
         {
           method: "PATCH",
-          body: JSON.stringify({ active }),
+          body: JSON.stringify({ active, reason: reason || null }),
         },
       )) as ServiceArea;
       toast.success(
-        active ? "Đã kích hoạt Service Area." : "Đã ngừng Service Area.",
+        active ? "Đã kích hoạt vùng phục vụ." : "Đã ngừng vùng phục vụ.",
       );
+      setPendingStatus(null);
       await load();
       edit(updated);
-    } catch (reason) {
-      toast.error(
-        reason instanceof Error
-          ? reason.message
-          : "Không thể đổi trạng thái Service Area.",
-      );
+    } catch (reasonValue) {
+      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái vùng phục vụ."));
     } finally {
       setSaving(false);
     }
@@ -451,16 +436,38 @@ export function NetworkServiceAreas() {
                     type="button"
                     variant={selected.status === "ACTIVE" ? "destructive" : "outline"}
                     disabled={saving}
-                    onClick={() => void toggleStatus(selected)}
+                    onClick={() => setPendingStatus(selected)}
                   >
                     {selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
                   </Button>
                 ) : null}
               </div>
             ) : null}
+
+            {selected ? (
+              <ActionPolicyNote>
+                Vùng phục vụ không có API xóa cứng. Hãy ngừng hoạt động để giữ các mapping địa bàn và lịch sử cấu hình. Khi ngừng, phạm vi đã tạo vẫn được giữ nhưng không dùng để định tuyến.
+              </ActionPolicyNote>
+            ) : null}
           </form>
         </CardContent>
       </Card>
+
+      <ConfirmActionDialog
+        open={Boolean(pendingStatus)}
+        title={pendingStatus?.status === "ACTIVE" ? "Ngừng vùng phục vụ?" : "Kích hoạt vùng phục vụ?"}
+        description={
+          pendingStatus?.status === "ACTIVE"
+            ? `Vùng ${pendingStatus?.name ?? "này"} sẽ không còn được dùng để resolve địa chỉ cho định tuyến, nhưng dữ liệu phạm vi vẫn được giữ.`
+            : `Vùng ${pendingStatus?.name ?? "này"} sẽ được đưa trở lại sử dụng. Vùng lớn và điểm trung chuyển chính phải đang hoạt động.`
+        }
+        confirmLabel={pendingStatus?.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
+        destructive={pendingStatus?.status === "ACTIVE"}
+        loading={saving}
+        reason
+        onCancel={() => setPendingStatus(null)}
+        onConfirm={(reason) => pendingStatus ? applyStatus(pendingStatus, reason) : undefined}
+      />
     </div>
   );
 }

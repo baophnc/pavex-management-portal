@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getHubs, getProvinces, getWards, planRoute } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import type {
   Hub,
   Province,
@@ -55,7 +56,7 @@ export function NetworkRoutePlanner() {
         getHubs(new URLSearchParams({ page: "1", pageSize: "100" })),
       ])
         .then(([provinceItems, hubPage]) => { setProvinces(provinceItems); setHubs(hubPage.items); })
-        .catch((reason) => toast.error(reason instanceof Error ? reason.message : "Không thể tải dữ liệu định tuyến."));
+        .catch((reason) => toast.error(networkErrorMessage(reason, "Không thể tải dữ liệu định tuyến.")));
     }, 0);
     return () => window.clearTimeout(task);
   }, []);
@@ -67,7 +68,7 @@ export function NetworkRoutePlanner() {
       setLoadingOrigin(true);
       void getWards(code)
         .then(setOriginWards)
-        .catch((reason) => toast.error(reason instanceof Error ? reason.message : "Không thể tải phường/xã nguồn."))
+        .catch((reason) => toast.error(networkErrorMessage(reason, "Không thể tải phường/xã nguồn.")))
         .finally(() => setLoadingOrigin(false));
     }, 0);
     return () => window.clearTimeout(task);
@@ -80,7 +81,7 @@ export function NetworkRoutePlanner() {
       setLoadingDestination(true);
       void getWards(code)
         .then(setDestinationWards)
-        .catch((reason) => toast.error(reason instanceof Error ? reason.message : "Không thể tải phường/xã đích."))
+        .catch((reason) => toast.error(networkErrorMessage(reason, "Không thể tải phường/xã đích.")))
         .finally(() => setLoadingDestination(false));
     }, 0);
     return () => window.clearTimeout(task);
@@ -114,7 +115,7 @@ export function NetworkRoutePlanner() {
     try {
       setPlan(await planRoute(params));
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không tìm được tuyến phù hợp.");
+      toast.error(networkErrorMessage(reason, "Không tìm được tuyến phù hợp."));
     } finally {
       setPlanning(false);
     }

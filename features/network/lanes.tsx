@@ -7,7 +7,7 @@ import {
   PlusIcon,
   RefreshCwIcon,
   SaveIcon,
-  Trash2Icon,
+  XIcon,
 } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import { getHubs, getLanes, getLaneSchedules } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import type {
   Hub,
   HubLane,
@@ -26,6 +27,8 @@ import type {
 } from "@/features/network/contracts";
 import { transportModeLabel, transportModes } from "@/features/network/contracts";
 import {
+  ActionPolicyNote,
+  ConfirmActionDialog,
   EmptyState,
   FormField,
   NetworkError,
@@ -54,6 +57,10 @@ function minutesLabel(minutes: number) {
   return remain ? `${hours}h ${remain}m` : `${hours}h`;
 }
 
+type PendingStatusAction =
+  | { kind: "lane"; lane: HubLane }
+  | { kind: "schedule"; schedule: LaneSchedule };
+
 export function NetworkLanes() {
   const { hasPermission } = useAccess();
   const canManage = hasPermission("network.manage");
@@ -74,6 +81,7 @@ export function NetworkLanes() {
   const [saving, setSaving] = useState(false);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<PendingStatusAction | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -97,7 +105,7 @@ export function NetworkLanes() {
         current ? lanes.items.find((item) => item.id === current.id) ?? current : null,
       );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể tải danh sách tuyến vận chuyển.");
+      setError(networkErrorMessage(reason, "Không thể tải danh sách tuyến vận chuyển."));
     } finally {
       setLoading(false);
     }
@@ -112,7 +120,7 @@ export function NetworkLanes() {
         current ? items.find((item) => item.id === current.id) ?? null : null,
       );
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể tải lịch chạy.");
+      toast.error(networkErrorMessage(reason, "Không thể tải lịch chạy."));
     } finally {
       setLoadingSchedules(false);
     }
@@ -174,31 +182,32 @@ export function NetworkLanes() {
           body: JSON.stringify(payload),
         },
       )) as HubLane;
-      toast.success(selected ? "Đã cập nhật Lane." : "Đã tạo Lane ở trạng thái INACTIVE.");
+      toast.success(selected ? "Đã cập nhật tuyến vận chuyển." : "Đã tạo tuyến ở trạng thái ngừng hoạt động.");
       setCreating(false);
       await load();
       setSelected(lane);
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể lưu Lane.");
+      toast.error(networkErrorMessage(reason, "Không thể lưu tuyến vận chuyển."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleLaneStatus(lane: HubLane) {
+  async function applyLaneStatus(lane: HubLane, reason: string) {
     if (!canManage) return;
     const active = lane.status !== "ACTIVE";
-    if (!active && !window.confirm(`Ngừng hoạt động tuyến ${lane.fromHubName} → ${lane.toHubName}?`)) return;
     setSaving(true);
     try {
       await apiRequest(`admin/network/lanes/${lane.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ active }),
+        body: JSON.stringify({ active, reason: reason || null }),
       });
       toast.success(active ? "Đã kích hoạt tuyến vận chuyển." : "Đã ngừng tuyến vận chuyển.");
+      setPendingStatus(null);
       await load();
-    } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể đổi trạng thái tuyến vận chuyển.");
+      await loadSchedules(lane.id);
+    } catch (reasonValue) {
+      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái tuyến vận chuyển."));
     } finally {
       setSaving(false);
     }
@@ -245,25 +254,26 @@ export function NetworkLanes() {
       setSelectedSchedule(null);
       await loadSchedules(selected.id);
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể lưu lịch chạy.");
+      toast.error(networkErrorMessage(reason, "Không thể lưu lịch chạy."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleScheduleStatus(schedule: LaneSchedule) {
+  async function applyScheduleStatus(schedule: LaneSchedule, reason: string) {
     if (!canManage || !selected) return;
     const active = schedule.status !== "ACTIVE";
     setSaving(true);
     try {
       await apiRequest(`admin/network/lanes/${selected.id}/schedules/${schedule.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ active }),
+        body: JSON.stringify({ active, reason: reason || null }),
       });
-      toast.success(active ? "Đã kích hoạt lịch." : "Đã ngừng lịch.");
+      toast.success(active ? "Đã kích hoạt lịch chạy." : "Đã ngừng lịch chạy.");
+      setPendingStatus(null);
       await loadSchedules(selected.id);
-    } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể đổi trạng thái lịch.");
+    } catch (reasonValue) {
+      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái lịch chạy."));
     } finally {
       setSaving(false);
     }
@@ -272,6 +282,17 @@ export function NetworkLanes() {
   const activeSchedules = useMemo(
     () => schedules.filter((item) => item.status === "ACTIVE").length,
     [schedules],
+  );
+  const today = new Date().toISOString().slice(0, 10);
+  const usableActiveSchedules = schedules.filter(
+    (item) => item.status === "ACTIVE" && (!item.effectiveTo || item.effectiveTo >= today),
+  ).length;
+  const canActivateSelectedLane =
+    selected?.status === "ACTIVE" || usableActiveSchedules > 0;
+  const canDeactivateSelectedSchedule = !(
+    selected?.status === "ACTIVE" &&
+    selectedSchedule?.status === "ACTIVE" &&
+    usableActiveSchedules <= 1
   );
   const editorKey = selected?.id ?? (creating ? "new" : "none");
   const scheduleKey = selectedSchedule?.id ?? (creatingSchedule ? "new" : "none");
@@ -369,13 +390,24 @@ export function NetworkLanes() {
                     </FormField>
                   </div>
                 </details>
-                <FormField label="Điểm đi"><select name="fromHubId" className={selectClassName} defaultValue={selected?.fromHubId ?? ""} disabled={!canManage}><option value="">Chọn Hub</option>{hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}</select></FormField>
-                <FormField label="Điểm đến"><select name="toHubId" className={selectClassName} defaultValue={selected?.toHubId ?? ""} disabled={!canManage}><option value="">Chọn Hub</option>{hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}</select></FormField>
-                <FormField label="Phương thức vận chuyển"><select name="transportMode" className={selectClassName} defaultValue={selected?.transportMode ?? "ROAD"} disabled={!canManage}>{transportModes.map((item) => <option key={item} value={item}>{transportModeLabel(item)}</option>)}</select></FormField>
+                <FormField label="Điểm đi" hint={selected?.status === "ACTIVE" ? "Đang khóa vì tuyến đang hoạt động." : undefined}>
+                  {selected?.status === "ACTIVE" ? <input type="hidden" name="fromHubId" value={selected.fromHubId} /> : null}
+                  <select name="fromHubId" className={selectClassName} defaultValue={selected?.fromHubId ?? ""} disabled={!canManage || selected?.status === "ACTIVE"}><option value="">Chọn điểm trung chuyển</option>{hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}</select>
+                </FormField>
+                <FormField label="Điểm đến" hint={selected?.status === "ACTIVE" ? "Đang khóa vì tuyến đang hoạt động." : undefined}>
+                  {selected?.status === "ACTIVE" ? <input type="hidden" name="toHubId" value={selected.toHubId} /> : null}
+                  <select name="toHubId" className={selectClassName} defaultValue={selected?.toHubId ?? ""} disabled={!canManage || selected?.status === "ACTIVE"}><option value="">Chọn điểm trung chuyển</option>{hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}</select>
+                </FormField>
+                <FormField label="Phương thức vận chuyển" hint={selected?.status === "ACTIVE" ? "Đang khóa vì tuyến đang hoạt động." : undefined}>
+                  {selected?.status === "ACTIVE" ? <input type="hidden" name="transportMode" value={selected.transportMode} /> : null}
+                  <select name="transportMode" className={selectClassName} defaultValue={selected?.transportMode ?? "ROAD"} disabled={!canManage || selected?.status === "ACTIVE"}>{transportModes.map((item) => <option key={item} value={item}>{transportModeLabel(item)}</option>)}</select>
+                </FormField>
                 <FormField label="Thời gian dự kiến (phút)"><Input name="estimatedTransitMinutes" type="number" min="1" max="43200" defaultValue={selected?.estimatedTransitMinutes ?? 60} disabled={!canManage} /></FormField>
                 <FormField label="Khoảng cách (km)"><Input name="distanceKm" type="number" min="0.01" step="0.01" defaultValue={selected?.distanceKm ?? ""} disabled={!canManage} /></FormField>
                 <FormField label="Khối lượng đơn tối đa (kg)"><Input name="maxShipmentWeightKg" type="number" min="0.001" step="0.001" defaultValue={selected?.maxShipmentWeightKg ?? 30} disabled={!canManage} /></FormField>
-                {canManage ? <div className="sm:col-span-2 flex flex-wrap gap-2 border-t pt-4"><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}{selected ? "Lưu thay đổi" : "Tạo tuyến"}</Button>{selected ? <Button type="button" variant={selected.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving} onClick={() => void toggleLaneStatus(selected)}>{selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt tuyến"}</Button> : null}</div> : null}
+                {canManage ? <div className="sm:col-span-2 flex flex-wrap gap-2 border-t pt-4"><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}{selected ? "Lưu thay đổi" : "Tạo tuyến"}</Button>{selected ? <Button type="button" variant={selected.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving || (selected.status === "INACTIVE" && !canActivateSelectedLane)} title={selected.status === "INACTIVE" && !canActivateSelectedLane ? "Tạo ít nhất một lịch chạy đang hoạt động trước khi kích hoạt tuyến." : undefined} onClick={() => setPendingStatus({ kind: "lane", lane: selected })}>{selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt tuyến"}</Button> : null}</div> : null}
+                {selected?.status === "ACTIVE" ? <div className="sm:col-span-2"><ActionPolicyNote>Điểm đi, điểm đến và phương thức vận chuyển đang được khóa đúng theo rule backend. Muốn đổi cấu trúc tuyến, hãy ngừng hoạt động tuyến trước.</ActionPolicyNote></div> : null}
+                {selected?.status === "INACTIVE" && !canActivateSelectedLane ? <div className="sm:col-span-2"><ActionPolicyNote>Chưa thể kích hoạt: tuyến cần ít nhất một lịch chạy đang hoạt động và còn hiệu lực.</ActionPolicyNote></div> : null}
               </form>
 
               {selected ? (
@@ -402,17 +434,62 @@ export function NetworkLanes() {
                       <FormField label="Hiệu lực từ"><Input name="effectiveFrom" type="date" required defaultValue={selectedSchedule?.effectiveFrom ?? ""} disabled={!canManage} /></FormField>
                       <FormField label="Hiệu lực đến"><Input name="effectiveTo" type="date" defaultValue={selectedSchedule?.effectiveTo ?? ""} disabled={!canManage} /></FormField>
                       <div className="sm:col-span-2"><p className="text-xs font-bold">Ngày chạy</p><div className="mt-2 flex flex-wrap gap-2">{weekDays.map(([key, label]) => <label key={key} className="flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-bold"><input name={`day-${key}`} type="checkbox" defaultChecked={selectedSchedule ? selectedSchedule.daysOfWeek.includes(key) : !["SATURDAY", "SUNDAY"].includes(key)} disabled={!canManage} />{label}</label>)}</div></div>
-                      {canManage ? <div className="sm:col-span-2 flex flex-wrap gap-2 border-t pt-3"><Button type="submit" size="sm" disabled={saving}><SaveIcon className="size-3.5" />{selectedSchedule ? "Lưu lịch chạy" : "Tạo lịch chạy"}</Button>{selectedSchedule ? <Button type="button" size="sm" variant={selectedSchedule.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving} onClick={() => void toggleScheduleStatus(selectedSchedule)}>{selectedSchedule.status === "ACTIVE" ? "Ngừng lịch" : "Kích hoạt lịch"}</Button> : null}<Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedSchedule(null); setCreatingSchedule(false); }}><Trash2Icon className="size-3.5" /> Đóng</Button></div> : null}
+                      {canManage ? <div className="sm:col-span-2 flex flex-wrap gap-2 border-t pt-3"><Button type="submit" size="sm" disabled={saving}><SaveIcon className="size-3.5" />{selectedSchedule ? "Lưu lịch chạy" : "Tạo lịch chạy"}</Button>{selectedSchedule ? <Button type="button" size="sm" variant={selectedSchedule.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving || (selectedSchedule.status === "ACTIVE" && !canDeactivateSelectedSchedule)} title={selectedSchedule.status === "ACTIVE" && !canDeactivateSelectedSchedule ? "Tuyến đang hoạt động cần giữ ít nhất một lịch chạy khả dụng." : undefined} onClick={() => setPendingStatus({ kind: "schedule", schedule: selectedSchedule })}>{selectedSchedule.status === "ACTIVE" ? "Ngừng lịch" : "Kích hoạt lịch"}</Button> : null}<Button type="button" size="sm" variant="ghost" onClick={() => { setSelectedSchedule(null); setCreatingSchedule(false); }}><XIcon className="size-3.5" /> Đóng</Button></div> : null}
+                      {selectedSchedule?.status === "ACTIVE" && !canDeactivateSelectedSchedule ? <div className="sm:col-span-2"><ActionPolicyNote>Không thể ngừng lịch này trên UI vì đây là lịch khả dụng cuối cùng của một tuyến đang hoạt động. Hãy tạo/kích hoạt lịch khác trước.</ActionPolicyNote></div> : null}
                     </form>
                   ) : null}
                 </section>
               ) : null}
 
+              {selected ? <ActionPolicyNote>Tuyến và lịch chạy không có API xóa cứng. Dùng “Ngừng hoạt động” để giữ lịch sử, audit và các tham chiếu vận hành.</ActionPolicyNote> : null}
               {selected ? <p className="text-[0.65rem] text-muted-foreground">Cập nhật {formatDateTime(selected.updatedAt)}</p> : null}
             </CardContent>
           )}
         </Card>
       </div>
+
+      <ConfirmActionDialog
+        open={Boolean(pendingStatus)}
+        title={
+          pendingStatus?.kind === "lane"
+            ? pendingStatus.lane.status === "ACTIVE" ? "Ngừng tuyến vận chuyển?" : "Kích hoạt tuyến vận chuyển?"
+            : pendingStatus?.kind === "schedule"
+              ? pendingStatus.schedule.status === "ACTIVE" ? "Ngừng lịch chạy?" : "Kích hoạt lịch chạy?"
+              : "Xác nhận thao tác"
+        }
+        description={
+          pendingStatus?.kind === "lane"
+            ? pendingStatus.lane.status === "ACTIVE"
+              ? `Ngừng tuyến ${pendingStatus.lane.fromHubName} → ${pendingStatus.lane.toHubName}. Backend sẽ chặn nếu còn giữ chỗ sức chứa hoặc tuyến mẫu đang hoạt động sử dụng tuyến này.`
+              : `Kích hoạt tuyến ${pendingStatus.lane.fromHubName} → ${pendingStatus.lane.toHubName}. Hai điểm đầu/cuối và ít nhất một lịch chạy phải đang hoạt động.`
+            : pendingStatus?.kind === "schedule"
+              ? pendingStatus.schedule.status === "ACTIVE"
+                ? "Lịch này sẽ ngừng nhận hành trình mới. Backend sẽ chặn nếu còn giữ chỗ tương lai hoặc đây là lịch khả dụng cuối cùng của tuyến đang hoạt động."
+                : "Lịch chạy sẽ được đưa trở lại sử dụng. Backend sẽ kiểm tra trùng lịch trước khi kích hoạt."
+              : ""
+        }
+        confirmLabel={
+          pendingStatus?.kind === "lane"
+            ? pendingStatus.lane.status === "ACTIVE" ? "Ngừng tuyến" : "Kích hoạt tuyến"
+            : pendingStatus?.kind === "schedule"
+              ? pendingStatus.schedule.status === "ACTIVE" ? "Ngừng lịch" : "Kích hoạt lịch"
+              : "Xác nhận"
+        }
+        destructive={
+          pendingStatus?.kind === "lane"
+            ? pendingStatus.lane.status === "ACTIVE"
+            : pendingStatus?.kind === "schedule"
+              ? pendingStatus.schedule.status === "ACTIVE"
+              : false
+        }
+        loading={saving}
+        reason
+        onCancel={() => setPendingStatus(null)}
+        onConfirm={(reason) => {
+          if (pendingStatus?.kind === "lane") return applyLaneStatus(pendingStatus.lane, reason);
+          if (pendingStatus?.kind === "schedule") return applyScheduleStatus(pendingStatus.schedule, reason);
+        }}
+      />
     </div>
   );
 }

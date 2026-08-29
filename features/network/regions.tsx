@@ -14,8 +14,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import { getRegions } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import type { NetworkRegion } from "@/features/network/contracts";
 import {
+  ActionPolicyNote,
+  ConfirmActionDialog,
   EmptyState,
   FormField,
   NetworkError,
@@ -34,6 +37,7 @@ export function NetworkRegions() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<NetworkRegion | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,9 +49,7 @@ export function NetworkRegions() {
         current ? result.find((item) => item.id === current.id) ?? null : null,
       );
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không thể tải Region.",
-      );
+      setError(networkErrorMessage(reason, "Không thể tải danh sách vùng."));
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ export function NetworkRegions() {
     const code = String(form.get("code") ?? "").trim().toUpperCase();
 
     if (!name || (!selected && !code)) {
-      toast.error("Vui lòng nhập đủ mã và tên Region.");
+      toast.error("Vui lòng nhập đủ mã kỹ thuật và tên vùng.");
       return;
     }
 
@@ -81,45 +83,32 @@ export function NetworkRegions() {
         },
       )) as NetworkRegion;
 
-      toast.success(selected ? "Đã cập nhật Region." : "Đã tạo Region.");
+      toast.success(selected ? "Đã cập nhật vùng." : "Đã tạo vùng.");
       setCreating(false);
       await load();
       setSelected(updated);
     } catch (reason) {
-      toast.error(
-        reason instanceof Error ? reason.message : "Không thể lưu Region.",
-      );
+      toast.error(networkErrorMessage(reason, "Không thể lưu vùng."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleStatus(region: NetworkRegion) {
+  async function applyStatus(region: NetworkRegion, reason: string) {
     if (!canManage) return;
     const active = region.status !== "ACTIVE";
-    if (
-      !active &&
-      !window.confirm(
-        `Ngừng hoạt động vùng ${region.name}? Hệ thống có thể chặn nếu vẫn còn vùng phục vụ đang hoạt động.`,
-      )
-    ) {
-      return;
-    }
 
     setSaving(true);
     try {
       await apiRequest(`admin/network/regions/${region.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ active }),
+        body: JSON.stringify({ active, reason: reason || null }),
       });
-      toast.success(active ? "Đã kích hoạt Region." : "Đã ngừng Region.");
+      toast.success(active ? "Đã kích hoạt vùng." : "Đã ngừng hoạt động vùng.");
+      setPendingStatus(null);
       await load();
-    } catch (reason) {
-      toast.error(
-        reason instanceof Error
-          ? reason.message
-          : "Không thể đổi trạng thái Region.",
-      );
+    } catch (reasonValue) {
+      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái vùng."));
     } finally {
       setSaving(false);
     }
@@ -271,7 +260,7 @@ export function NetworkRegions() {
                         type="button"
                         variant={selected.status === "ACTIVE" ? "destructive" : "outline"}
                         disabled={saving}
-                        onClick={() => void toggleStatus(selected)}
+                        onClick={() => setPendingStatus(selected)}
                       >
                         {selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
                       </Button>
@@ -283,11 +272,33 @@ export function NetworkRegions() {
                     Chỉ đọc. Cần quyền quản lý mạng lưới để thay đổi.
                   </div>
                 )}
+
+                {selected ? (
+                  <ActionPolicyNote>
+                    Vùng không có thao tác xóa cứng trên backend. Nếu không còn sử dụng, hãy ngừng hoạt động để giữ nguyên lịch sử và các liên kết đã phát sinh.
+                  </ActionPolicyNote>
+                ) : null}
               </form>
             </CardContent>
           )}
         </Card>
       </div>
+
+      <ConfirmActionDialog
+        open={Boolean(pendingStatus)}
+        title={pendingStatus?.status === "ACTIVE" ? "Ngừng hoạt động vùng?" : "Kích hoạt vùng?"}
+        description={
+          pendingStatus?.status === "ACTIVE"
+            ? `Vùng ${pendingStatus?.name ?? "này"} sẽ không còn được dùng cho cấu hình hoạt động mới. Backend sẽ từ chối nếu vẫn còn vùng phục vụ đang hoạt động.`
+            : `Vùng ${pendingStatus?.name ?? "này"} sẽ được đưa trở lại trạng thái hoạt động.`
+        }
+        confirmLabel={pendingStatus?.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
+        destructive={pendingStatus?.status === "ACTIVE"}
+        loading={saving}
+        reason
+        onCancel={() => setPendingStatus(null)}
+        onConfirm={(reason) => pendingStatus ? applyStatus(pendingStatus, reason) : undefined}
+      />
     </div>
   );
 }

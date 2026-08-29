@@ -17,6 +17,7 @@ import {
   getServiceAreas,
   getWards,
 } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import {
   coverageTierLabel,
   coverageTiers,
@@ -28,6 +29,8 @@ import {
   type Ward,
 } from "@/features/network/contracts";
 import {
+  ActionPolicyNote,
+  ConfirmActionDialog,
   EmptyState,
   FormField,
   NetworkError,
@@ -85,6 +88,7 @@ export function NetworkCoverage() {
   const [loadingWards, setLoadingWards] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<ServiceAreaCoverage | null>(null);
 
   const params = useMemo(() => {
     const value = new URLSearchParams({
@@ -115,9 +119,7 @@ export function NetworkCoverage() {
           : null,
       );
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không thể tải Coverage.",
-      );
+      setError(networkErrorMessage(reason, "Không thể tải phạm vi phục vụ."));
     } finally {
       setLoading(false);
     }
@@ -166,7 +168,7 @@ export function NetworkCoverage() {
     event.preventDefault();
     if (!canManage) return;
     if (!draft.serviceAreaId || !draft.provinceCode) {
-      toast.error("Vui lòng chọn Service Area và tỉnh/thành.");
+      toast.error("Vui lòng chọn vùng phục vụ và tỉnh/thành.");
       return;
     }
 
@@ -188,29 +190,19 @@ export function NetworkCoverage() {
           body: JSON.stringify(payload),
         },
       )) as ServiceAreaCoverage;
-      toast.success(selected ? "Đã cập nhật Coverage." : "Đã tạo Coverage.");
+      toast.success(selected ? "Đã cập nhật phạm vi phục vụ." : "Đã tạo phạm vi phục vụ.");
       await load();
       edit(updated);
     } catch (reason) {
-      toast.error(
-        reason instanceof Error ? reason.message : "Không thể lưu Coverage.",
-      );
+      toast.error(networkErrorMessage(reason, "Không thể lưu phạm vi phục vụ."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleStatus(coverage: ServiceAreaCoverage) {
+  async function applyStatus(coverage: ServiceAreaCoverage, reason: string) {
     if (!canManage) return;
     const active = !coverage.active;
-    if (
-      !active &&
-      !window.confirm(
-        "Ngừng Coverage này? Resolver sẽ bỏ qua mapping khi coverage inactive.",
-      )
-    ) {
-      return;
-    }
 
     setSaving(true);
     try {
@@ -218,18 +210,15 @@ export function NetworkCoverage() {
         `admin/network/coverages/${coverage.id}/status`,
         {
           method: "PATCH",
-          body: JSON.stringify({ active }),
+          body: JSON.stringify({ active, reason: reason || null }),
         },
       )) as ServiceAreaCoverage;
-      toast.success(active ? "Đã kích hoạt Coverage." : "Đã ngừng Coverage.");
+      toast.success(active ? "Đã kích hoạt phạm vi phục vụ." : "Đã ngừng phạm vi phục vụ.");
+      setPendingStatus(null);
       await load();
       edit(updated);
-    } catch (reason) {
-      toast.error(
-        reason instanceof Error
-          ? reason.message
-          : "Không thể đổi trạng thái Coverage.",
-      );
+    } catch (reasonValue) {
+      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái phạm vi phục vụ."));
     } finally {
       setSaving(false);
     }
@@ -512,16 +501,38 @@ export function NetworkCoverage() {
                     type="button"
                     variant={selected.active ? "destructive" : "outline"}
                     disabled={saving}
-                    onClick={() => void toggleStatus(selected)}
+                    onClick={() => setPendingStatus(selected)}
                   >
                     {selected.active ? "Ngừng hoạt động" : "Kích hoạt"}
                   </Button>
                 ) : null}
               </div>
             ) : null}
+
+            {selected ? (
+              <ActionPolicyNote>
+                Phạm vi phục vụ không có API xóa cứng. Khi không còn dùng mapping này, hãy ngừng hoạt động; resolver sẽ bỏ qua mapping nhưng dữ liệu vẫn được giữ để đối soát và audit.
+              </ActionPolicyNote>
+            ) : null}
           </form>
         </CardContent>
       </Card>
+
+      <ConfirmActionDialog
+        open={Boolean(pendingStatus)}
+        title={pendingStatus?.active ? "Ngừng phạm vi phục vụ?" : "Kích hoạt phạm vi phục vụ?"}
+        description={
+          pendingStatus?.active
+            ? "Mapping địa bàn này sẽ được resolver bỏ qua. Dữ liệu không bị xóa và có thể kích hoạt lại sau."
+            : "Mapping địa bàn này sẽ được dùng lại khi hệ thống resolve địa chỉ sang vùng phục vụ."
+        }
+        confirmLabel={pendingStatus?.active ? "Ngừng hoạt động" : "Kích hoạt"}
+        destructive={Boolean(pendingStatus?.active)}
+        loading={saving}
+        reason
+        onCancel={() => setPendingStatus(null)}
+        onConfirm={(reason) => pendingStatus ? applyStatus(pendingStatus, reason) : undefined}
+      />
     </div>
   );
 }

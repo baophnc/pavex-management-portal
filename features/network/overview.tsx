@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getCoverages, getHubs, getLanes, getRegions, getRouteTemplates, getServiceAreas } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import type { Hub, HubLane, NetworkRegion, PageResponse, RouteTemplate, ServiceArea, ServiceAreaCoverage } from "@/features/network/contracts";
 import {
   Metric,
@@ -46,11 +47,7 @@ export function NetworkOverview() {
       ]);
       setSnapshot({ regions, hubs, areas, coverages, lanes, templates });
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Không thể tải tổng quan Network.",
-      );
+      setError(networkErrorMessage(reason, "Không thể tải tổng quan mạng lưới."));
     } finally {
       setLoading(false);
     }

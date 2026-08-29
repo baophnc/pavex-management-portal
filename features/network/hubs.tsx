@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import { getHubs, getProvinces, getWards } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import {
   hubTypeLabel,
   hubTypes,
@@ -25,6 +26,8 @@ import {
   type Ward,
 } from "@/features/network/contracts";
 import {
+  ActionPolicyNote,
+  ConfirmActionDialog,
   EmptyState,
   FormField,
   NetworkError,
@@ -98,6 +101,7 @@ export function NetworkHubs() {
   const [saving, setSaving] = useState(false);
   const [loadingWards, setLoadingWards] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<Hub | null>(null);
 
   const endpointParams = useMemo(() => {
     const params = new URLSearchParams({
@@ -131,9 +135,7 @@ export function NetworkHubs() {
           : null,
       );
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không thể tải danh sách Hub.",
-      );
+      setError(networkErrorMessage(reason, "Không thể tải danh sách điểm trung chuyển."));
     } finally {
       setLoading(false);
     }
@@ -189,7 +191,7 @@ export function NetworkHubs() {
       !draft.wardCode ||
       (!selected && !draft.code.trim())
     ) {
-      toast.error("Vui lòng nhập đủ thông tin Hub.");
+      toast.error("Vui lòng nhập đủ thông tin điểm trung chuyển.");
       return;
     }
 
@@ -214,43 +216,32 @@ export function NetworkHubs() {
           body: JSON.stringify(payload),
         },
       )) as Hub;
-      toast.success(selected ? "Đã cập nhật Hub." : "Đã tạo Hub.");
+      toast.success(selected ? "Đã cập nhật điểm trung chuyển." : "Đã tạo điểm trung chuyển.");
       await load();
       edit(updated);
     } catch (reason) {
-      toast.error(
-        reason instanceof Error ? reason.message : "Không thể lưu Hub.",
-      );
+      toast.error(networkErrorMessage(reason, "Không thể lưu điểm trung chuyển."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleStatus(hub: Hub) {
+  async function applyStatus(hub: Hub, reason: string) {
     if (!canManage) return;
     const active = hub.status !== "ACTIVE";
-    if (
-      !active &&
-      !window.confirm(
-        `Ngừng hoạt động điểm ${hub.name}? Hệ thống có thể chặn nếu điểm này vẫn đang được vùng phục vụ hoặc tuyến vận chuyển sử dụng.`,
-      )
-    ) {
-      return;
-    }
 
     setSaving(true);
     try {
       const updated = (await apiRequest(`admin/network/hubs/${hub.id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ active }),
+        body: JSON.stringify({ active, reason: reason || null }),
       })) as Hub;
       toast.success(active ? "Đã kích hoạt điểm trung chuyển." : "Đã ngừng điểm trung chuyển.");
+      setPendingStatus(null);
       await load();
       edit(updated);
-    } catch (reason) {
-      toast.error(
-        reason instanceof Error ? reason.message : "Không thể đổi trạng thái điểm trung chuyển.",
-      );
+    } catch (reasonValue) {
+      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái điểm trung chuyển."));
     } finally {
       setSaving(false);
     }
@@ -275,7 +266,7 @@ export function NetworkHubs() {
               <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />
               Tải lại
             </Button>
-            {canManage ? <Button onClick={createNew}>Tạo Hub</Button> : null}
+            {canManage ? <Button onClick={createNew}>Tạo điểm</Button> : null}
           </>
         }
       />
@@ -621,16 +612,38 @@ export function NetworkHubs() {
                     type="button"
                     variant={selected.status === "ACTIVE" ? "destructive" : "outline"}
                     disabled={saving}
-                    onClick={() => void toggleStatus(selected)}
+                    onClick={() => setPendingStatus(selected)}
                   >
                     {selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
                   </Button>
                 ) : null}
               </div>
             ) : null}
+
+            {selected ? (
+              <ActionPolicyNote>
+                Điểm trung chuyển không có API xóa cứng. Hãy ngừng hoạt động nếu không còn sử dụng. Backend sẽ chặn thao tác nếu điểm vẫn là điểm chính của vùng phục vụ hoặc còn tuyến vận chuyển đang hoạt động.
+              </ActionPolicyNote>
+            ) : null}
           </form>
         </CardContent>
       </Card>
+
+      <ConfirmActionDialog
+        open={Boolean(pendingStatus)}
+        title={pendingStatus?.status === "ACTIVE" ? "Ngừng điểm trung chuyển?" : "Kích hoạt điểm trung chuyển?"}
+        description={
+          pendingStatus?.status === "ACTIVE"
+            ? `Điểm ${pendingStatus?.name ?? "này"} sẽ ngừng phục vụ. Backend sẽ từ chối nếu điểm vẫn đang được vùng phục vụ hoặc tuyến vận chuyển sử dụng.`
+            : `Điểm ${pendingStatus?.name ?? "này"} sẽ được đưa trở lại trạng thái hoạt động.`
+        }
+        confirmLabel={pendingStatus?.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
+        destructive={pendingStatus?.status === "ACTIVE"}
+        loading={saving}
+        reason
+        onCancel={() => setPendingStatus(null)}
+        onConfirm={(reason) => pendingStatus ? applyStatus(pendingStatus, reason) : undefined}
+      />
     </div>
   );
 }

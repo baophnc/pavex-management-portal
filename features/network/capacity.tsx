@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getCapacityReservation, getLaneCapacity, getLanes } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import type {
   CapacityReservation,
   HubLane,
@@ -44,7 +45,7 @@ export function NetworkCapacity() {
     const task = window.setTimeout(() => {
       void getLanes(new URLSearchParams({ page: "1", pageSize: "100" }))
         .then((result) => setLanes(result.items))
-        .catch((reason) => toast.error(reason instanceof Error ? reason.message : "Không thể tải tuyến vận chuyển."));
+        .catch((reason) => toast.error(networkErrorMessage(reason, "Không thể tải tuyến vận chuyển.")));
     }, 0);
     return () => window.clearTimeout(task);
   }, []);
@@ -60,7 +61,7 @@ export function NetworkCapacity() {
       setCapacity(await getLaneCapacity(laneId, serviceDate));
     } catch (reason) {
       setCapacity(null);
-      toast.error(reason instanceof Error ? reason.message : "Không thể tải sức chứa.");
+      toast.error(networkErrorMessage(reason, "Không thể tải sức chứa."));
     } finally {
       setLoading(false);
     }
@@ -80,7 +81,7 @@ export function NetworkCapacity() {
       setReservation(await getCapacityReservation(shipmentId, routeRevision));
     } catch (reason) {
       setReservation(null);
-      toast.error(reason instanceof Error ? reason.message : "Không tìm thấy dữ liệu giữ chỗ.");
+      toast.error(networkErrorMessage(reason, "Không tìm thấy dữ liệu giữ chỗ."));
     } finally {
       setLoading(false);
     }

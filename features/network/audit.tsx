@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getAuditLogs } from "@/features/network/api";
+import { networkErrorMessage } from "@/features/network/errors";
 import type {
   NetworkAuditAction,
   NetworkAuditLog,
@@ -57,7 +58,7 @@ export function NetworkAudit() {
       setResult(next);
       setSelected((current) => current ? next.items.find((item) => item.id === current.id) ?? current : null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể tải nhật ký mạng lưới.");
+      setError(networkErrorMessage(reason, "Không thể tải nhật ký mạng lưới."));
     } finally {
       setLoading(false);
     }
