@@ -1,3 +1,8 @@
+import {
+  parseBackendProblem,
+  parseRetryAfterSeconds,
+} from "@/lib/api/problem";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -6,80 +11,80 @@ export class ApiError extends Error {
     public readonly traceId: string | null = null,
     public readonly fieldErrors: Record<string, string[]> = {},
     public readonly conflictVersion: number | null = null,
+    public readonly retryAfterSeconds: number | null = null,
   ) {
     super(message);
     this.name = "ApiError";
   }
-}
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function parseFieldErrors(value: unknown) {
-  const record = asRecord(value);
-  if (!record) return {};
-
-  return Object.fromEntries(
-    Object.entries(record).flatMap(([field, messages]) => {
-      if (Array.isArray(messages)) return [[field, messages.map(String)]];
-      if (typeof messages === "string") return [[field, [messages]]];
-      return [];
-    }),
-  );
-}
-
-export async function apiRequest(path: string, init: RequestInit = {}) {
-  const response = await fetch(`/api/backend/${path.replace(/^\//, "")}`, {
-    cache: "no-store",
-    ...init,
-    headers: {
-      ...(init.body ? { "content-type": "application/json" } : {}),
-      ...init.headers,
-    },
-  });
-
-  if (response.status === 401) {
-    window.dispatchEvent(new Event("pavex-management:session-expired"));
+  get retryable() {
+    return (
+      this.status === 0 ||
+      this.status === 408 ||
+      this.status === 429 ||
+      this.status >= 500
+    );
   }
+}
+
+async function readPayload(response: Response): Promise<unknown> {
+  if (response.status === 204) return null;
 
   const raw = await response.text();
-  let value: unknown = null;
+  if (!raw) return null;
+
   try {
-    value = raw ? (JSON.parse(raw) as unknown) : null;
+    return JSON.parse(raw) as unknown;
   } catch {
-    value = { message: raw };
+    return { message: raw };
+  }
+}
+
+export async function apiRequest<T = unknown>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  let response: Response;
+  const headers = new Headers(init.headers);
+  if (!headers.has("accept")) headers.set("accept", "application/json");
+  const isFormData =
+    typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (init.body && !isFormData && !headers.has("content-type")) {
+    headers.set("content-type", "application/json");
   }
 
-  if (!response.ok) {
-    const problem = asRecord(value);
-    const message =
-      typeof problem?.message === "string"
-        ? problem.message
-        : typeof problem?.detail === "string"
-          ? problem.detail
-          : typeof problem?.title === "string"
-            ? problem.title
-            : "Yêu cầu backend thất bại.";
-    const code = typeof problem?.code === "string" ? problem.code : null;
-    const traceId = typeof problem?.traceId === "string" ? problem.traceId : null;
-    const conflictVersion =
-      typeof problem?.conflictVersion === "number"
-        ? problem.conflictVersion
-        : null;
-    const fieldErrors = parseFieldErrors(problem?.fieldErrors ?? problem?.errors);
-
+  try {
+    response = await fetch(`/api/backend/${path.replace(/^\//, "")}`, {
+      ...init,
+      cache: "no-store",
+      headers,
+    });
+  } catch {
     throw new ApiError(
-      message,
-      response.status,
-      code,
-      traceId,
-      fieldErrors,
-      conflictVersion,
+      "Không thể kết nối Management BFF.",
+      0,
+      "management_bff_unavailable",
     );
   }
 
-  return value;
+  if (response.status === 401 && typeof window !== "undefined") {
+    window.dispatchEvent(new Event("pavex-management:session-expired"));
+  }
+
+  const value = await readPayload(response);
+
+  if (!response.ok) {
+    const problem = parseBackendProblem(value);
+    throw new ApiError(
+      problem.message,
+      response.status,
+      problem.code,
+      problem.traceId,
+      problem.fieldErrors,
+      problem.conflictVersion,
+      parseRetryAfterSeconds(response.headers.get("retry-after")),
+    );
+  }
+
+  return value as T;
 }

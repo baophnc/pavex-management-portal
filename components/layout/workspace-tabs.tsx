@@ -12,6 +12,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useAccess } from "@/features/auth/access-context";
+import { canAccessManagementPath } from "@/lib/auth/access";
 import { cn } from "@/lib/utils";
 
 type WorkspaceTab = {
@@ -146,23 +148,30 @@ export function WorkspaceTabs() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useAccess();
   const query = searchParams.toString();
   const currentHref = query ? `${pathname}?${query}` : pathname;
   const [tabs, setTabs] = useState<WorkspaceTab[]>([DASHBOARD_TAB]);
   const restoredRef = useRef(false);
   const initialPathnameRef = useRef(pathname);
   const initialHrefRef = useRef(currentHref);
+  const initialUserRef = useRef(user);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
-      const restored = parseStoredTabs(window.sessionStorage.getItem(STORAGE_KEY));
+      const restored = parseStoredTabs(
+        window.sessionStorage.getItem(STORAGE_KEY),
+      ).filter(
+        (tab) =>
+          tab.pinned ||
+          canAccessManagementPath(initialUserRef.current, tab.path),
+      );
       restoredRef.current = true;
+      const initialPath = initialPathnameRef.current;
       setTabs(
-        upsertTab(
-          restored,
-          initialPathnameRef.current,
-          initialHrefRef.current,
-        ),
+        canAccessManagementPath(initialUserRef.current, initialPath)
+          ? upsertTab(restored, initialPath, initialHrefRef.current)
+          : restored,
       );
     }, 0);
 
@@ -170,14 +179,14 @@ export function WorkspaceTabs() {
   }, []);
 
   useEffect(() => {
-    if (!restoredRef.current) return;
+    if (!restoredRef.current || !canAccessManagementPath(user, pathname)) return;
 
     const task = window.setTimeout(() => {
       setTabs((current) => upsertTab(current, pathname, currentHref));
     }, 0);
 
     return () => window.clearTimeout(task);
-  }, [currentHref, pathname]);
+  }, [currentHref, pathname, user]);
 
   useEffect(() => {
     if (!restoredRef.current) return;

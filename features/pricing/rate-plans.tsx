@@ -9,7 +9,7 @@ import {
   SaveIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -215,6 +215,7 @@ export function PricingRatePlans() {
   const canManage = hasPermission("pricing.manage");
   const [plans, setPlans] = useState<RatePlan[]>([]);
   const [selected, setSelected] = useState<RatePlan | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
   const [policy, setPolicy] = useState<RatePlanPayload>(emptyPolicy);
   const [status, setStatus] = useState<RatePlanStatus | "">("");
   const [loading, setLoading] = useState(true);
@@ -231,7 +232,11 @@ export function PricingRatePlans() {
       .then((items) => {
         if (!active) return;
         setPlans(items);
-        const next = selected ? items.find((item) => item.id === selected.id) ?? items[0] ?? null : items[0] ?? null;
+        const selectedId = selectedIdRef.current;
+        const next = selectedId
+          ? items.find((item) => item.id === selectedId) ?? items[0] ?? null
+          : items[0] ?? null;
+        selectedIdRef.current = next?.id ?? null;
         setSelected(next);
         if (next) setPolicy(policyOf(next));
         setError(null);
@@ -243,16 +248,16 @@ export function PricingRatePlans() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  // selected is intentionally not a dependency: refresh keeps selection by id without re-fetch loops.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, refreshKey]);
 
   const selectPlan = (plan: RatePlan) => {
+    selectedIdRef.current = plan.id;
     setSelected(plan);
     setPolicy(policyOf(plan));
   };
 
   const replacePlan = (next: RatePlan) => {
+    selectedIdRef.current = next.id;
     setSelected(next);
     setPolicy(policyOf(next));
     setPlans((items) => items.some((item) => item.id === next.id)

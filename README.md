@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pavex Management Portal
 
-## Getting Started
+Next.js 16 management console for Pavex operators and administrators.
 
-First, run the development server:
+The browser never receives the backend refresh token directly. The portal uses
+same-origin Route Handlers as a BFF, stores access/refresh tokens in HttpOnly
+cookies, and forwards authenticated requests to the Kotlin API Gateway.
+
+## Requirements
+
+- Node.js 20.9+
+- pnpm 11+
+- Pavex API Gateway reachable from the management web process
+
+## Environment
+
+Set the API Gateway base URL before starting the portal:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+API_BASE_URL=http://localhost:8080
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+When the management portal itself runs in Docker while the backend runs on the
+host, use the host address appropriate for the environment, for example:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+API_BASE_URL=http://host.docker.internal:8080
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Development
 
-## Learn More
+```bash
+corepack enable
+pnpm install
+pnpm dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Quality gates:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm check
+pnpm build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Authentication and authorization
 
-## Deploy on Vercel
+Management login calls `/api/v1/auth/login`, loads `/api/v1/auth/me`, and only
+creates a browser session when the account has at least one management
+permission. Customer/Merchant-only accounts are rejected by the Management BFF.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The browser calls backend APIs through:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+/api/backend/*
+```
+
+The BFF automatically:
+
+- attaches the access token;
+- refreshes an expired or missing access token from the HttpOnly refresh cookie;
+- coalesces concurrent refresh attempts inside one web process to avoid refresh-token rotation races;
+- retries the original backend request once after a successful refresh;
+- clears the local session only when authentication is actually invalid;
+- preserves useful backend response headers such as `Retry-After`, `ETag` and request/trace IDs.
+
+Navigation is permission-driven. Backend authorization remains the source of
+truth; hiding a menu or button is only a UX guard, never the security boundary.
+
+## Current management modules
+
+- Identity
+- Partners / Merchant administration
+- Network
+- Pricing
+
+Shipment administration is added after the backend exposes the corresponding
+admin query contract.

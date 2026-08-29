@@ -17,74 +17,74 @@ import type {
 } from "@/features/network/contracts";
 
 export async function getRegions(activeOnly = false) {
-  return (await apiRequest(
+  return apiRequest<NetworkRegion[]>(
     `admin/network/regions?activeOnly=${String(activeOnly)}`,
-  )) as NetworkRegion[];
+  );
 }
 
 export async function getHubs(params: URLSearchParams) {
-  return (await apiRequest(`admin/network/hubs?${params.toString()}`)) as PageResponse<Hub>;
+  return apiRequest<PageResponse<Hub>>(`admin/network/hubs?${params.toString()}`);
 }
 
 export async function getServiceAreas(params: URLSearchParams) {
-  return (await apiRequest(
+  return apiRequest<PageResponse<ServiceArea>>(
     `admin/network/service-areas?${params.toString()}`,
-  )) as PageResponse<ServiceArea>;
+  );
 }
 
 export async function getCoverages(params: URLSearchParams) {
-  return (await apiRequest(
+  return apiRequest<PageResponse<ServiceAreaCoverage>>(
     `admin/network/coverages?${params.toString()}`,
-  )) as PageResponse<ServiceAreaCoverage>;
+  );
 }
 
 export async function getProvinces() {
-  return (await apiRequest("locations/provinces")) as Province[];
+  return apiRequest<Province[]>("locations/provinces");
 }
 
 export async function getWards(provinceCode: string) {
   if (!provinceCode) return [];
-  return (await apiRequest(
+  return apiRequest<Ward[]>(
     `locations/provinces/${encodeURIComponent(provinceCode)}/wards`,
-  )) as Ward[];
+  );
 }
 
 export async function getLanes(params: URLSearchParams) {
-  return (await apiRequest(`admin/network/lanes?${params.toString()}`)) as PageResponse<HubLane>;
+  return apiRequest<PageResponse<HubLane>>(`admin/network/lanes?${params.toString()}`);
 }
 
 export async function getLaneSchedules(laneId: string) {
-  return (await apiRequest(
+  return apiRequest<LaneSchedule[]>(
     `admin/network/lanes/${encodeURIComponent(laneId)}/schedules`,
-  )) as LaneSchedule[];
+  );
 }
 
 export async function getRouteTemplates(params: URLSearchParams) {
-  return (await apiRequest(
+  return apiRequest<PageResponse<RouteTemplate>>(
     `admin/network/route-templates?${params.toString()}`,
-  )) as PageResponse<RouteTemplate>;
+  );
 }
 
 export async function planRoute(params: URLSearchParams) {
-  return (await apiRequest(
+  return apiRequest<RoutePlan>(
     `admin/network/routing/plan?${params.toString()}`,
-  )) as RoutePlan;
+  );
 }
 
 export async function getLaneCapacity(laneId: string, serviceDate: string) {
-  return (await apiRequest(
+  return apiRequest<LaneCapacity>(
     `admin/network/lanes/${encodeURIComponent(laneId)}/capacity?serviceDate=${encodeURIComponent(serviceDate)}`,
-  )) as LaneCapacity;
+  );
 }
 
 export async function getCapacityReservation(shipmentId: string, routeRevision: number) {
-  return (await apiRequest(
+  return apiRequest<CapacityReservation>(
     `admin/network/capacity/reservations/${encodeURIComponent(shipmentId)}/revisions/${routeRevision}`,
-  )) as CapacityReservation;
+  );
 }
 
 export async function getAuditLogs(params: URLSearchParams) {
-  return (await apiRequest(
+  return apiRequest<PageResponse<NetworkAuditLog>>(
     `admin/network/audit?${params.toString()}`,
-  )) as PageResponse<NetworkAuditLog>;
+  );
 }

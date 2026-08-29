@@ -2,18 +2,31 @@
 
 import { createContext, useContext, useMemo } from "react";
 
+import {
+  hasAllPermissions as userHasAllPermissions,
+  hasAnyPermission as userHasAnyPermission,
+  hasAnyRole as userHasAnyRole,
+  hasPermission as userHasPermission,
+  hasRole as userHasRole,
+} from "@/lib/auth/access";
 import type { CurrentUser } from "@/lib/auth/contracts";
 
 type Access = {
   user: CurrentUser | null;
   hasPermission: (permission: string) => boolean;
-  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAnyPermission: (permissions: readonly string[]) => boolean;
+  hasAllPermissions: (permissions: readonly string[]) => boolean;
+  hasRole: (role: string) => boolean;
+  hasAnyRole: (roles: readonly string[]) => boolean;
 };
 
 const AccessContext = createContext<Access>({
   user: null,
   hasPermission: () => false,
   hasAnyPermission: () => false,
+  hasAllPermissions: () => false,
+  hasRole: () => false,
+  hasAnyRole: () => false,
 });
 
 export function AccessProvider({
@@ -23,15 +36,19 @@ export function AccessProvider({
   user: CurrentUser | null;
   children: React.ReactNode;
 }) {
-  const value = useMemo(() => {
-    const permissions = new Set(user?.permissions ?? []);
-    return {
+  const value = useMemo<Access>(
+    () => ({
       user,
-      hasPermission: (permission: string) => permissions.has(permission),
-      hasAnyPermission: (required: string[]) =>
-        required.some((permission) => permissions.has(permission)),
-    };
-  }, [user]);
+      hasPermission: (permission) => userHasPermission(user, permission),
+      hasAnyPermission: (permissions) =>
+        userHasAnyPermission(user, permissions),
+      hasAllPermissions: (permissions) =>
+        userHasAllPermissions(user, permissions),
+      hasRole: (role) => userHasRole(user, role),
+      hasAnyRole: (roles) => userHasAnyRole(user, roles),
+    }),
+    [user],
+  );
 
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;
 }

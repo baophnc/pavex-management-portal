@@ -5,8 +5,15 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { parseRetryAfterSeconds } from "@/lib/api/problem";
 
-export function LoginForm({ returnTo }: { returnTo: string }) {
+export function LoginForm({
+  returnTo,
+  notice = null,
+}: {
+  returnTo: string;
+  notice?: string | null;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -26,9 +33,21 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
           password: form.get("password"),
         }),
       });
-      const payload = (await response.json()) as { message?: string };
-      if (!response.ok)
-        throw new Error(payload.message ?? "Đăng nhập thất bại.");
+      const payload = (await response.json().catch(() => null)) as
+        | { message?: string; code?: string }
+        | null;
+      if (!response.ok) {
+        const retryAfter = parseRetryAfterSeconds(
+          response.headers.get("retry-after"),
+        );
+        const suffix =
+          response.status === 429 && retryAfter !== null
+            ? ` Thử lại sau khoảng ${retryAfter} giây.`
+            : "";
+        throw new Error(
+          `${payload?.message ?? "Đăng nhập thất bại."}${suffix}`,
+        );
+      }
 
       router.replace(returnTo);
       router.refresh();
@@ -42,6 +61,11 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
 
   return (
     <form onSubmit={submit} className="mt-8 space-y-5">
+      {notice ? (
+        <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm font-semibold text-amber-800 dark:text-amber-200">
+          {notice}
+        </p>
+      ) : null}
       <label className="grid gap-2 text-sm font-bold" htmlFor="email">
         Email
         <Input
@@ -49,7 +73,6 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
           name="email"
           type="email"
           autoComplete="username"
-          placeholder=""
           required
         />
       </label>
@@ -82,7 +105,6 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
         )}
         {pending ? "Đang xác thực..." : "Đăng nhập"}
       </Button>
-      <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground"></p>
     </form>
   );
 }

@@ -1,36 +1,60 @@
 import "server-only";
 
 import { backendFetch, readBackendPayload } from "@/lib/api/backend";
-import { parseAuthTokens, parseCurrentUser } from "@/lib/auth/contracts";
+import {
+  parseAuthTokens,
+  parseCurrentUser,
+  type AuthTokens,
+} from "@/lib/auth/contracts";
 
-export async function authenticate(email: string, password: string) {
+export type AuthenticationResult = {
+  response: Response;
+  tokens: AuthTokens | null;
+  payload: unknown;
+};
+
+export type RefreshResult = AuthenticationResult;
+
+export async function authenticate(
+  email: string,
+  password: string,
+): Promise<AuthenticationResult> {
   const response = await backendFetch("/api/v1/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
   const payload = await readBackendPayload(response);
-  return { response, tokens: response.ok ? parseAuthTokens(payload) : null };
+  return {
+    response,
+    tokens: response.ok ? parseAuthTokens(payload) : null,
+    payload,
+  };
 }
 
-export async function refreshTokens(refreshToken: string) {
+export async function refreshTokens(
+  refreshToken: string,
+): Promise<RefreshResult> {
   const response = await backendFetch("/api/v1/auth/refresh", {
     method: "POST",
     body: JSON.stringify({ refreshToken }),
   });
-  return response.ok
-    ? parseAuthTokens(await readBackendPayload(response))
-    : null;
+  const payload = await readBackendPayload(response);
+  return {
+    response,
+    tokens: response.ok ? parseAuthTokens(payload) : null,
+    payload,
+  };
 }
 
 export async function getCurrentUser(accessToken: string) {
   const response = await backendFetch("/api/v1/auth/me", {
     headers: { authorization: `Bearer ${accessToken}` },
   });
+  const payload = await readBackendPayload(response);
   return {
     response,
-    user: response.ok
-      ? parseCurrentUser(await readBackendPayload(response))
-      : null,
+    user: response.ok ? parseCurrentUser(payload) : null,
+    payload,
   };
 }
 

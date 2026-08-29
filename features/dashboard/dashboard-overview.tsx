@@ -3,6 +3,8 @@
 import {
   ArrowUpRightIcon,
   Building2Icon,
+  CircleDollarSignIcon,
+  CircleGaugeIcon,
   CircleUserRoundIcon,
   RefreshCwIcon,
   ShieldCheckIcon,
@@ -91,7 +93,7 @@ function MetricSkeleton() {
 }
 
 export function DashboardOverview() {
-  const { hasPermission, user } = useAccess();
+  const { hasAnyPermission, hasPermission, user } = useAccess();
   const [values, setValues] = useState<
     Partial<Record<keyof typeof PATHS, number | null>>
   >({});
@@ -172,12 +174,12 @@ export function DashboardOverview() {
               </span>
             </div>
             <h1 className="mt-4 max-w-3xl text-2xl font-black tracking-[-0.035em] sm:text-3xl lg:text-4xl">
-              Identity và Partners trong một workspace quản trị.
+              Điều hành các dịch vụ lõi Pavex trong một workspace.
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Dashboard chỉ tổng hợp những module đã có backend trong phiên bản
-              hiện tại. Mỗi chỉ số và liên kết đều tuân theo permission của tài
-              khoản đang đăng nhập.
+              Management Portal chỉ hiển thị module backend mà tài khoản hiện
+              tại được cấp quyền: Identity, Partners, Network và Pricing. Các
+              phase tiếp theo sẽ bổ sung Shipment và Operations vào cùng nền này.
             </p>
           </div>
 
@@ -320,6 +322,24 @@ export function DashboardOverview() {
               >
                 <Building2Icon className="size-4 text-brand" />
                 <span className="text-xs font-black">Quản lý Merchant</span>
+              </Link>
+            ) : null}
+            {hasAnyPermission(["network.read", "network.manage"]) ? (
+              <Link
+                href="/network"
+                className="flex items-center gap-3 rounded-xl border bg-background p-3 transition hover:bg-muted"
+              >
+                <CircleGaugeIcon className="size-4 text-brand" />
+                <span className="text-xs font-black">Điều hành mạng lưới</span>
+              </Link>
+            ) : null}
+            {hasAnyPermission(["pricing.read", "pricing.manage"]) ? (
+              <Link
+                href="/pricing"
+                className="flex items-center gap-3 rounded-xl border bg-background p-3 transition hover:bg-muted"
+              >
+                <CircleDollarSignIcon className="size-4 text-brand" />
+                <span className="text-xs font-black">Quản lý Pricing</span>
               </Link>
             ) : null}
             <Link

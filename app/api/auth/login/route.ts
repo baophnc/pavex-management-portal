@@ -1,9 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { authenticate, getCurrentUser } from "@/lib/auth/backend";
+import { parseBackendProblem } from "@/lib/api/problem";
+import {
+  authenticate,
+  getCurrentUser,
+  revokeToken,
+} from "@/lib/auth/backend";
+import { canAccessManagement } from "@/lib/auth/access";
 import { setSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
+
+function jsonWithRetryAfter(
+  payload: Record<string, unknown>,
+  status: number,
+  retryAfter: string | null,
+) {
+  const response = NextResponse.json(payload, { status });
+  if (retryAfter) response.headers.set("retry-after", retryAfter);
+  return response;
+}
 
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -11,7 +27,7 @@ export async function POST(request: NextRequest) {
     body = await request.json();
   } catch {
     return NextResponse.json(
-      { message: "Dữ liệu đăng nhập không hợp lệ." },
+      { code: "invalid_login_request", message: "Dữ liệu đăng nhập không hợp lệ." },
       { status: 400 },
     );
   }
@@ -24,25 +40,78 @@ export async function POST(request: NextRequest) {
   const password = typeof value.password === "string" ? value.password : "";
   if (!email || !password || email.length > 320 || password.length > 256) {
     return NextResponse.json(
-      { message: "Vui lòng nhập email và mật khẩu." },
+      { code: "invalid_login_request", message: "Vui lòng nhập email và mật khẩu." },
       { status: 400 },
     );
   }
 
   try {
     const result = await authenticate(email, password);
-    if (!result.response.ok || !result.tokens) {
+    if (!result.response.ok) {
+      const problem = parseBackendProblem(
+        result.payload,
+        "Email hoặc mật khẩu không chính xác.",
+      );
+      const status = result.response.status === 429 ? 429 : 401;
+      return jsonWithRetryAfter(
+        {
+          code: problem.code ?? (status === 429 ? "login_rate_limited" : "invalid_credentials"),
+          message:
+            status === 429
+              ? problem.message
+              : "Email hoặc mật khẩu không chính xác.",
+          traceId: problem.traceId,
+        },
+        status,
+        result.response.headers.get("retry-after"),
+      );
+    }
+
+    if (!result.tokens) {
       return NextResponse.json(
-        { message: "Email hoặc mật khẩu không chính xác." },
-        { status: result.response.status === 429 ? 429 : 401 },
+        {
+          code: "invalid_auth_response",
+          message: "Auth trả về phiên đăng nhập không hợp lệ.",
+        },
+        { status: 502 },
       );
     }
 
     const current = await getCurrentUser(result.tokens.accessToken);
-    if (!current.user) {
+    if (!current.response.ok || !current.user) {
+      const problem = parseBackendProblem(
+        current.payload,
+        "Không thể đọc hồ sơ quản trị.",
+      );
+      try {
+        await revokeToken(result.tokens.refreshToken);
+      } catch {
+        // The browser has not received this refresh token yet, so local login
+        // can fail safely even when backend logout is temporarily unavailable.
+      }
       return NextResponse.json(
-        { message: "Không thể đọc hồ sơ quản trị." },
-        { status: 502 },
+        {
+          code: problem.code ?? "management_profile_unavailable",
+          message: problem.message,
+          traceId: problem.traceId,
+        },
+        { status: current.response.status >= 500 ? 502 : 401 },
+      );
+    }
+
+    if (!canAccessManagement(current.user)) {
+      try {
+        await revokeToken(result.tokens.refreshToken);
+      } catch {
+        // No cookie has been set yet, therefore the login is still denied.
+      }
+      return NextResponse.json(
+        {
+          code: "management_access_required",
+          message:
+            "Tài khoản này chưa được cấp quyền sử dụng Pavex Management Portal.",
+        },
+        { status: 403 },
       );
     }
 
@@ -54,7 +123,10 @@ export async function POST(request: NextRequest) {
     return response;
   } catch {
     return NextResponse.json(
-      { message: "Không thể kết nối backend Pavex." },
+      {
+        code: "management_backend_unavailable",
+        message: "Không thể kết nối backend Pavex.",
+      },
       { status: 502 },
     );
   }

@@ -66,8 +66,15 @@ function asProfileDraft(profile: CurrentAccountProfile): ProfileDraft {
 
 function errorMessage(reason: unknown, fallback: string) {
   if (reason instanceof ApiError) {
-    const suffix = reason.code ? ` (${reason.code})` : "";
-    return `${reason.message}${suffix}`;
+    if (reason.status === 0) return "Không thể kết nối Management BFF.";
+    if (reason.status === 401) return "Phiên đăng nhập đã hết hạn.";
+    if (reason.status === 403) return "Bạn không có quyền thực hiện thao tác này.";
+    if (reason.status === 429) {
+      return reason.retryAfterSeconds !== null
+        ? `Quá nhiều yêu cầu. Hãy thử lại sau khoảng ${reason.retryAfterSeconds} giây.`
+        : "Quá nhiều yêu cầu. Hãy chờ một lúc rồi thử lại.";
+    }
+    return reason.message || fallback;
   }
   return reason instanceof Error ? reason.message : fallback;
 }

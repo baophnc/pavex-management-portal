@@ -20,12 +20,24 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { useAppTheme } from "@/components/theme/app-theme-provider";
 import { Button } from "@/components/ui/button";
 import { AccessProvider } from "@/features/auth/access-context";
+import {
+  canAccessManagementPath,
+  hasAnyPermission,
+  hasPermission,
+} from "@/lib/auth/access";
 import type { CurrentUser } from "@/lib/auth/contracts";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +55,29 @@ type NavigationSection = {
 };
 
 const SIDEBAR_STORAGE_KEY = "pavex-management:sidebar-collapsed";
+const SIDEBAR_EVENT = "pavex-management:sidebar-preference-changed";
+
+function subscribeSidebarPreference(onStoreChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === SIDEBAR_STORAGE_KEY) onStoreChange();
+  };
+
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(SIDEBAR_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(SIDEBAR_EVENT, onStoreChange);
+  };
+}
+
+function sidebarPreferenceSnapshot() {
+  return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+}
+
+function setSidebarPreference(collapsed: boolean) {
+  window.localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed ? "1" : "0");
+  window.dispatchEvent(new Event(SIDEBAR_EVENT));
+}
 
 const navigationSections: NavigationSection[] = [
   {
@@ -188,19 +223,10 @@ const navigationSections: NavigationSection[] = [
 const navigation = navigationSections.flatMap((section) => section.items);
 
 function permitted(item: NavigationItem, user: CurrentUser | null) {
-  if (item.permission && !user?.permissions.includes(item.permission)) {
+  if (item.permission && !hasPermission(user, item.permission)) return false;
+  if (item.permissionsAny?.length && !hasAnyPermission(user, item.permissionsAny)) {
     return false;
   }
-
-  if (
-    item.permissionsAny?.length &&
-    !item.permissionsAny.some((permission) =>
-      user?.permissions.includes(permission),
-    )
-  ) {
-    return false;
-  }
-
   return true;
 }
 
@@ -245,7 +271,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarCollapsed = useSyncExternalStore(
+    subscribeSidebarPreference,
+    sidebarPreferenceSnapshot,
+    () => false,
+  );
   const mobilePanelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -267,6 +297,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         if (response.status === 401) {
           expired();
+          return;
+        }
+        if (response.status === 403) {
+          router.replace("/login?reason=management-access");
           return;
         }
 
@@ -302,13 +336,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSidebarCollapsed(
-      window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1",
-    );
-  }, []);
-
-  useEffect(() => {
     if (!mobileOpen) return;
 
     const previousOverflow = document.body.style.overflow;
@@ -333,11 +360,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [mobileOpen]);
 
   function toggleSidebar() {
-    setSidebarCollapsed((current) => {
-      const next = !current;
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? "1" : "0");
-      return next;
-    });
+    setSidebarPreference(!sidebarCollapsed);
   }
 
   async function logout() {
@@ -362,7 +385,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const current = currentNavigation(pathname);
   const section = currentSection(current);
-  const allowed = !current || permitted(current, user);
+  const allowed = canAccessManagementPath(user, pathname);
   const initials = initialsOf(user);
 
   function renderNavigation(collapsed: boolean, mobile = false) {
@@ -678,7 +701,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <div className="h-10 border-t bg-muted/30" aria-hidden="true" />
               }
             >
-              <WorkspaceTabs />
+              {loaded && user && !connectionError ? (
+                <WorkspaceTabs />
+              ) : (
+                <div className="h-10 border-t bg-muted/30" aria-hidden="true" />
+              )}
             </Suspense>
           </div>
 
