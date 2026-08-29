@@ -111,6 +111,36 @@ const navigationSections: NavigationSection[] = [
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },
+      {
+        href: "/network/lanes",
+        label: "Lanes & Schedules",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+      {
+        href: "/network/route-templates",
+        label: "Route Templates",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+      {
+        href: "/network/route-planner",
+        label: "Route Planner",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+      {
+        href: "/network/capacity",
+        label: "Capacity",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+      {
+        href: "/network/audit",
+        label: "Audit",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
     ],
   },
   {

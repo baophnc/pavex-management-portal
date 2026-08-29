@@ -43,6 +43,11 @@ function tabTitle(pathname: string) {
   if (pathname === "/network/hubs") return "Network Hubs";
   if (pathname === "/network/service-areas") return "Service Areas";
   if (pathname === "/network/coverage") return "Coverage";
+  if (pathname === "/network/lanes") return "Network Lanes";
+  if (pathname === "/network/route-templates") return "Route Templates";
+  if (pathname === "/network/route-planner") return "Route Planner";
+  if (pathname === "/network/capacity") return "Network Capacity";
+  if (pathname === "/network/audit") return "Network Audit";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);
   return segment

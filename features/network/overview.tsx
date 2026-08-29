@@ -5,8 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { getCoverages, getHubs, getRegions, getServiceAreas } from "@/features/network/api";
-import type { NetworkRegion, PageResponse, Hub, ServiceArea, ServiceAreaCoverage } from "@/features/network/contracts";
+import { getCoverages, getHubs, getLanes, getRegions, getRouteTemplates, getServiceAreas } from "@/features/network/api";
+import type { Hub, HubLane, NetworkRegion, PageResponse, RouteTemplate, ServiceArea, ServiceAreaCoverage } from "@/features/network/contracts";
 import {
   Metric,
   NetworkError,
@@ -19,6 +19,8 @@ type Snapshot = {
   hubs: PageResponse<Hub>;
   areas: PageResponse<ServiceArea>;
   coverages: PageResponse<ServiceAreaCoverage>;
+  lanes: PageResponse<HubLane>;
+  templates: PageResponse<RouteTemplate>;
 };
 
 function firstPage(size = 1) {
@@ -34,13 +36,15 @@ export function NetworkOverview() {
     setLoading(true);
     setError(null);
     try {
-      const [regions, hubs, areas, coverages] = await Promise.all([
+      const [regions, hubs, areas, coverages, lanes, templates] = await Promise.all([
         getRegions(),
         getHubs(firstPage()),
         getServiceAreas(firstPage()),
         getCoverages(firstPage()),
+        getLanes(firstPage()),
+        getRouteTemplates(firstPage()),
       ]);
-      setSnapshot({ regions, hubs, areas, coverages });
+      setSnapshot({ regions, hubs, areas, coverages, lanes, templates });
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -65,7 +69,7 @@ export function NetworkOverview() {
       <NetworkPageHeader
         eyebrow="Network control"
         title="Cấu hình mạng lưới"
-        description="Quản trị vùng vận hành, Hub, Service Area và Coverage. Đây là lớp cấu hình nền để routing ở PATCH UI tiếp theo có thể tìm đúng điểm vào/ra của mạng vận chuyển."
+        description="Quản trị toàn bộ Network từ vùng phục vụ đến transport graph, Route Template, planner và capacity. Foundation xác định điểm vào/ra; routing layer quyết định hàng đi chuyến nào và còn tải hay không."
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCwIcon className={loading ? "size-4 animate-spin" : "size-4"} />
@@ -101,6 +105,15 @@ export function NetworkOverview() {
         </div>
       </Card>
 
+      <Card className="overflow-hidden">
+        <div className="grid grid-cols-2 divide-x sm:grid-cols-4">
+          <Metric label="Lane" value={loading && !snapshot ? "…" : snapshot?.lanes.totalItems ?? 0} note="Transport graph edges" />
+          <Metric label="Route template" value={loading && !snapshot ? "…" : snapshot?.templates.totalItems ?? 0} note="Preferred routes" />
+          <Metric label="Planner" value="LIVE" note="Earliest arrival" />
+          <Metric label="Capacity" value="LIVE" note="Per departure" />
+        </div>
+      </Card>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <QuickLink
           href="/network/regions"
@@ -122,6 +135,14 @@ export function NetworkOverview() {
           title="Coverage"
           description="Map Province/Ward vào Service Area với tier Standard, Remote hoặc Island."
         />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <QuickLink href="/network/lanes" title="Lanes & Schedules" description="Nối Hub bằng ROAD/AIR/RAIL/SEA và cấu hình nhiều chuyến theo ngày." />
+        <QuickLink href="/network/route-templates" title="Route Templates" description="Định nghĩa preferred route có priority và revision." />
+        <QuickLink href="/network/route-planner" title="Route Planner" description="Test tuyến theo Ward, thời gian, lịch chạy và capacity thật." />
+        <QuickLink href="/network/capacity" title="Capacity" description="Theo dõi tải đã cấp và còn lại trên từng departure." />
+        <QuickLink href="/network/audit" title="Audit" description="Xem lịch sử thay đổi cấu hình và capacity reservation." />
       </div>
 
       <Card>
