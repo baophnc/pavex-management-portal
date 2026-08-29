@@ -100,7 +100,7 @@ export function NetworkRegions() {
     if (
       !active &&
       !window.confirm(
-        `Ngừng Region ${region.code}? Backend sẽ chặn nếu còn Service Area ACTIVE.`,
+        `Ngừng hoạt động vùng ${region.name}? Hệ thống có thể chặn nếu vẫn còn vùng phục vụ đang hoạt động.`,
       )
     ) {
       return;
@@ -130,9 +130,10 @@ export function NetworkRegions() {
   return (
     <div className="space-y-4">
       <NetworkPageHeader
-        eyebrow="Network foundation"
-        title="Regions"
-        description="Region là dữ liệu vận hành động. NORTH / CENTRAL / SOUTH chỉ là seed mặc định; bạn có thể tạo HCM_CORE, MEKONG, SOUTH_EAST… mà không phải sửa source backend."
+        eyebrow="Nền tảng mạng lưới"
+        title="Vùng"
+        description="Vùng dùng để nhóm các khu vực vận hành lớn như miền Bắc, miền Trung và miền Nam."
+        help={{ description: "Trang này quản lý các vùng logic của mạng lưới.", bullets: ["Vùng được dùng để nhóm các vùng phục vụ.", "Có thể tạo thêm vùng mới mà không cần sửa backend.", "Ngừng hoạt động một vùng có thể bị chặn nếu vẫn còn vùng phục vụ đang hoạt động."] }}
         actions={
           <>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
@@ -146,7 +147,7 @@ export function NetworkRegions() {
                   setCreating(true);
                 }}
               >
-                Tạo Region
+                Tạo vùng
               </Button>
             ) : null}
           </>
@@ -159,7 +160,7 @@ export function NetworkRegions() {
         <Card className="h-fit overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <p className="text-sm font-black">Danh sách Region</p>
+              <p className="text-sm font-black">Danh sách vùng</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {regions.length} vùng vận hành
               </p>
@@ -186,13 +187,7 @@ export function NetworkRegions() {
                   )}
                 >
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-mono text-xs font-black text-brand">
-                        {region.code}
-                      </p>
-                      <StatusBadge active={region.status === "ACTIVE"} />
-                    </div>
-                    <p className="mt-1 text-sm font-black">{region.name}</p>
+                    <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-black">{region.name}</p><StatusBadge active={region.status === "ACTIVE"} /></div>
                     <p className="mt-1 text-[0.65rem] text-muted-foreground">
                       Cập nhật {formatDateTime(region.updatedAt)}
                     </p>
@@ -202,8 +197,8 @@ export function NetworkRegions() {
             </div>
           ) : (
             <EmptyState
-              title="Chưa có Region"
-              description="Tạo Region trước khi cấu hình Service Area."
+              title="Chưa có vùng"
+              description="Tạo vùng trước khi cấu hình Service Area."
             />
           )}
         </Card>
@@ -211,41 +206,39 @@ export function NetworkRegions() {
         <Card className="h-fit xl:sticky xl:top-32">
           <CardHeader>
             <p className="text-sm font-black">
-              {selected ? `Chỉnh sửa ${selected.code}` : creating ? "Tạo Region" : "Chi tiết Region"}
+              {selected ? selected.name : creating ? "Tạo vùng" : "Chi tiết vùng"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {canManage
-                ? "Code được khóa sau khi tạo để giữ identifier ổn định."
-                : "Bạn đang có quyền xem; cần network.manage để thay đổi."}
+                ? "Mã kỹ thuật được giữ cố định sau khi tạo; thao tác hằng ngày chỉ cần dùng tên vùng."
+                : "Bạn đang có quyền xem; cần quyền quản lý mạng lưới để thay đổi."}
             </p>
           </CardHeader>
 
           {!selected && !creating ? (
             <EmptyState
-              title="Chọn một Region"
-              description="Chọn Region ở danh sách bên trái hoặc tạo mới."
+              title="Chọn một vùng"
+              description="Chọn vùng ở danh sách bên trái hoặc tạo mới."
             />
           ) : (
             <CardContent>
               <form key={editorKey} className="grid gap-4" onSubmit={submit}>
-                <FormField label="Code">
-                  <Input
-                    name="code"
-                    defaultValue={selected?.code ?? ""}
-                    disabled={Boolean(selected) || !canManage}
-                    maxLength={50}
-                    placeholder="HCM_CORE"
-                    className="font-mono uppercase"
-                  />
-                </FormField>
+                <details className="rounded-lg border bg-muted/15 p-3">
+                  <summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary>
+                  <div className="mt-3">
+                    <FormField label="Mã kỹ thuật" hint="Chỉ dùng nội bộ; không cần nhập mã này khi tìm kiếm.">
+                      <Input name="code" defaultValue={selected?.code ?? ""} disabled={Boolean(selected) || !canManage} maxLength={50} placeholder="SOUTH" className="font-mono uppercase" />
+                    </FormField>
+                  </div>
+                </details>
 
-                <FormField label="Tên Region">
+                <FormField label="Tên vùng">
                   <Input
                     name="name"
                     defaultValue={selected?.name ?? ""}
                     disabled={!canManage}
                     maxLength={160}
-                    placeholder="Hồ Chí Minh Core"
+                    placeholder="Miền Nam"
                   />
                 </FormField>
 
@@ -255,7 +248,7 @@ export function NetworkRegions() {
                       <div>
                         <p className="text-xs font-black">Trạng thái</p>
                         <p className="mt-1 text-[0.65rem] text-muted-foreground">
-                          Deactivate có thể bị backend chặn nếu Region đang được sử dụng.
+                          Ngừng hoạt động có thể bị chặn nếu vùng vẫn đang được sử dụng.
                         </p>
                       </div>
                       <StatusBadge active={selected.status === "ACTIVE"} />
@@ -271,7 +264,7 @@ export function NetworkRegions() {
                       ) : (
                         <SaveIcon className="size-4" />
                       )}
-                      {selected ? "Lưu thay đổi" : "Tạo Region"}
+                      {selected ? "Lưu thay đổi" : "Tạo vùng"}
                     </Button>
                     {selected ? (
                       <Button
@@ -287,7 +280,7 @@ export function NetworkRegions() {
                 ) : (
                   <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-200">
                     <ShieldAlertIcon className="mt-0.5 size-4 shrink-0" />
-                    Chỉ đọc. Permission cần thiết: network.manage
+                    Chỉ đọc. Cần quyền quản lý mạng lưới để thay đổi.
                   </div>
                 )}
               </form>

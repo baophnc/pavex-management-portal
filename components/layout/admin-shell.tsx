@@ -79,7 +79,7 @@ const navigationSections: NavigationSection[] = [
     ],
   },
   {
-    label: "Network",
+    label: "Mạng lưới",
     items: [
       {
         href: "/network",
@@ -89,55 +89,55 @@ const navigationSections: NavigationSection[] = [
       },
       {
         href: "/network/regions",
-        label: "Regions",
+        label: "Vùng",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },
       {
         href: "/network/hubs",
-        label: "Hubs",
+        label: "Điểm trung chuyển",
         icon: Building2Icon,
         permissionsAny: ["network.read", "network.manage"],
       },
       {
         href: "/network/service-areas",
-        label: "Service Areas",
+        label: "Vùng phục vụ",
         icon: Building2Icon,
         permissionsAny: ["network.read", "network.manage"],
       },
       {
         href: "/network/coverage",
-        label: "Coverage",
+        label: "Phạm vi phục vụ",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },
       {
         href: "/network/lanes",
-        label: "Lanes & Schedules",
+        label: "Tuyến & lịch chạy",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },
       {
         href: "/network/route-templates",
-        label: "Route Templates",
+        label: "Tuyến mẫu",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },
       {
         href: "/network/route-planner",
-        label: "Route Planner",
+        label: "Tìm tuyến",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },
       {
         href: "/network/capacity",
-        label: "Capacity",
+        label: "Sức chứa",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },
       {
         href: "/network/audit",
-        label: "Audit",
+        label: "Nhật ký",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },

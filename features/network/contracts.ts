@@ -97,11 +97,11 @@ export function networkStatusLabel(status: NetworkRegionStatus | HubStatus | Ser
 export function hubTypeLabel(type: HubType) {
   switch (type) {
     case "REGIONAL_GATEWAY":
-      return "Gateway vùng";
+      return "Trung tâm vùng";
     case "PROVINCIAL":
-      return "Hub tỉnh";
+      return "Điểm tỉnh / thành";
     case "LOCAL":
-      return "Hub địa phương";
+      return "Điểm địa phương";
   }
 }
 
@@ -348,11 +348,11 @@ export function transportModeLabel(mode: TransportMode) {
 export function planningModeLabel(mode: RoutePlanningMode) {
   switch (mode) {
     case "PREFER_TEMPLATE":
-      return "Ưu tiên Route Template";
+      return "Ưu tiên tuyến mẫu";
     case "GRAPH_ONLY":
-      return "Chỉ Graph Planner";
+      return "Chỉ tự tìm tuyến";
     case "TEMPLATE_ONLY":
-      return "Chỉ Route Template";
+      return "Chỉ tuyến mẫu";
   }
 }
 
@@ -361,8 +361,46 @@ export function routeSourceLabel(source: RoutePlanSource) {
     case "LOCAL":
       return "Nội vùng";
     case "ROUTE_TEMPLATE":
-      return "Route Template";
+      return "Tuyến mẫu";
     case "GRAPH":
-      return "Graph Planner";
+      return "Tuyến tự tìm";
+  }
+}
+
+
+export function reservationStatusLabel(status: LaneCapacityReservationStatus | CapacityReservationBatchStatus) {
+  switch (status) {
+    case "RESERVED": return "Đã giữ chỗ";
+    case "IN_TRANSIT": return "Đang vận chuyển";
+    case "CONSUMED": return "Đã sử dụng";
+    case "RELEASED": return "Đã giải phóng";
+    case "PARTIALLY_CONSUMED": return "Đã dùng một phần";
+    case "NOT_REQUIRED": return "Không cần giữ chỗ";
+  }
+}
+
+export function auditEntityTypeLabel(type: NetworkAuditEntityType) {
+  switch (type) {
+    case "REGION": return "Vùng";
+    case "HUB": return "Điểm trung chuyển";
+    case "SERVICE_AREA": return "Vùng phục vụ";
+    case "COVERAGE": return "Phạm vi phục vụ";
+    case "LANE": return "Tuyến vận chuyển";
+    case "LANE_SCHEDULE": return "Lịch chạy";
+    case "ROUTE_TEMPLATE": return "Tuyến mẫu";
+    case "CAPACITY_RESERVATION": return "Giữ chỗ tải";
+  }
+}
+
+export function auditActionLabel(action: NetworkAuditAction) {
+  switch (action) {
+    case "CREATED": return "Đã tạo";
+    case "UPDATED": return "Đã cập nhật";
+    case "ACTIVATED": return "Đã kích hoạt";
+    case "DEACTIVATED": return "Đã ngừng";
+    case "DELETED": return "Đã xóa";
+    case "RESERVED": return "Đã giữ tải";
+    case "CONSUMED": return "Đã sử dụng tải";
+    case "RELEASED": return "Đã giải phóng tải";
   }
 }

@@ -67,9 +67,10 @@ export function NetworkOverview() {
   return (
     <div className="space-y-4">
       <NetworkPageHeader
-        eyebrow="Network control"
-        title="Cấu hình mạng lưới"
-        description="Quản trị toàn bộ Network từ vùng phục vụ đến transport graph, Route Template, planner và capacity. Foundation xác định điểm vào/ra; routing layer quyết định hàng đi chuyến nào và còn tải hay không."
+        eyebrow="Điều hành mạng lưới"
+        title="Tổng quan mạng lưới"
+        description="Theo dõi cấu hình vùng, điểm trung chuyển, tuyến vận chuyển, lịch chạy và sức chứa trên một màn hình."
+        help={{ description: "Đây là trang tổng quan để kiểm tra nhanh mạng lưới đã được cấu hình đến đâu trước khi vận hành Shipment.", bullets: ["Xem số lượng vùng, điểm trung chuyển, vùng phục vụ và phạm vi phục vụ.", "Đi nhanh đến tuyến vận chuyển, tuyến mẫu, tìm tuyến và sức chứa.", "Nếu một chỉ số bằng 0, hãy cấu hình tầng đó trước khi test routing."] }}
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCwIcon className={loading ? "size-4 animate-spin" : "size-4"} />
@@ -98,7 +99,7 @@ export function NetworkOverview() {
             note="Vùng phục vụ logic"
           />
           <Metric
-            label="Coverage"
+            label="Phạm vi phục vụ"
             value={loading && !snapshot ? "…" : snapshot?.coverages.totalItems ?? 0}
             note="Province / Ward mapping"
           />
@@ -107,42 +108,42 @@ export function NetworkOverview() {
 
       <Card className="overflow-hidden">
         <div className="grid grid-cols-2 divide-x sm:grid-cols-4">
-          <Metric label="Lane" value={loading && !snapshot ? "…" : snapshot?.lanes.totalItems ?? 0} note="Transport graph edges" />
-          <Metric label="Route template" value={loading && !snapshot ? "…" : snapshot?.templates.totalItems ?? 0} note="Preferred routes" />
-          <Metric label="Planner" value="LIVE" note="Earliest arrival" />
-          <Metric label="Capacity" value="LIVE" note="Per departure" />
+          <Metric label="Tuyến vận chuyển" value={loading && !snapshot ? "…" : snapshot?.lanes.totalItems ?? 0} note="Các tuyến đang cấu hình" />
+          <Metric label="Tuyến mẫu" value={loading && !snapshot ? "…" : snapshot?.templates.totalItems ?? 0} note="Hành trình ưu tiên" />
+          <Metric label="Tìm tuyến" value="Sẵn sàng" note="Tính thời gian đến sớm nhất" />
+          <Metric label="Sức chứa" value="Sẵn sàng" note="Theo từng chuyến" />
         </div>
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <QuickLink
           href="/network/regions"
-          title="Regions"
+          title="Vùng"
           description="Tổ chức vùng vận hành động thay vì hard-code province → miền."
         />
         <QuickLink
           href="/network/hubs"
-          title="Hubs"
+          title="Điểm trung chuyển"
           description="Tạo Gateway, Hub tỉnh và Hub địa phương; hierarchy chỉ phục vụ quản trị."
         />
         <QuickLink
           href="/network/service-areas"
-          title="Service Areas"
+          title="Vùng phục vụ"
           description="Gắn một vùng phục vụ với Region và Primary Hub đang vận hành."
         />
         <QuickLink
           href="/network/coverage"
-          title="Coverage"
+          title="Phạm vi phục vụ"
           description="Map Province/Ward vào Service Area với tier Standard, Remote hoặc Island."
         />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <QuickLink href="/network/lanes" title="Lanes & Schedules" description="Nối Hub bằng ROAD/AIR/RAIL/SEA và cấu hình nhiều chuyến theo ngày." />
-        <QuickLink href="/network/route-templates" title="Route Templates" description="Định nghĩa preferred route có priority và revision." />
-        <QuickLink href="/network/route-planner" title="Route Planner" description="Test tuyến theo Ward, thời gian, lịch chạy và capacity thật." />
-        <QuickLink href="/network/capacity" title="Capacity" description="Theo dõi tải đã cấp và còn lại trên từng departure." />
-        <QuickLink href="/network/audit" title="Audit" description="Xem lịch sử thay đổi cấu hình và capacity reservation." />
+        <QuickLink href="/network/lanes" title="Tuyến & lịch chạy" description="Nối các điểm trung chuyển và cấu hình nhiều chuyến theo ngày." />
+        <QuickLink href="/network/route-templates" title="Tuyến mẫu" description="Thiết lập các hành trình ưu tiên cho bộ phận vận hành." />
+        <QuickLink href="/network/route-planner" title="Tìm tuyến" description="Kiểm tra hành trình theo địa chỉ, thời gian, lịch chạy và sức chứa thật." />
+        <QuickLink href="/network/capacity" title="Sức chứa" description="Theo dõi tải đã giữ và còn lại trên từng chuyến." />
+        <QuickLink href="/network/audit" title="Nhật ký" description="Xem lịch sử thay đổi cấu hình và giữ chỗ tải." />
       </div>
 
       <Card>
@@ -155,7 +156,7 @@ export function NetworkOverview() {
               ["01", "Region", "Xác định miền/vùng vận hành."],
               ["02", "Hub", "Tạo các điểm vật lý trong mạng."],
               ["03", "Service Area", "Chọn Primary Hub cho vùng phục vụ."],
-              ["04", "Coverage", "Gắn Province/Ward vào Service Area."],
+              ["04", "Phạm vi phục vụ", "Gắn xã/phường vào vùng phục vụ."],
             ].map(([step, title, description]) => (
               <div key={step} className="rounded-lg border bg-muted/20 p-3.5">
                 <p className="font-mono text-[0.62rem] font-black text-brand">{step}</p>

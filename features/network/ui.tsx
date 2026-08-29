@@ -10,7 +10,7 @@ import {
   ShieldAlertIcon,
 } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,15 +27,22 @@ export function NetworkPageHeader({
   title,
   description,
   actions,
+  help,
 }: {
   eyebrow: string;
   title: string;
   description: string;
   actions?: ReactNode;
+  help?: {
+    title?: string;
+    description: string;
+    bullets?: string[];
+  };
 }) {
+  const [helpOpen, setHelpOpen] = useState(false);
   return (
-    <section className="overflow-hidden rounded-xl border bg-card">
-      <div className="flex flex-col gap-4 bg-gradient-to-br from-brand/[0.08] via-card to-card p-4 sm:p-5 lg:flex-row lg:items-end lg:justify-between">
+    <section className="relative rounded-xl border bg-card">
+      <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-brand/[0.08] via-card to-card p-4 sm:p-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-brand/15 bg-brand/10 text-brand">
@@ -54,8 +61,52 @@ export function NetworkPageHeader({
             {description}
           </p>
         </div>
-        {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {help ? (
+            <Button type="button" variant="outline" onClick={() => setHelpOpen(true)}>
+              <span className="grid size-4 place-items-center rounded-full border text-[0.65rem] font-black">?</span>
+              Trang này làm gì?
+            </Button>
+          ) : null}
+          {actions}
+        </div>
       </div>
+      {helpOpen && help ? (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-4"
+          role="presentation"
+          onClick={() => setHelpOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border bg-card p-5 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-label={help.title ?? `Giới thiệu trang ${title}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[0.65rem] font-black uppercase tracking-[0.14em] text-brand">Hướng dẫn nhanh</p>
+                <h2 className="mt-1 text-lg font-black">{help.title ?? title}</h2>
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setHelpOpen(false)}>
+                Đóng
+              </Button>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-muted-foreground">{help.description}</p>
+            {help.bullets?.length ? (
+              <ul className="mt-4 grid gap-2 text-sm">
+                {help.bullets.map((bullet) => (
+                  <li key={bullet} className="flex gap-2 rounded-lg bg-muted/35 px-3 py-2">
+                    <span className="font-black text-brand">•</span>
+                    <span>{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -70,7 +121,7 @@ export function StatusBadge({ active }: { active: boolean }) {
           : "border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300",
       )}
     >
-      {active ? "ACTIVE" : "INACTIVE"}
+      {active ? "Đang hoạt động" : "Ngừng hoạt động"}
     </span>
   );
 }
@@ -146,7 +197,7 @@ export function NetworkError({
   );
 }
 
-export function LoadingCard({ label = "Đang tải Network..." }: { label?: string }) {
+export function LoadingCard({ label = "Đang tải mạng lưới..." }: { label?: string }) {
   return (
     <div className="grid min-h-56 place-items-center rounded-xl border bg-card">
       <div className="text-center">

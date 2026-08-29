@@ -232,7 +232,7 @@ export function NetworkHubs() {
     if (
       !active &&
       !window.confirm(
-        `Ngừng Hub ${hub.code}? Backend sẽ chặn nếu Hub còn Service Area hoặc Lane ACTIVE.`,
+        `Ngừng hoạt động điểm ${hub.name}? Hệ thống có thể chặn nếu điểm này vẫn đang được vùng phục vụ hoặc tuyến vận chuyển sử dụng.`,
       )
     ) {
       return;
@@ -244,12 +244,12 @@ export function NetworkHubs() {
         method: "PATCH",
         body: JSON.stringify({ active }),
       })) as Hub;
-      toast.success(active ? "Đã kích hoạt Hub." : "Đã ngừng Hub.");
+      toast.success(active ? "Đã kích hoạt điểm trung chuyển." : "Đã ngừng điểm trung chuyển.");
       await load();
       edit(updated);
     } catch (reason) {
       toast.error(
-        reason instanceof Error ? reason.message : "Không thể đổi trạng thái Hub.",
+        reason instanceof Error ? reason.message : "Không thể đổi trạng thái điểm trung chuyển.",
       );
     } finally {
       setSaving(false);
@@ -265,9 +265,10 @@ export function NetworkHubs() {
   return (
     <div className="space-y-4">
       <NetworkPageHeader
-        eyebrow="Network foundation"
-        title="Hubs"
-        description="Hub là điểm vật lý của mạng. Parent Hub chỉ biểu diễn hierarchy quản trị; routing ở tầng Lane sẽ không bị ép phải đi theo cây parent."
+        eyebrow="Nền tảng mạng lưới"
+        title="Điểm trung chuyển"
+        description="Quản lý các điểm nhận, gom, chia chọn và trung chuyển hàng trong mạng lưới."
+        help={{ description: "Mỗi điểm trung chuyển là một nút vật lý để hệ thống gắn vùng phục vụ và nối các tuyến vận chuyển.", bullets: ["Điểm cha chỉ dùng cho tổ chức quản trị, không ép tuyến hàng phải đi theo cây cha-con.", "Tên địa danh là thông tin chính hiển thị cho người vận hành; mã kỹ thuật chỉ dùng nội bộ.", "Có thể lọc theo tên, loại điểm và tỉnh/thành."] }}
         actions={
           <>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
@@ -288,7 +289,7 @@ export function NetworkHubs() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Mã hoặc tên Hub..."
+              placeholder="Tìm theo tên điểm trung chuyển..."
               className="pl-9"
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -307,8 +308,8 @@ export function NetworkHubs() {
             }}
           >
             <option value="">Tất cả trạng thái</option>
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
+            <option value="ACTIVE">Đang hoạt động</option>
+            <option value="INACTIVE">Ngừng hoạt động</option>
           </select>
           <select
             className={selectClassName}
@@ -318,7 +319,7 @@ export function NetworkHubs() {
               setType(event.target.value as HubType | "");
             }}
           >
-            <option value="">Tất cả loại Hub</option>
+            <option value="">Tất cả loại điểm</option>
             {hubTypes.map((item) => (
               <option key={item} value={item}>
                 {hubTypeLabel(item)}
@@ -360,10 +361,10 @@ export function NetworkHubs() {
             <table className="w-full min-w-[850px] text-left text-xs">
               <thead className="border-b bg-muted/35 text-[0.62rem] uppercase tracking-[0.08em] text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-black">Hub</th>
+                  <th className="px-4 py-3 font-black">Điểm trung chuyển</th>
                   <th className="px-4 py-3 font-black">Loại</th>
                   <th className="px-4 py-3 font-black">Địa điểm</th>
-                  <th className="px-4 py-3 font-black">Public</th>
+                  <th className="px-4 py-3 font-black">Hiển thị</th>
                   <th className="px-4 py-3 font-black">Trạng thái</th>
                   <th className="px-4 py-3 text-right font-black">Thao tác</th>
                 </tr>
@@ -373,9 +374,6 @@ export function NetworkHubs() {
                   <tr key={hub.id} className="hover:bg-muted/25">
                     <td className="px-4 py-3">
                       <p className="font-black">{hub.name}</p>
-                      <p className="mt-1 font-mono text-[0.65rem] text-brand">
-                        {hub.code}
-                      </p>
                     </td>
                     <td className="px-4 py-3 font-bold">{hubTypeLabel(hub.type)}</td>
                     <td className="px-4 py-3">
@@ -387,7 +385,7 @@ export function NetworkHubs() {
                       </p>
                     </td>
                     <td className="px-4 py-3 font-bold">
-                      {hub.publicVisible ? "Hiển thị" : "Nội bộ"}
+                      {hub.publicVisible ? "Công khai" : "Nội bộ"}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge active={hub.status === "ACTIVE"} />
@@ -405,7 +403,7 @@ export function NetworkHubs() {
         ) : (
           <EmptyState
             title="Không có Hub phù hợp"
-            description="Thử thay đổi bộ lọc hoặc tạo Hub đầu tiên."
+            description="Thử thay đổi bộ lọc hoặc tạo điểm trung chuyển đầu tiên."
           />
         )}
 
@@ -420,43 +418,46 @@ export function NetworkHubs() {
       <Card>
         <CardHeader>
           <p className="text-sm font-black">
-            {selected ? `Hub · ${selected.code}` : "Tạo Hub mới"}
+            {selected ? selected.name : "Tạo điểm trung chuyển mới"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {selected
-              ? "Code được giữ cố định. Bạn có thể đổi hierarchy, địa chỉ và public visibility."
-              : "Hub tạo mới sẽ ở INACTIVE; cấu hình xong rồi kích hoạt."}
+              ? "Bạn có thể cập nhật loại điểm, điểm cha, địa chỉ và thông tin hiển thị."
+              : "Điểm mới sẽ ở trạng thái ngừng hoạt động; cấu hình xong rồi kích hoạt."}
           </p>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={submit}>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <FormField label="Code">
-                <Input
-                  value={draft.code}
-                  disabled={Boolean(selected) || !canManage}
-                  maxLength={50}
-                  placeholder="HCM-TD-01"
-                  className="font-mono uppercase"
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, code: event.target.value }))
-                  }
-                />
-              </FormField>
+            <details className="rounded-lg border bg-muted/15 p-3">
+              <summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary>
+              <div className="mt-3 max-w-sm">
+                <FormField label="Mã kỹ thuật" hint="Chỉ cần khi tạo mới; mã không dùng để tìm kiếm hằng ngày.">
+                  <Input
+                    value={draft.code}
+                    disabled={Boolean(selected) || !canManage}
+                    maxLength={50}
+                    placeholder="HN-HOANKIEM"
+                    className="font-mono uppercase"
+                    onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))}
+                  />
+                </FormField>
+              </div>
+            </details>
 
-              <FormField label="Tên Hub">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <FormField label="Tên điểm">
                 <Input
                   value={draft.name}
                   disabled={!canManage}
                   maxLength={200}
-                  placeholder="PAVEX Thủ Đức"
+                  placeholder="Thủ Đức"
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, name: event.target.value }))
                   }
                 />
               </FormField>
 
-              <FormField label="Loại Hub">
+              <FormField label="Loại điểm">
                 <select
                   className={selectClassName}
                   value={draft.type}
@@ -477,8 +478,8 @@ export function NetworkHubs() {
               </FormField>
 
               <FormField
-                label="Parent Hub"
-                hint="Chỉ phục vụ hierarchy quản trị, không quyết định transport route."
+                label="Điểm cha"
+                hint="Chỉ dùng để tổ chức quản trị, không quyết định đường vận chuyển."
               >
                 <select
                   className={selectClassName}
@@ -491,12 +492,12 @@ export function NetworkHubs() {
                     }))
                   }
                 >
-                  <option value="">Không có parent</option>
+                  <option value="">Không có điểm cha</option>
                   {allHubs
                     .filter((hub) => hub.id !== selected?.id)
                     .map((hub) => (
                       <option key={hub.id} value={hub.id}>
-                        {hub.code} · {hub.name}
+                        {hub.name}
                       </option>
                     ))}
                 </select>
@@ -584,17 +585,17 @@ export function NetworkHubs() {
                     }))
                   }
                 />
-                Hiển thị Hub cho public
+                Cho phép hiển thị công khai
               </label>
               <FormField
-                label="Tên public"
-                hint="Để trống thì public API dùng tên nội bộ của Hub."
+                label="Tên hiển thị công khai"
+                hint="Để trống thì hệ thống dùng tên điểm ở trên."
               >
                 <Input
                   value={draft.publicName}
                   disabled={!canManage || !draft.publicVisible}
                   maxLength={200}
-                  placeholder="PAVEX Thủ Đức"
+                  placeholder="Thủ Đức"
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
@@ -613,7 +614,7 @@ export function NetworkHubs() {
                   ) : (
                     <SaveIcon className="size-4" />
                   )}
-                  {selected ? "Lưu Hub" : "Tạo Hub"}
+                  {selected ? "Lưu thay đổi" : "Tạo điểm"}
                 </Button>
                 {selected ? (
                   <Button

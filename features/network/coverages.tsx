@@ -72,6 +72,7 @@ export function NetworkCoverage() {
   const [areas, setAreas] = useState<ServiceArea[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
+  const [wardNames, setWardNames] = useState<Map<string, string>>(new Map());
   const [selected, setSelected] = useState<ServiceAreaCoverage | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
 
@@ -234,6 +235,17 @@ export function NetworkCoverage() {
     }
   }
 
+  useEffect(() => {
+    const visibleProvinceCodes = Array.from(new Set((result?.items ?? []).map((item) => item.provinceCode)));
+    if (!visibleProvinceCodes.length) return;
+    let cancelled = false;
+    void Promise.all(visibleProvinceCodes.map((code) => getWards(code).catch(() => [] as Ward[]))).then((groups) => {
+      if (cancelled) return;
+      setWardNames(new Map(groups.flat().map((ward) => [ward.code, ward.fullName])));
+    });
+    return () => { cancelled = true; };
+  }, [result]);
+
   const areaById = useMemo(
     () => new Map(areas.map((area) => [area.id, area])),
     [areas],
@@ -247,16 +259,17 @@ export function NetworkCoverage() {
   return (
     <div className="space-y-4">
       <NetworkPageHeader
-        eyebrow="Network foundation"
-        title="Coverage"
-        description="Coverage map Province/Ward vào Service Area. Ward là override cụ thể; khi không có Ward match, resolver fallback về Province coverage."
+        eyebrow="Nền tảng mạng lưới"
+        title="Phạm vi phục vụ"
+        description="Xác định xã/phường nào thuộc vùng phục vụ nào để hệ thống tìm đúng điểm trung chuyển cho địa chỉ gửi và nhận."
+        help={{ description: "Trang này ánh xạ địa chỉ hành chính vào vùng phục vụ.", bullets: ["Mapping xã/phường cụ thể được ưu tiên hơn mapping toàn tỉnh/thành.", "Có thể đánh dấu khu vực tiêu chuẩn, vùng xa hoặc hải đảo.", "Dữ liệu này được Route Planner và Shipment dùng để xác định điểm đầu/cuối."] }}
         actions={
           <>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
               <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />
               Tải lại
             </Button>
-            {canManage ? <Button onClick={createNew}>Tạo Coverage</Button> : null}
+            {canManage ? <Button onClick={createNew}>Tạo phạm vi</Button> : null}
           </>
         }
       />
@@ -273,10 +286,10 @@ export function NetworkCoverage() {
               setServiceAreaFilter(event.target.value);
             }}
           >
-            <option value="">Tất cả Service Area</option>
+            <option value="">Tất cả vùng phục vụ</option>
             {areas.map((area) => (
               <option key={area.id} value={area.id}>
-                {area.code} · {area.name}
+                {area.name}
               </option>
             ))}
           </select>
@@ -307,7 +320,7 @@ export function NetworkCoverage() {
                 setActiveOnly(event.target.checked);
               }}
             />
-            Chỉ ACTIVE
+            Chỉ đang hoạt động
           </label>
         </CardContent>
 
@@ -320,10 +333,10 @@ export function NetworkCoverage() {
             <table className="w-full min-w-[780px] text-left text-xs">
               <thead className="border-b bg-muted/35 text-[0.62rem] uppercase tracking-[0.08em] text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-black">Location</th>
-                  <th className="px-4 py-3 font-black">Service Area</th>
-                  <th className="px-4 py-3 font-black">Tier</th>
-                  <th className="px-4 py-3 font-black">Match</th>
+                  <th className="px-4 py-3 font-black">Địa bàn</th>
+                  <th className="px-4 py-3 font-black">Vùng phục vụ</th>
+                  <th className="px-4 py-3 font-black">Mức phục vụ</th>
+                  <th className="px-4 py-3 font-black">Phạm vi áp dụng</th>
                   <th className="px-4 py-3 font-black">Trạng thái</th>
                   <th className="px-4 py-3 text-right font-black">Thao tác</th>
                 </tr>
@@ -336,24 +349,16 @@ export function NetworkCoverage() {
                         {provinceByCode.get(coverage.provinceCode)?.fullName ??
                           coverage.provinceCode}
                       </p>
-                      <p className="mt-1 font-mono text-[0.65rem] text-muted-foreground">
-                        {coverage.wardCode ?? "ALL_WARDS"}
-                      </p>
+                      <p className="mt-1 text-[0.65rem] text-muted-foreground">{coverage.wardCode ? (wardNames.get(coverage.wardCode) ?? "Xã/phường cụ thể") : "Toàn tỉnh / thành phố"}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-bold">
-                        {areaById.get(coverage.serviceAreaId)?.name ??
-                          coverage.serviceAreaId}
-                      </p>
-                      <p className="mt-1 font-mono text-[0.65rem] text-brand">
-                        {areaById.get(coverage.serviceAreaId)?.code ?? ""}
-                      </p>
+                      <p className="font-bold">{areaById.get(coverage.serviceAreaId)?.name ?? "Không xác định"}</p>
                     </td>
                     <td className="px-4 py-3 font-bold">
                       {coverageTierLabel(coverage.tier)}
                     </td>
                     <td className="px-4 py-3 font-bold">
-                      {coverage.wardCode ? "WARD override" : "PROVINCE fallback"}
+                      {coverage.wardCode ? "Xã / phường cụ thể" : "Toàn tỉnh / thành phố"}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge active={coverage.active} />
@@ -374,8 +379,8 @@ export function NetworkCoverage() {
           </div>
         ) : (
           <EmptyState
-            title="Chưa có Coverage"
-            description="Tạo Province fallback hoặc Ward override để resolver biết location thuộc Service Area nào."
+            title="Chưa có phạm vi phục vụ"
+            description="Thêm xã/phường hoặc toàn tỉnh/thành vào vùng phục vụ để hệ thống xác định đúng khu vực vận hành."
           />
         )}
 
@@ -390,16 +395,16 @@ export function NetworkCoverage() {
       <Card>
         <CardHeader>
           <p className="text-sm font-black">
-            {selected ? "Chỉnh sửa Coverage" : "Tạo Coverage"}
+            {selected ? "Chỉnh sửa phạm vi" : "Tạo phạm vi"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Để Ward trống = Province fallback. Chọn Ward = mapping cụ thể được ưu tiên trước Province.
+            Để xã/phường trống nếu muốn áp dụng cho toàn tỉnh/thành; mapping xã/phường cụ thể luôn được ưu tiên.
           </p>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={submit}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <FormField label="Service Area">
+              <FormField label="Vùng phục vụ">
                 <select
                   className={selectClassName}
                   value={draft.serviceAreaId}
@@ -411,10 +416,10 @@ export function NetworkCoverage() {
                     }))
                   }
                 >
-                  <option value="">Chọn Service Area</option>
+                  <option value="">Chọn vùng phục vụ</option>
                   {areas.map((area) => (
                     <option key={area.id} value={area.id}>
-                      {area.code} · {area.name}
+                      {area.name}
                     </option>
                   ))}
                 </select>
@@ -471,7 +476,7 @@ export function NetworkCoverage() {
                 </select>
               </FormField>
 
-              <FormField label="Coverage tier">
+              <FormField label="Mức phục vụ">
                 <select
                   className={selectClassName}
                   value={draft.tier}
@@ -500,7 +505,7 @@ export function NetworkCoverage() {
                   ) : (
                     <SaveIcon className="size-4" />
                   )}
-                  {selected ? "Lưu Coverage" : "Tạo Coverage"}
+                  {selected ? "Lưu thay đổi" : "Tạo phạm vi"}
                 </Button>
                 {selected ? (
                   <Button
@@ -509,7 +514,7 @@ export function NetworkCoverage() {
                     disabled={saving}
                     onClick={() => void toggleStatus(selected)}
                   >
-                    {selected.active ? "Ngừng Coverage" : "Kích hoạt"}
+                    {selected.active ? "Ngừng hoạt động" : "Kích hoạt"}
                   </Button>
                 ) : null}
               </div>

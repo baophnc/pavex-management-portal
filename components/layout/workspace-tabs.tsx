@@ -38,16 +38,16 @@ function tabTitle(pathname: string) {
   if (pathname === "/account") return "Tài khoản của tôi";
   if (pathname === "/partners/merchants") return "Merchant";
   if (/^\/partners\/merchants\/[^/]+$/.test(pathname)) return "Hồ sơ Merchant";
-  if (pathname === "/network") return "Network";
-  if (pathname === "/network/regions") return "Network Regions";
-  if (pathname === "/network/hubs") return "Network Hubs";
-  if (pathname === "/network/service-areas") return "Service Areas";
-  if (pathname === "/network/coverage") return "Coverage";
-  if (pathname === "/network/lanes") return "Network Lanes";
-  if (pathname === "/network/route-templates") return "Route Templates";
-  if (pathname === "/network/route-planner") return "Route Planner";
-  if (pathname === "/network/capacity") return "Network Capacity";
-  if (pathname === "/network/audit") return "Network Audit";
+  if (pathname === "/network") return "Mạng lưới";
+  if (pathname === "/network/regions") return "Vùng mạng lưới";
+  if (pathname === "/network/hubs") return "Điểm trung chuyển";
+  if (pathname === "/network/service-areas") return "Vùng phục vụ";
+  if (pathname === "/network/coverage") return "Phạm vi phục vụ";
+  if (pathname === "/network/lanes") return "Tuyến & lịch chạy";
+  if (pathname === "/network/route-templates") return "Tuyến mẫu";
+  if (pathname === "/network/route-planner") return "Tìm tuyến";
+  if (pathname === "/network/capacity") return "Sức chứa";
+  if (pathname === "/network/audit") return "Nhật ký mạng lưới";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);
   return segment

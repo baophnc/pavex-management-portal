@@ -185,7 +185,7 @@ export function NetworkServiceAreas() {
     if (
       !active &&
       !window.confirm(
-        `Ngừng Service Area ${area.code}? Coverage vẫn được giữ nhưng resolver sẽ không sử dụng vùng inactive.`,
+        `Ngừng hoạt động vùng phục vụ ${area.name}? Phạm vi đã cấu hình vẫn được giữ nhưng sẽ không được dùng để định tuyến.`,
       )
     ) {
       return;
@@ -229,16 +229,17 @@ export function NetworkServiceAreas() {
   return (
     <div className="space-y-4">
       <NetworkPageHeader
-        eyebrow="Network foundation"
-        title="Service Areas"
-        description="Service Area là vùng phục vụ logic. Mỗi vùng thuộc một Region và có một Primary Hub; một Hub có thể phục vụ nhiều Ward thông qua nhiều Coverage."
+        eyebrow="Nền tảng mạng lưới"
+        title="Vùng phục vụ"
+        description="Gom nhiều xã/phường vào một vùng vận hành và chỉ định điểm trung chuyển chính phụ trách khu vực đó."
+        help={{ description: "Vùng phục vụ là lớp nối giữa địa chỉ hành chính và điểm trung chuyển.", bullets: ["Mỗi vùng phục vụ thuộc một vùng lớn.", "Mỗi vùng có một điểm trung chuyển chính.", "Phạm vi xã/phường cụ thể được cấu hình ở trang Phạm vi phục vụ."] }}
         actions={
           <>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
               <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />
               Tải lại
             </Button>
-            {canManage ? <Button onClick={createNew}>Tạo Service Area</Button> : null}
+            {canManage ? <Button onClick={createNew}>Tạo vùng phục vụ</Button> : null}
           </>
         }
       />
@@ -252,7 +253,7 @@ export function NetworkServiceAreas() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Mã hoặc tên Service Area..."
+              placeholder="Tìm theo tên vùng phục vụ..."
               className="pl-9"
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -271,10 +272,10 @@ export function NetworkServiceAreas() {
               setRegionFilter(event.target.value);
             }}
           >
-            <option value="">Tất cả Region</option>
+            <option value="">Tất cả vùng</option>
             {regions.map((region) => (
               <option key={region.id} value={region.id}>
-                {region.code} · {region.name}
+                {region.name}
               </option>
             ))}
           </select>
@@ -288,8 +289,8 @@ export function NetworkServiceAreas() {
             }}
           >
             <option value="">Tất cả trạng thái</option>
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
+            <option value="ACTIVE">Đang hoạt động</option>
+            <option value="INACTIVE">Ngừng hoạt động</option>
           </select>
 
           <Button
@@ -312,9 +313,9 @@ export function NetworkServiceAreas() {
             <table className="w-full min-w-[760px] text-left text-xs">
               <thead className="border-b bg-muted/35 text-[0.62rem] uppercase tracking-[0.08em] text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-black">Service Area</th>
-                  <th className="px-4 py-3 font-black">Region</th>
-                  <th className="px-4 py-3 font-black">Primary Hub</th>
+                  <th className="px-4 py-3 font-black">Vùng phục vụ</th>
+                  <th className="px-4 py-3 font-black">Vùng</th>
+                  <th className="px-4 py-3 font-black">Điểm chính</th>
                   <th className="px-4 py-3 font-black">Trạng thái</th>
                   <th className="px-4 py-3 text-right font-black">Thao tác</th>
                 </tr>
@@ -324,20 +325,12 @@ export function NetworkServiceAreas() {
                   <tr key={area.id} className="hover:bg-muted/25">
                     <td className="px-4 py-3">
                       <p className="font-black">{area.name}</p>
-                      <p className="mt-1 font-mono text-[0.65rem] text-brand">
-                        {area.code}
-                      </p>
                     </td>
                     <td className="px-4 py-3 font-bold">
-                      {regionById.get(area.regionId)?.code ?? area.regionId}
+                      {regionById.get(area.regionId)?.name ?? "Không xác định"}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-bold">
-                        {hubById.get(area.primaryHubId)?.name ?? area.primaryHubId}
-                      </p>
-                      <p className="mt-1 font-mono text-[0.65rem] text-muted-foreground">
-                        {hubById.get(area.primaryHubId)?.code ?? ""}
-                      </p>
+                      <p className="font-bold">{hubById.get(area.primaryHubId)?.name ?? "Không xác định"}</p>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge active={area.status === "ACTIVE"} />
@@ -354,8 +347,8 @@ export function NetworkServiceAreas() {
           </div>
         ) : (
           <EmptyState
-            title="Không có Service Area"
-            description="Tạo Region và Hub trước, sau đó tạo vùng phục vụ."
+            title="Không có vùng phục vụ"
+            description="Tạo vùng và điểm trung chuyển trước, sau đó tạo vùng phục vụ."
           />
         )}
 
@@ -370,41 +363,37 @@ export function NetworkServiceAreas() {
       <Card>
         <CardHeader>
           <p className="text-sm font-black">
-            {selected ? `Service Area · ${selected.code}` : "Tạo Service Area"}
+            {selected ? selected.name : "Tạo vùng phục vụ"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Primary Hub chỉ cần ACTIVE khi kích hoạt Service Area; không bị ép theo loại Hub hay Ward.
+            Điểm trung chuyển chính cần hoạt động khi kích hoạt vùng phục vụ.
           </p>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={submit}>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <FormField label="Code">
-                <Input
-                  value={draft.code}
-                  disabled={Boolean(selected) || !canManage}
-                  maxLength={50}
-                  className="font-mono uppercase"
-                  placeholder="HCM_EAST"
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, code: event.target.value }))
-                  }
-                />
-              </FormField>
+            <details className="rounded-lg border bg-muted/15 p-3">
+              <summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary>
+              <div className="mt-3 max-w-sm">
+                <FormField label="Mã kỹ thuật" hint="Mã chỉ dùng nội bộ và được giữ cố định sau khi tạo.">
+                  <Input value={draft.code} disabled={Boolean(selected) || !canManage} maxLength={50} className="font-mono uppercase" placeholder="HCM_EAST" onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))} />
+                </FormField>
+              </div>
+            </details>
 
-              <FormField label="Tên Service Area">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <FormField label="Tên vùng phục vụ">
                 <Input
                   value={draft.name}
                   disabled={!canManage}
                   maxLength={200}
-                  placeholder="Hồ Chí Minh East"
+                  placeholder="Phía Đông Hồ Chí Minh"
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, name: event.target.value }))
                   }
                 />
               </FormField>
 
-              <FormField label="Region">
+              <FormField label="Vùng">
                 <select
                   className={selectClassName}
                   value={draft.regionId}
@@ -416,16 +405,16 @@ export function NetworkServiceAreas() {
                     }))
                   }
                 >
-                  <option value="">Chọn Region</option>
+                  <option value="">Chọn vùng</option>
                   {regions.map((region) => (
                     <option key={region.id} value={region.id}>
-                      {region.code} · {region.name}
+                      {region.name}
                     </option>
                   ))}
                 </select>
               </FormField>
 
-              <FormField label="Primary Hub">
+              <FormField label="Điểm trung chuyển chính">
                 <select
                   className={selectClassName}
                   value={draft.primaryHubId}
@@ -437,10 +426,10 @@ export function NetworkServiceAreas() {
                     }))
                   }
                 >
-                  <option value="">Chọn Primary Hub</option>
+                  <option value="">Chọn điểm trung chuyển</option>
                   {hubs.map((hub) => (
                     <option key={hub.id} value={hub.id}>
-                      {hub.code} · {hub.name}
+                      {hub.name}
                     </option>
                   ))}
                 </select>
@@ -455,7 +444,7 @@ export function NetworkServiceAreas() {
                   ) : (
                     <SaveIcon className="size-4" />
                   )}
-                  {selected ? "Lưu Service Area" : "Tạo Service Area"}
+                  {selected ? "Lưu thay đổi" : "Tạo vùng phục vụ"}
                 </Button>
                 {selected ? (
                   <Button
