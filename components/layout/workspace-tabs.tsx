@@ -38,6 +38,11 @@ function tabTitle(pathname: string) {
   if (pathname === "/account") return "Tài khoản của tôi";
   if (pathname === "/partners/merchants") return "Merchant";
   if (/^\/partners\/merchants\/[^/]+$/.test(pathname)) return "Hồ sơ Merchant";
+  if (pathname === "/network") return "Network";
+  if (pathname === "/network/regions") return "Network Regions";
+  if (pathname === "/network/hubs") return "Network Hubs";
+  if (pathname === "/network/service-areas") return "Service Areas";
+  if (pathname === "/network/coverage") return "Coverage";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);
   return segment
@@ -50,6 +55,8 @@ function tabIcon(path: string) {
   if (path.startsWith("/identity/roles")) return ShieldCheckIcon;
   if (path.startsWith("/identity")) return UserRoundCogIcon;
   if (path.startsWith("/partners/merchants")) return Building2Icon;
+  if (path.startsWith("/network/hubs")) return Building2Icon;
+  if (path.startsWith("/network")) return CircleGaugeIcon;
   if (path === "/account") return UserRoundCogIcon;
   return CircleGaugeIcon;
 }

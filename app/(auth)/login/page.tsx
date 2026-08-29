@@ -22,7 +22,7 @@ export default async function LoginPage({
     <main className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_0.95fr]">
       <section className="relative hidden overflow-hidden bg-[#080808] p-12 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="absolute inset-y-0 left-0 w-1.5 bg-brand" />
-        <div className="absolute inset-0 opacity-15 [background-image:radial-gradient(circle_at_20%_10%,white_0,transparent_30%),radial-gradient(circle_at_85%_80%,#d81324_0,transparent_30%)]" />
+        <div className="absolute inset-0 opacity-15 " />
         <div className="relative flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-lg bg-white text-xl font-black italic text-black">
             P
@@ -33,16 +33,9 @@ export default async function LoginPage({
           </div>
         </div>
         <div className="relative max-w-xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-brand uppercase">
-            Management workspace
-          </p>
           <h1 className="mt-5 text-5xl leading-[1.08] font-black">
-            Quản trị Identity và Partners trong một nơi.
+            Quản trị hệ thống Pavex Express
           </h1>
-          <p className="mt-6 max-w-lg text-base leading-8 text-white/70">
-            Quản lý tài khoản, role và hồ sơ Merchant bằng đúng các chức năng
-            backend hiện đã sẵn sàng.
-          </p>
         </div>
         <p className="relative text-xs text-white/45">© 2026 Pavex Express</p>
       </section>
@@ -54,15 +47,9 @@ export default async function LoginPage({
             </span>
             <p className="font-black">PAVEX Management</p>
           </div>
-          <p className="text-sm font-black text-brand">
-            Dành cho đội ngũ Pavex
-          </p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight">
-            Đăng nhập quản trị
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Dùng tài khoản được cấp quyền quản trị hoặc vận hành.
-          </p>
+
+          <h1 className="mt-2 text-4xl font-black tracking-tight">Đăng nhập</h1>
+
           <LoginForm returnTo={safeReturnTo(query.returnTo)} />
         </div>
       </section>

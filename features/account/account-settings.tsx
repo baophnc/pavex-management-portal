@@ -13,6 +13,7 @@ import {
   Trash2Icon,
   UserRoundCogIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -148,6 +149,7 @@ function SessionDevice({ userAgent }: { userAgent: string | null }) {
 }
 
 export function AccountSettings() {
+  const router = useRouter();
   const [profile, setProfile] = useState<CurrentAccountProfile | null>(null);
   const [sessions, setSessions] = useState<SessionListItem[]>([]);
   const [profileDraft, setProfileDraft] =
@@ -282,7 +284,7 @@ export function AccountSettings() {
       toast.success("Đã đổi mật khẩu. Bạn cần đăng nhập lại.");
 
       await fetch("/api/auth/logout", { method: "POST" });
-      window.location.assign("/login");
+      router.replace("/login");
     } catch (reason) {
       setSaving(null);
       toast.error(errorMessage(reason, "Không thể đổi mật khẩu."));
@@ -317,7 +319,7 @@ export function AccountSettings() {
     try {
       await apiRequest("auth/logout-all", { method: "POST" });
       await fetch("/api/auth/logout", { method: "POST" });
-      window.location.assign("/login");
+      router.replace("/login");
     } catch (reason) {
       setSaving(null);
       toast.error(errorMessage(reason, "Không thể đăng xuất toàn bộ thiết bị."));

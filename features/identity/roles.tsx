@@ -75,6 +75,7 @@ const permissionLabels: Record<string, string> = {
   "call-monitoring.read": "Xem lịch sử cuộc gọi",
   "call-monitoring.manage": "Quản lý và đánh giá cuộc gọi",
   "call-monitoring.reports.read": "Xem báo cáo cuộc gọi",
+  "network.read": "Xem cấu hình mạng lưới",
   "network.manage": "Quản lý mạng lưới bưu cục và tuyến",
   "operations.workforce.manage": "Quản lý nhân sự vận hành",
   "operations.assignments.manage": "Điều phối công việc",

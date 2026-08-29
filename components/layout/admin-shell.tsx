@@ -79,6 +79,41 @@ const navigationSections: NavigationSection[] = [
     ],
   },
   {
+    label: "Network",
+    items: [
+      {
+        href: "/network",
+        label: "Tổng quan",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+      {
+        href: "/network/regions",
+        label: "Regions",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+      {
+        href: "/network/hubs",
+        label: "Hubs",
+        icon: Building2Icon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+      {
+        href: "/network/service-areas",
+        label: "Service Areas",
+        icon: Building2Icon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+      {
+        href: "/network/coverage",
+        label: "Coverage",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["network.read", "network.manage"],
+      },
+    ],
+  },
+  {
     label: "Cá nhân",
     items: [
       {

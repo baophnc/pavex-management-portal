@@ -49,7 +49,7 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
           name="email"
           type="email"
           autoComplete="username"
-          placeholder="admin@pavex.vn"
+          placeholder=""
           required
         />
       </label>
@@ -80,12 +80,9 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
         ) : (
           <span aria-hidden>→</span>
         )}
-        {pending ? "Đang xác thực..." : "Vào bảng điều hành"}
+        {pending ? "Đang xác thực..." : "Đăng nhập"}
       </Button>
-      <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <span aria-hidden>◈</span> Phiên quản trị được bảo vệ bằng cookie
-        HttpOnly.
-      </p>
+      <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground"></p>
     </form>
   );
 }
