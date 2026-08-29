@@ -2,6 +2,7 @@
 
 import {
   Building2Icon,
+  CircleDollarSignIcon,
   CircleGaugeIcon,
   ShieldCheckIcon,
   UserRoundCogIcon,
@@ -48,6 +49,10 @@ function tabTitle(pathname: string) {
   if (pathname === "/network/route-planner") return "Tìm tuyến";
   if (pathname === "/network/capacity") return "Sức chứa";
   if (pathname === "/network/audit") return "Nhật ký mạng lưới";
+  if (pathname === "/pricing") return "Pricing";
+  if (pathname === "/pricing/rate-plans") return "Bảng giá";
+  if (pathname === "/pricing/simulator") return "Mô phỏng tính cước";
+  if (pathname === "/pricing/audit") return "Nhật ký Pricing";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);
   return segment
@@ -62,6 +67,7 @@ function tabIcon(path: string) {
   if (path.startsWith("/partners/merchants")) return Building2Icon;
   if (path.startsWith("/network/hubs")) return Building2Icon;
   if (path.startsWith("/network")) return CircleGaugeIcon;
+  if (path.startsWith("/pricing")) return CircleDollarSignIcon;
   if (path === "/account") return UserRoundCogIcon;
   return CircleGaugeIcon;
 }

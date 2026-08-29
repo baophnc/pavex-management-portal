@@ -3,6 +3,7 @@
 import {
   Building2Icon,
   ChevronRightIcon,
+  CircleDollarSignIcon,
   CircleGaugeIcon,
   CircleUserRoundIcon,
   LogOutIcon,
@@ -140,6 +141,35 @@ const navigationSections: NavigationSection[] = [
         label: "Nhật ký",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
+      },
+    ],
+  },
+  {
+    label: "Pricing",
+    items: [
+      {
+        href: "/pricing",
+        label: "Tổng quan giá",
+        icon: CircleDollarSignIcon,
+        permissionsAny: ["pricing.read", "pricing.manage"],
+      },
+      {
+        href: "/pricing/rate-plans",
+        label: "Bảng giá",
+        icon: CircleDollarSignIcon,
+        permissionsAny: ["pricing.read", "pricing.manage"],
+      },
+      {
+        href: "/pricing/simulator",
+        label: "Mô phỏng tính cước",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["pricing.read", "pricing.manage"],
+      },
+      {
+        href: "/pricing/audit",
+        label: "Nhật ký giá",
+        icon: CircleGaugeIcon,
+        permissionsAny: ["pricing.read", "pricing.manage"],
       },
     ],
   },

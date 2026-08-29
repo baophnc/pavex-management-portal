@@ -92,7 +92,9 @@ function MetricSkeleton() {
 
 export function DashboardOverview() {
   const { hasPermission, user } = useAccess();
-  const [values, setValues] = useState<Partial<Record<keyof typeof PATHS, number | null>>>({});
+  const [values, setValues] = useState<
+    Partial<Record<keyof typeof PATHS, number | null>>
+  >({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState<string[]>([]);
 
@@ -327,34 +329,6 @@ export function DashboardOverview() {
               <CircleUserRoundIcon className="size-4 text-brand" />
               <span className="text-xs font-black">Tài khoản của tôi</span>
             </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden rounded-2xl">
-          <CardHeader>
-            <p className="text-sm font-black">Luồng bảo mật Management Portal</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Frontend phục vụ workspace; quyền và invariant vẫn do backend quyết định.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ol className="grid gap-3 sm:grid-cols-3">
-              {[
-                ["01", "Đăng nhập", "Management BFF giữ token trong cookie HttpOnly."],
-                ["02", "API proxy", "Request backend được gắn access token phía server."],
-                ["03", "Backend", "Role, permission và business rule được kiểm tra lại."],
-              ].map(([number, title, description]) => (
-                <li key={number} className="rounded-xl border bg-background p-4">
-                  <span className="text-[0.62rem] font-black tracking-[0.14em] text-brand">
-                    {number}
-                  </span>
-                  <p className="mt-2 text-xs font-black">{title}</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {description}
-                  </p>
-                </li>
-              ))}
-            </ol>
           </CardContent>
         </Card>
       </section>
