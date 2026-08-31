@@ -58,7 +58,14 @@ function tabTitle(pathname: string) {
   if (pathname === "/pricing/simulator") return "Tính thử cước";
   if (pathname === "/pricing/quotes") return "Chi tiết cách tính cước";
   if (pathname === "/pricing/audit") return "Nhật ký giá cước";
+  if (pathname === "/operations") return "Điều phối vận hành";
+  if (pathname.startsWith("/operations/workforce")) return "Nhân sự vận hành";
+  if (pathname.startsWith("/operations/shifts")) return "Ca làm việc";
+  if (pathname.startsWith("/operations/assignments")) return "Phân công vận hành";
+  if (pathname.startsWith("/operations/dispatch")) return "Dispatch & outbox";
   if (pathname === "/shipments") return "Vận đơn";
+  if (pathname.startsWith("/shipments/cases")) return "Hồ sơ sự cố";
+  if (pathname.startsWith("/control-tower")) return "Control Tower";
   if (/^\/shipments\/[^/]+$/.test(pathname)) return "Chi tiết vận đơn";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);
@@ -75,6 +82,8 @@ function tabIcon(path: string) {
   if (path.startsWith("/network/hubs")) return Building2Icon;
   if (path.startsWith("/network")) return CircleGaugeIcon;
   if (path.startsWith("/pricing")) return CircleDollarSignIcon;
+  if (path.startsWith("/operations")) return CircleGaugeIcon;
+  if (path.startsWith("/control-tower")) return CircleGaugeIcon;
   if (path.startsWith("/shipments")) return TruckIcon;
   if (path === "/account") return UserRoundCogIcon;
   return CircleGaugeIcon;

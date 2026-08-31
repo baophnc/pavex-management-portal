@@ -68,14 +68,23 @@ truth; hiding a menu or button is only a UX guard, never the security boundary.
 
 ## Current management modules
 
-- Identity
+- Identity (users plus custom-role management)
 - Partners / Merchant administration
 - Network
 - Pricing
 - Shipment administration
+- Operations access foundation
 
 Shipment administration uses the dedicated admin query contract and never reuses
 merchant-owned shipment endpoints.
+
+## Identity role management
+
+The role workspace reads the backend-owned permission catalog from `GET /api/v1/permissions`.
+Permissions are capabilities, not frontend-managed records: Management does not create, edit or
+delete permission codes. Users with `identity.roles.manage` can create custom roles, edit their
+name/description, replace their permission matrix, and delete an unused custom role. System roles
+remain immutable.
 
 ## Network and Pricing operator tools
 
@@ -99,5 +108,6 @@ and an exact `totalCount` for dashboard metrics. The detail workspace exposes th
 customer snapshot together with internal ownership/routing identifiers, the complete
 event stream, and delivery-attempt/POD records for support and operations.
 
-Management V1 intentionally keeps Shipment admin actions read-only until the backend
-adds explicit operational command contracts guarded by `shipments.admin.manage`.
+Shipment detail remains read-only in this frontend checkpoint. The backend now exposes
+explicit exception, case and Control Tower contracts; later Management patches wire those
+operator actions without changing the BFF authorization model.

@@ -156,6 +156,7 @@ export const permissionLabels: Record<string, string> = {
   "identity.users.read": "Xem danh sách tài khoản",
   "identity.users.manage-profile": "Chỉnh sửa hồ sơ tài khoản",
   "identity.roles.read": "Xem vai trò và quyền hạn",
+  "identity.roles.manage": "Tạo và quản lý vai trò tùy chỉnh",
   "identity.users.create": "Tạo tài khoản",
   "identity.users.invite": "Gửi lời mời kích hoạt tài khoản",
   "identity.roles.assign": "Phân vai cho tài khoản",

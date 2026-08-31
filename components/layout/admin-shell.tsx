@@ -173,6 +173,16 @@ const navigationSections: NavigationSection[] = [
     label: "Vận hành",
     items: [
       {
+        href: "/operations",
+        label: "Điều phối vận hành",
+        icon: CircleGaugeIcon,
+        permissionsAny: [
+          "operations.workforce.manage",
+          "operations.assignments.manage",
+          "operations.hub.manage",
+        ],
+      },
+      {
         href: "/shipments",
         label: "Vận đơn",
         icon: TruckIcon,

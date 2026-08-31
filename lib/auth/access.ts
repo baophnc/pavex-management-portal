@@ -4,6 +4,7 @@ export const MANAGEMENT_PERMISSIONS = [
   "identity.users.read",
   "identity.users.manage-profile",
   "identity.roles.read",
+  "identity.roles.manage",
   "identity.users.create",
   "identity.users.invite",
   "identity.roles.assign",
@@ -16,6 +17,13 @@ export const MANAGEMENT_PERMISSIONS = [
   "pricing.manage",
   "shipments.admin.read",
   "shipments.admin.manage",
+  "shipments.exceptions.manage",
+  "shipments.weight.adjust",
+  "shipments.cases.manage",
+  "shipments.control-tower.read",
+  "operations.workforce.manage",
+  "operations.assignments.manage",
+  "operations.hub.manage",
 ] as const;
 
 export function hasPermission(
@@ -82,6 +90,44 @@ export function canAccessManagementPath(
     return hasAnyPermission(user, ["pricing.read", "pricing.manage"]);
   }
 
+  if (pathname.startsWith("/operations/dispatch")) {
+    return hasPermission(user, "operations.assignments.manage");
+  }
+  if (pathname.startsWith("/operations/assignments")) {
+    return hasAnyPermission(user, [
+      "operations.assignments.manage",
+      "operations.hub.manage",
+    ]);
+  }
+  if (
+    pathname.startsWith("/operations/workforce") ||
+    pathname.startsWith("/operations/shifts")
+  ) {
+    return hasAnyPermission(user, [
+      "operations.workforce.manage",
+      "operations.hub.manage",
+    ]);
+  }
+  if (pathname.startsWith("/operations")) {
+    return hasAnyPermission(user, [
+      "operations.workforce.manage",
+      "operations.assignments.manage",
+      "operations.hub.manage",
+    ]);
+  }
+
+  if (pathname.startsWith("/shipments/cases")) {
+    return hasAnyPermission(user, [
+      "shipments.cases.manage",
+      "operations.hub.manage",
+    ]);
+  }
+  if (pathname.startsWith("/control-tower")) {
+    return hasAnyPermission(user, [
+      "shipments.control-tower.read",
+      "operations.hub.manage",
+    ]);
+  }
   if (pathname.startsWith("/shipments")) {
     return hasPermission(user, "shipments.admin.read");
   }
