@@ -1,5 +1,5 @@
-import { NetworkRouteTemplates } from "@/features/network/route-templates";
+import { NetworkRoutes } from "@/features/network/routes";
 
 export default function NetworkRouteTemplatesPage() {
-  return <NetworkRouteTemplates />;
+  return <NetworkRoutes initialView="journeys" />;
 }

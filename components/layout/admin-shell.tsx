@@ -144,14 +144,8 @@ const navigationSections: NavigationSection[] = [
         permissionsAny: ["network.read", "network.manage"],
       },
       {
-        href: "/network/lanes",
-        label: "Tuyến & lịch chạy",
-        icon: CircleGaugeIcon,
-        permissionsAny: ["network.read", "network.manage"],
-      },
-      {
-        href: "/network/route-templates",
-        label: "Tuyến mẫu",
+        href: "/network/routes",
+        label: "Tuyến vận chuyển",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },
@@ -238,7 +232,11 @@ function permitted(item: NavigationItem, user: CurrentUser | null) {
 }
 
 function normalizedNavigationPath(pathname: string) {
-  return pathname === "/network/coverage" ? "/network/service-areas" : pathname;
+  if (pathname === "/network/coverage") return "/network/service-areas";
+  if (pathname === "/network/lanes" || pathname === "/network/route-templates") {
+    return "/network/routes";
+  }
+  return pathname;
 }
 
 function currentNavigation(pathname: string) {

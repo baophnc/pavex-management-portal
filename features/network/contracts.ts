@@ -348,11 +348,11 @@ export function transportModeLabel(mode: TransportMode) {
 export function planningModeLabel(mode: RoutePlanningMode) {
   switch (mode) {
     case "PREFER_TEMPLATE":
-      return "Ưu tiên tuyến mẫu";
+      return "Ưu tiên hành trình đã cấu hình";
     case "GRAPH_ONLY":
       return "Chỉ tự tìm tuyến";
     case "TEMPLATE_ONLY":
-      return "Chỉ tuyến mẫu";
+      return "Chỉ hành trình đã cấu hình";
   }
 }
 
@@ -361,7 +361,7 @@ export function routeSourceLabel(source: RoutePlanSource) {
     case "LOCAL":
       return "Nội vùng";
     case "ROUTE_TEMPLATE":
-      return "Tuyến mẫu";
+      return "Hành trình ưu tiên";
     case "GRAPH":
       return "Tuyến tự tìm";
   }
@@ -387,7 +387,7 @@ export function auditEntityTypeLabel(type: NetworkAuditEntityType) {
     case "COVERAGE": return "Phạm vi phục vụ";
     case "LANE": return "Tuyến vận chuyển";
     case "LANE_SCHEDULE": return "Lịch chạy";
-    case "ROUTE_TEMPLATE": return "Tuyến mẫu";
+    case "ROUTE_TEMPLATE": return "Hành trình ưu tiên";
     case "CAPACITY_RESERVATION": return "Giữ chỗ tải";
   }
 }

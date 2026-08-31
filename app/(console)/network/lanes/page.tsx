@@ -1,5 +1,5 @@
-import { NetworkLanes } from "@/features/network/lanes";
+import { NetworkRoutes } from "@/features/network/routes";
 
 export default function NetworkLanesPage() {
-  return <NetworkLanes />;
+  return <NetworkRoutes initialView="lanes" />;
 }

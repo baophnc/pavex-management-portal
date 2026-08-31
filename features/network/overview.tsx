@@ -67,7 +67,7 @@ export function NetworkOverview() {
         eyebrow="Điều hành mạng lưới"
         title="Tổng quan mạng lưới"
         description="Theo dõi cấu hình vùng, điểm trung chuyển, tuyến vận chuyển, lịch chạy và sức chứa trên một màn hình."
-        help={{ description: "Đây là trang tổng quan để kiểm tra nhanh mạng lưới đã được cấu hình đến đâu trước khi vận hành vận đơn.", bullets: ["Xem số lượng vùng mạng lưới, điểm trung chuyển, vùng phục vụ và địa bàn đã phủ.", "Đi nhanh đến tuyến vận chuyển, tuyến mẫu, tìm tuyến và sức chứa.", "Nếu một chỉ số bằng 0, hãy cấu hình tầng đó trước khi kiểm tra tìm tuyến."] }}
+        help={{ description: "Đây là trang tổng quan để kiểm tra nhanh mạng lưới đã được cấu hình đến đâu trước khi vận hành vận đơn.", bullets: ["Xem số lượng vùng mạng lưới, điểm trung chuyển, vùng phục vụ và địa bàn đã phủ.", "Đi nhanh đến tuyến vận chuyển, hành trình ưu tiên, tìm tuyến và sức chứa.", "Nếu một chỉ số bằng 0, hãy cấu hình tầng đó trước khi kiểm tra tìm tuyến."] }}
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCwIcon className={loading ? "size-4 animate-spin" : "size-4"} />
@@ -106,7 +106,7 @@ export function NetworkOverview() {
       <Card className="overflow-hidden">
         <div className="grid grid-cols-2 divide-x sm:grid-cols-4">
           <Metric label="Tuyến vận chuyển" value={loading && !snapshot ? "…" : snapshot?.lanes.totalItems ?? 0} note="Các tuyến đang cấu hình" />
-          <Metric label="Tuyến mẫu" value={loading && !snapshot ? "…" : snapshot?.templates.totalItems ?? 0} note="Hành trình ưu tiên" />
+          <Metric label="Hành trình ưu tiên" value={loading && !snapshot ? "…" : snapshot?.templates.totalItems ?? 0} note="Chuỗi chặng được ưu tiên" />
           <Metric label="Tìm tuyến" value="Sẵn sàng" note="Tính thời gian đến sớm nhất" />
           <Metric label="Sức chứa" value="Sẵn sàng" note="Theo từng chuyến" />
         </div>
@@ -130,9 +130,8 @@ export function NetworkOverview() {
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <QuickLink href="/network/lanes" title="Tuyến & lịch chạy" description="Nối các điểm trung chuyển và cấu hình nhiều chuyến theo ngày." />
-        <QuickLink href="/network/route-templates" title="Tuyến mẫu" description="Thiết lập các hành trình ưu tiên cho bộ phận vận hành." />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <QuickLink href="/network/routes" title="Tuyến vận chuyển" description="Quản lý chặng trực tiếp, lịch chạy và hành trình ưu tiên trong cùng một màn hình." />
         <QuickLink href="/network/route-planner" title="Tìm tuyến" description="Kiểm tra hành trình theo địa chỉ, thời gian, lịch chạy và sức chứa thật." />
         <QuickLink href="/network/capacity" title="Sức chứa" description="Theo dõi tải đã giữ và còn lại trên từng chuyến." />
         <QuickLink href="/network/audit" title="Nhật ký" description="Xem lịch sử thay đổi cấu hình và giữ chỗ tải." />

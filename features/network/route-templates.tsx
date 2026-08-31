@@ -57,7 +57,7 @@ type PendingTemplateAction = {
   template: RouteTemplate;
 };
 
-export function NetworkRouteTemplates() {
+export function NetworkRouteTemplates({ embedded = false }: { embedded?: boolean } = {}) {
   const { hasPermission } = useAccess();
   const canManage = hasPermission("network.manage");
   const [result, setResult] = useState<PageResponse<RouteTemplate>>({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 0 });
@@ -92,7 +92,7 @@ export function NetworkRouteTemplates() {
       setLanes(lanePage.items);
       setSelected((current) => current ? templates.items.find((item) => item.id === current.id) ?? current : null);
     } catch (reason) {
-      setError(networkErrorMessage(reason, "Không thể tải tuyến mẫu."));
+      setError(networkErrorMessage(reason, "Không thể tải hành trình ưu tiên."));
     } finally {
       setLoading(false);
     }
@@ -137,7 +137,7 @@ export function NetworkRouteTemplates() {
       return;
     }
     if (!laneIds.length) {
-      toast.error("Tuyến mẫu cần ít nhất một tuyến vận chuyển.");
+      toast.error("Hành trình cần ít nhất một tuyến vận chuyển.");
       return;
     }
 
@@ -154,13 +154,13 @@ export function NetworkRouteTemplates() {
       const template = selected
         ? await updateRouteTemplate(selected.id, payload)
         : await createRouteTemplate({ code, ...payload });
-      toast.success(selected ? `Đã cập nhật tuyến mẫu · phiên bản ${template.revision}.` : "Đã tạo tuyến mẫu ở trạng thái ngừng hoạt động.");
+      toast.success(selected ? `Đã cập nhật hành trình · phiên bản ${template.revision}.` : "Đã tạo hành trình ở trạng thái ngừng hoạt động.");
       setCreating(false);
       await load();
       setSelected(template);
       setLaneIds(template.legs.map((leg) => leg.laneId));
     } catch (reason) {
-      toast.error(networkErrorMessage(reason, "Không thể lưu tuyến mẫu."));
+      toast.error(networkErrorMessage(reason, "Không thể lưu hành trình ưu tiên."));
     } finally {
       setSaving(false);
     }
@@ -175,11 +175,11 @@ export function NetworkRouteTemplates() {
         active,
         reason: reason || null,
       });
-      toast.success(active ? "Đã kích hoạt tuyến mẫu." : "Đã ngừng tuyến mẫu.");
+      toast.success(active ? "Đã kích hoạt hành trình ưu tiên." : "Đã ngừng hành trình ưu tiên.");
       setPendingAction(null);
       await load();
     } catch (reasonValue) {
-      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái tuyến mẫu."));
+      toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái hành trình ưu tiên."));
     } finally {
       setSaving(false);
     }
@@ -190,13 +190,13 @@ export function NetworkRouteTemplates() {
     setSaving(true);
     try {
       await deleteRouteTemplate(template.id, reason);
-      toast.success("Đã xóa tuyến mẫu.");
+      toast.success("Đã xóa hành trình ưu tiên.");
       setPendingAction(null);
       setSelected(null);
       setLaneIds([]);
       await load();
     } catch (reasonValue) {
-      toast.error(networkErrorMessage(reasonValue, "Không thể xóa tuyến mẫu."));
+      toast.error(networkErrorMessage(reasonValue, "Không thể xóa hành trình ưu tiên."));
     } finally {
       setSaving(false);
     }
@@ -206,35 +206,48 @@ export function NetworkRouteTemplates() {
 
   return (
     <div className="space-y-4">
-      <NetworkPageHeader
-        eyebrow="Tuyến ưu tiên"
-        title="Tuyến mẫu"
-        description="Thiết lập các hành trình ưu tiên mà bộ phận vận hành muốn hệ thống thử trước khi tự tìm tuyến khác."
-        help={{ description: "Tuyến mẫu là một chuỗi tuyến vận chuyển đã được sắp xếp sẵn theo thứ tự ưu tiên.", bullets: ["Ưu tiên số nhỏ hơn sẽ được thử trước.", "Nếu tuyến mẫu không khả dụng, chế độ mặc định có thể tự tìm tuyến khác.", "Mã kỹ thuật vẫn được giữ trong phần chi tiết nhưng không cần dùng để tìm kiếm hằng ngày."] }}
-        actions={
-          <>
+      {embedded ? (
+        <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black">Hành trình ưu tiên</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Ghép nhiều tuyến trực tiếp thành một hành trình mà hệ thống ưu tiên thử trước khi tự tìm phương án khác.</p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />Tải lại</Button>
-            {canManage ? <Button onClick={createNew}><PlusIcon className="size-4" />Tạo tuyến mẫu</Button> : null}
-          </>
-        }
-      />
+            {canManage ? <Button onClick={createNew}><PlusIcon className="size-4" />Tạo hành trình</Button> : null}
+          </div>
+        </div>
+      ) : (
+        <NetworkPageHeader
+          eyebrow="Tuyến ưu tiên"
+          title="Hành trình ưu tiên"
+          description="Thiết lập các hành trình ưu tiên mà bộ phận vận hành muốn hệ thống thử trước khi tự tìm tuyến khác."
+          help={{ description: "Hành trình ưu tiên là một chuỗi tuyến vận chuyển đã được sắp xếp sẵn theo thứ tự ưu tiên.", bullets: ["Ưu tiên số nhỏ hơn sẽ được thử trước.", "Nếu hành trình ưu tiên không khả dụng, chế độ mặc định có thể tự tìm tuyến khác.", "Mã kỹ thuật vẫn được giữ trong phần chi tiết nhưng không cần dùng để tìm kiếm hằng ngày."] }}
+          actions={
+            <>
+              <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />Tải lại</Button>
+              {canManage ? <Button onClick={createNew}><PlusIcon className="size-4" />Tạo hành trình</Button> : null}
+            </>
+          }
+        />
+      )}
 
       {error ? <NetworkError message={error} onRetry={() => void load()} /> : null}
 
-      <Card><CardContent className="grid gap-3 p-4 md:grid-cols-3"><Input placeholder="Tìm theo tên tuyến mẫu..." value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /><select className={selectClassName} value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="">Mọi trạng thái</option><option value="ACTIVE">Đang hoạt động</option><option value="INACTIVE">Ngừng hoạt động</option></select><div className="flex items-center justify-end text-xs font-bold text-muted-foreground">{result.totalItems} tuyến mẫu</div></CardContent></Card>
+      <Card><CardContent className="grid gap-3 p-4 md:grid-cols-3"><Input placeholder="Tìm theo tên hành trình..." value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /><select className={selectClassName} value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="">Mọi trạng thái</option><option value="ACTIVE">Đang hoạt động</option><option value="INACTIVE">Ngừng hoạt động</option></select><div className="flex items-center justify-end text-xs font-bold text-muted-foreground">{result.totalItems} hành trình</div></CardContent></Card>
 
       <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_30rem]">
         <Card className="h-fit overflow-hidden">
-          <CardHeader><p className="text-sm font-black">Danh sách tuyến mẫu</p></CardHeader>
+          <CardHeader><p className="text-sm font-black">Danh sách hành trình</p></CardHeader>
           {loading && !result.items.length ? <div className="grid min-h-56 place-items-center"><LoaderCircleIcon className="size-5 animate-spin text-brand" /></div> : result.items.length ? (
             <div className="divide-y">{result.items.map((template) => <button key={template.id} type="button" onClick={() => selectTemplate(template)} className={cn("w-full p-4 text-left transition hover:bg-muted/40", selected?.id === template.id && "bg-brand/[0.055]")}><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><StatusBadge active={template.status === "ACTIVE"} /><span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">Ưu tiên {template.priority}</span><span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">Phiên bản {template.revision}</span></div><p className="mt-2 text-sm font-black">{template.name}</p><p className="mt-1 text-xs text-muted-foreground">{hubById.get(template.originHubId)?.name ?? "Điểm đi"} → {hubById.get(template.destinationHubId)?.name ?? "Điểm đến"} · {template.legs.length} chặng</p></div><div className="text-right text-xs"><p className="font-black">{template.estimatedTransitMinutes.toLocaleString("vi-VN")} phút</p><p className="mt-1 text-muted-foreground">{template.totalDistanceKm ? `${Number(template.totalDistanceKm).toLocaleString("vi-VN")} km` : "Chưa có khoảng cách"}</p></div></div></button>)}</div>
-          ) : <EmptyState title="Chưa có tuyến mẫu" description="Hệ thống vẫn có thể tự tìm tuyến; tuyến mẫu chỉ dùng khi vận hành muốn ưu tiên một hành trình cụ thể." />}
+          ) : <EmptyState title="Chưa có hành trình" description="Hệ thống vẫn có thể tự tìm tuyến; hành trình chỉ dùng khi vận hành muốn ưu tiên một hành trình cụ thể." />}
           <Pager page={result.page} totalPages={result.totalPages} totalItems={result.totalItems} onPage={setPage} />
         </Card>
 
         <Card className="h-fit 2xl:sticky 2xl:top-32">
-          <CardHeader><p className="text-sm font-black">{selected ? selected.name : creating ? "Tạo tuyến mẫu" : "Chi tiết tuyến mẫu"}</p><p className="mt-1 text-xs text-muted-foreground">Các chặng phải nối liên tục từ điểm đầu đến điểm cuối; backend sẽ chặn tuyến bị đứt hoặc tạo vòng lặp.</p></CardHeader>
-          {!selected && !creating ? <EmptyState title="Chọn tuyến mẫu" description="Chọn một tuyến mẫu ở danh sách hoặc tạo mới." /> : (
+          <CardHeader><p className="text-sm font-black">{selected ? selected.name : creating ? "Tạo hành trình" : "Chi tiết hành trình"}</p><p className="mt-1 text-xs text-muted-foreground">Các chặng phải nối liên tục từ điểm đầu đến điểm cuối; backend sẽ chặn tuyến bị đứt hoặc tạo vòng lặp.</p></CardHeader>
+          {!selected && !creating ? <EmptyState title="Chọn hành trình" description="Chọn một hành trình ở danh sách hoặc tạo mới." /> : (
             <CardContent>
               <form key={editorKey} className="grid gap-3" onSubmit={save}>
                 <details className="rounded-lg border bg-muted/15 p-3"><summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary><div className="mt-3"><FormField label="Mã kỹ thuật" hint="Chỉ dùng nội bộ; tìm kiếm hằng ngày dùng tên tuyến."><Input name="code" defaultValue={selected?.code ?? ""} disabled={Boolean(selected) || !canManage} className="font-mono uppercase" placeholder="HCM-HN-STANDARD" /></FormField></div></details>
@@ -246,12 +259,12 @@ export function NetworkRouteTemplates() {
                 <div className="rounded-xl border p-3">
                   <div className="flex items-center justify-between gap-2"><div><p className="text-xs font-black">Các chặng theo thứ tự</p><p className="mt-1 text-[0.65rem] text-muted-foreground">{laneIds.length}/30 chặng</p></div><GitBranchIcon className="size-4 text-brand" /></div>
                   {canManage ? <div className="mt-3 flex gap-2"><select className={selectClassName} value={laneToAdd} onChange={(event) => setLaneToAdd(event.target.value)}><option value="">Chọn tuyến để thêm</option>{lanes.filter((lane) => !laneIds.includes(lane.id)).map((lane) => <option key={lane.id} value={lane.id}>{lane.fromHubName} → {lane.toHubName}</option>)}</select><Button type="button" variant="outline" size="sm" disabled={!laneToAdd} onClick={() => { if (laneToAdd) setLaneIds((current) => [...current, laneToAdd]); setLaneToAdd(""); }}><PlusIcon className="size-3.5" />Thêm</Button></div> : null}
-                  <div className="mt-3 space-y-2">{selectedLanes.length ? selectedLanes.map((lane, index) => <div key={`${lane.id}-${index}`} className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2.5"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand/10 text-[0.65rem] font-black text-brand">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-black">{lane.fromHubName} → {lane.toHubName}</p><p className="mt-0.5 text-[0.65rem] text-muted-foreground">{transportModeLabel(lane.transportMode)}</p></div>{canManage ? <div className="flex"><Button type="button" variant="ghost" size="icon" disabled={index === 0} onClick={() => setLaneIds((current) => move(current, index, index - 1))}><ArrowUpIcon className="size-3.5" /></Button><Button type="button" variant="ghost" size="icon" disabled={index === laneIds.length - 1} onClick={() => setLaneIds((current) => move(current, index, index + 1))}><ArrowDownIcon className="size-3.5" /></Button><Button type="button" variant="ghost" size="icon" onClick={() => setLaneIds((current) => current.filter((_, itemIndex) => itemIndex !== index))}><Trash2Icon className="size-3.5 text-destructive" /></Button></div> : null}</div>) : <p className="py-4 text-center text-xs text-muted-foreground">Chưa có chặng trong tuyến mẫu.</p>}</div>
+                  <div className="mt-3 space-y-2">{selectedLanes.length ? selectedLanes.map((lane, index) => <div key={`${lane.id}-${index}`} className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2.5"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand/10 text-[0.65rem] font-black text-brand">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-black">{lane.fromHubName} → {lane.toHubName}</p><p className="mt-0.5 text-[0.65rem] text-muted-foreground">{transportModeLabel(lane.transportMode)}</p></div>{canManage ? <div className="flex"><Button type="button" variant="ghost" size="icon" disabled={index === 0} onClick={() => setLaneIds((current) => move(current, index, index - 1))}><ArrowUpIcon className="size-3.5" /></Button><Button type="button" variant="ghost" size="icon" disabled={index === laneIds.length - 1} onClick={() => setLaneIds((current) => move(current, index, index + 1))}><ArrowDownIcon className="size-3.5" /></Button><Button type="button" variant="ghost" size="icon" onClick={() => setLaneIds((current) => current.filter((_, itemIndex) => itemIndex !== index))}><Trash2Icon className="size-3.5 text-destructive" /></Button></div> : null}</div>) : <p className="py-4 text-center text-xs text-muted-foreground">Chưa có chặng trong hành trình.</p>}</div>
                 </div>
 
                 {selected ? <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3"><div><p className="text-xs font-black">Phiên bản {selected.revision}</p><p className="mt-1 text-[0.65rem] text-muted-foreground">Mỗi lần thay đổi hành trình hoặc thông tin tuyến sẽ tăng phiên bản.</p></div><StatusBadge active={selected.status === "ACTIVE"} /></div> : null}
-                {canManage ? <div className="flex flex-wrap gap-2 border-t pt-4"><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}{selected ? "Lưu thay đổi" : "Tạo tuyến mẫu"}</Button>{selected ? <Button type="button" variant={selected.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving} onClick={() => setPendingAction({ kind: "status", template: selected })}>{selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt tuyến mẫu"}</Button> : null}{selected?.status === "INACTIVE" ? <Button type="button" variant="ghost" disabled={saving} onClick={() => setPendingAction({ kind: "delete", template: selected })}><Trash2Icon className="size-4 text-destructive" />Xóa tuyến mẫu</Button> : null}</div> : null}
-                {selected ? <ActionPolicyNote>Tuyến mẫu là cấu hình Network duy nhất hiện có API xóa cứng. Backend chỉ cho xóa khi tuyến mẫu đang ngừng hoạt động; nhật ký audit vẫn được giữ.</ActionPolicyNote> : null}
+                {canManage ? <div className="flex flex-wrap gap-2 border-t pt-4"><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}{selected ? "Lưu thay đổi" : "Tạo hành trình"}</Button>{selected ? <Button type="button" variant={selected.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving} onClick={() => setPendingAction({ kind: "status", template: selected })}>{selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt hành trình"}</Button> : null}{selected?.status === "INACTIVE" ? <Button type="button" variant="ghost" disabled={saving} onClick={() => setPendingAction({ kind: "delete", template: selected })}><Trash2Icon className="size-4 text-destructive" />Xóa hành trình</Button> : null}</div> : null}
+                {selected ? <ActionPolicyNote>Hành trình là cấu hình Network duy nhất hiện có API xóa cứng. Backend chỉ cho xóa khi hành trình đang ngừng hoạt động; nhật ký audit vẫn được giữ.</ActionPolicyNote> : null}
               </form>
             </CardContent>
           )}
@@ -262,21 +275,21 @@ export function NetworkRouteTemplates() {
         open={Boolean(pendingAction)}
         title={
           pendingAction?.kind === "delete"
-            ? "Xóa tuyến mẫu?"
+            ? "Xóa hành trình?"
             : pendingAction?.template.status === "ACTIVE"
-              ? "Ngừng tuyến mẫu?"
-              : "Kích hoạt tuyến mẫu?"
+              ? "Ngừng hành trình?"
+              : "Kích hoạt hành trình?"
         }
         description={
           pendingAction?.kind === "delete"
-            ? `Tuyến mẫu ${pendingAction.template.name} sẽ bị xóa khỏi cấu hình. Nhật ký thay đổi vẫn được giữ. Thao tác này chỉ hợp lệ khi tuyến đang ngừng hoạt động.`
+            ? `Hành trình ${pendingAction.template.name} sẽ bị xóa khỏi cấu hình. Nhật ký thay đổi vẫn được giữ. Thao tác này chỉ hợp lệ khi tuyến đang ngừng hoạt động.`
             : pendingAction?.template.status === "ACTIVE"
-              ? `Tuyến mẫu ${pendingAction?.template.name ?? "này"} sẽ không còn được planner ưu tiên.`
-              : `Tuyến mẫu ${pendingAction?.template.name ?? "này"} sẽ được đưa vào danh sách ưu tiên. Backend sẽ kiểm tra toàn bộ hub, lane và lịch chạy trước khi kích hoạt.`
+              ? `Hành trình ${pendingAction?.template.name ?? "này"} sẽ không còn được planner ưu tiên.`
+              : `Hành trình ${pendingAction?.template.name ?? "này"} sẽ được đưa vào danh sách ưu tiên. Backend sẽ kiểm tra toàn bộ hub, lane và lịch chạy trước khi kích hoạt.`
         }
         confirmLabel={
           pendingAction?.kind === "delete"
-            ? "Xóa tuyến mẫu"
+            ? "Xóa hành trình"
             : pendingAction?.template.status === "ACTIVE"
               ? "Ngừng hoạt động"
               : "Kích hoạt"

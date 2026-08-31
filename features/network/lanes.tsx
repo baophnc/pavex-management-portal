@@ -70,7 +70,7 @@ type PendingStatusAction =
   | { kind: "lane"; lane: HubLane }
   | { kind: "schedule"; schedule: LaneSchedule };
 
-export function NetworkLanes() {
+export function NetworkLanes({ embedded = false }: { embedded?: boolean } = {}) {
   const { hasPermission } = useAccess();
   const canManage = hasPermission("network.manage");
   const [result, setResult] = useState<PageResponse<HubLane>>({
@@ -295,13 +295,13 @@ export function NetworkLanes() {
 
   return (
     <div className="space-y-4">
-      <NetworkPageHeader
-        eyebrow="Mạng vận chuyển"
-        title="Tuyến vận chuyển & lịch chạy"
-        description="Quản lý đường đi giữa hai điểm trung chuyển, thời gian vận chuyển, lịch khởi hành và sức chứa từng chuyến."
-        help={{ description: "Một tuyến vận chuyển nối hai điểm trung chuyển theo một chiều; lịch chạy quyết định khi nào tuyến đó thực sự có chuyến.", bullets: ["Tìm tuyến bằng tên điểm đi hoặc điểm đến, không cần nhớ mã kỹ thuật.", "Tuyến mới cần ít nhất một lịch chạy trước khi kích hoạt.", "Sức chứa được cấu hình trên từng lịch chạy và được kiểm tra khi lập tuyến."] }}
-        actions={
-          <>
+      {embedded ? (
+        <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black">Tuyến trực tiếp & lịch chạy</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Mỗi tuyến là một chặng giữa hai điểm trung chuyển. Chọn tuyến để xem và chỉnh lịch khởi hành ngay bên cạnh.</p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
               <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />
               Tải lại
@@ -311,9 +311,29 @@ export function NetworkLanes() {
                 <PlusIcon className="size-4" /> Tạo tuyến
               </Button>
             ) : null}
-          </>
-        }
-      />
+          </div>
+        </div>
+      ) : (
+        <NetworkPageHeader
+          eyebrow="Mạng vận chuyển"
+          title="Tuyến vận chuyển & lịch chạy"
+          description="Quản lý đường đi giữa hai điểm trung chuyển, thời gian vận chuyển, lịch khởi hành và sức chứa từng chuyến."
+          help={{ description: "Một tuyến vận chuyển nối hai điểm trung chuyển theo một chiều; lịch chạy quyết định khi nào tuyến đó thực sự có chuyến.", bullets: ["Tìm tuyến bằng tên điểm đi hoặc điểm đến, không cần nhớ mã kỹ thuật.", "Tuyến mới cần ít nhất một lịch chạy trước khi kích hoạt.", "Sức chứa được cấu hình trên từng lịch chạy và được kiểm tra khi lập tuyến."] }}
+          actions={
+            <>
+              <Button variant="outline" onClick={() => void load()} disabled={loading}>
+                <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />
+                Tải lại
+              </Button>
+              {canManage ? (
+                <Button onClick={() => { setSelected(null); setCreating(true); setSchedules([]); }}>
+                  <PlusIcon className="size-4" /> Tạo tuyến
+                </Button>
+              ) : null}
+            </>
+          }
+        />
+      )}
 
       {error ? <NetworkError message={error} onRetry={() => void load()} /> : null}
 
@@ -456,7 +476,7 @@ export function NetworkLanes() {
         description={
           pendingStatus?.kind === "lane"
             ? pendingStatus.lane.status === "ACTIVE"
-              ? `Ngừng tuyến ${pendingStatus.lane.fromHubName} → ${pendingStatus.lane.toHubName}. Backend sẽ chặn nếu còn giữ chỗ sức chứa hoặc tuyến mẫu đang hoạt động sử dụng tuyến này.`
+              ? `Ngừng tuyến ${pendingStatus.lane.fromHubName} → ${pendingStatus.lane.toHubName}. Backend sẽ chặn nếu còn giữ chỗ sức chứa hoặc hành trình ưu tiên đang hoạt động sử dụng tuyến này.`
               : `Kích hoạt tuyến ${pendingStatus.lane.fromHubName} → ${pendingStatus.lane.toHubName}. Hai điểm đầu/cuối và ít nhất một lịch chạy phải đang hoạt động.`
             : pendingStatus?.kind === "schedule"
               ? pendingStatus.schedule.status === "ACTIVE"

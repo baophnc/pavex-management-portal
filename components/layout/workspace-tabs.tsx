@@ -47,8 +47,9 @@ function tabTitle(pathname: string) {
   if (pathname === "/network/hubs") return "Điểm trung chuyển";
   if (pathname === "/network/service-areas") return "Vùng phục vụ";
   if (pathname === "/network/coverage") return "Vùng phục vụ";
-  if (pathname === "/network/lanes") return "Tuyến & lịch chạy";
-  if (pathname === "/network/route-templates") return "Tuyến mẫu";
+  if (pathname === "/network/routes") return "Tuyến vận chuyển";
+  if (pathname === "/network/lanes") return "Tuyến vận chuyển";
+  if (pathname === "/network/route-templates") return "Tuyến vận chuyển";
   if (pathname === "/network/route-planner") return "Tìm tuyến";
   if (pathname === "/network/capacity") return "Sức chứa";
   if (pathname === "/network/audit") return "Nhật ký mạng lưới";
