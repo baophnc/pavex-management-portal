@@ -16,7 +16,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getHubs, getLanes, getLaneSchedules } from "@/features/network/api";
+import {
+  createLane,
+  createLaneSchedule,
+  getHubs,
+  getLanes,
+  getLaneSchedules,
+  updateLane,
+  updateLaneSchedule,
+  updateLaneScheduleStatus,
+  updateLaneStatus,
+} from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import type {
   Hub,
@@ -37,7 +47,6 @@ import {
   StatusBadge,
   selectClassName,
 } from "@/features/network/ui";
-import { apiRequest } from "@/lib/api/client";
 import { cn, formatDateTime } from "@/lib/utils";
 
 const weekDays = [
@@ -164,7 +173,6 @@ export function NetworkLanes() {
     }
 
     const payload = {
-      ...(!selected ? { code } : {}),
       fromHubId,
       toHubId,
       transportMode,
@@ -175,13 +183,9 @@ export function NetworkLanes() {
 
     setSaving(true);
     try {
-      const lane = (await apiRequest(
-        selected ? `admin/network/lanes/${selected.id}` : "admin/network/lanes",
-        {
-          method: selected ? "PUT" : "POST",
-          body: JSON.stringify(payload),
-        },
-      )) as HubLane;
+      const lane = selected
+        ? await updateLane(selected.id, payload)
+        : await createLane({ code, ...payload });
       toast.success(selected ? "Đã cập nhật tuyến vận chuyển." : "Đã tạo tuyến ở trạng thái ngừng hoạt động.");
       setCreating(false);
       await load();
@@ -198,10 +202,7 @@ export function NetworkLanes() {
     const active = lane.status !== "ACTIVE";
     setSaving(true);
     try {
-      await apiRequest(`admin/network/lanes/${lane.id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ active, reason: reason || null }),
-      });
+      await updateLaneStatus(lane.id, { active, reason: reason || null });
       toast.success(active ? "Đã kích hoạt tuyến vận chuyển." : "Đã ngừng tuyến vận chuyển.");
       setPendingStatus(null);
       await load();
@@ -240,15 +241,11 @@ export function NetworkLanes() {
 
     setSaving(true);
     try {
-      await apiRequest(
-        selectedSchedule
-          ? `admin/network/lanes/${selected.id}/schedules/${selectedSchedule.id}`
-          : `admin/network/lanes/${selected.id}/schedules`,
-        {
-          method: selectedSchedule ? "PUT" : "POST",
-          body: JSON.stringify(payload),
-        },
-      );
+      if (selectedSchedule) {
+        await updateLaneSchedule(selected.id, selectedSchedule.id, payload);
+      } else {
+        await createLaneSchedule(selected.id, payload);
+      }
       toast.success(selectedSchedule ? "Đã cập nhật lịch chạy." : "Đã thêm lịch chạy.");
       setCreatingSchedule(false);
       setSelectedSchedule(null);
@@ -265,9 +262,9 @@ export function NetworkLanes() {
     const active = schedule.status !== "ACTIVE";
     setSaving(true);
     try {
-      await apiRequest(`admin/network/lanes/${selected.id}/schedules/${schedule.id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ active, reason: reason || null }),
+      await updateLaneScheduleStatus(selected.id, schedule.id, {
+        active,
+        reason: reason || null,
       });
       toast.success(active ? "Đã kích hoạt lịch chạy." : "Đã ngừng lịch chạy.");
       setPendingStatus(null);
@@ -283,9 +280,8 @@ export function NetworkLanes() {
     () => schedules.filter((item) => item.status === "ACTIVE").length,
     [schedules],
   );
-  const today = new Date().toISOString().slice(0, 10);
   const usableActiveSchedules = schedules.filter(
-    (item) => item.status === "ACTIVE" && (!item.effectiveTo || item.effectiveTo >= today),
+    (item) => item.status === "ACTIVE",
   ).length;
   const canActivateSelectedLane =
     selected?.status === "ACTIVE" || usableActiveSchedules > 0;

@@ -82,6 +82,10 @@ export function canAccessManagementPath(
     return hasAnyPermission(user, ["pricing.read", "pricing.manage"]);
   }
 
+  if (pathname.startsWith("/shipments")) {
+    return hasPermission(user, "shipments.admin.read");
+  }
+
   // Unknown paths should still reach Next.js' not-found/error handling. New
   // management modules add their explicit rule here when introduced.
   return true;

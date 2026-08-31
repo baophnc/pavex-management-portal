@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, CalculatorIcon, HistoryIcon, ListChecksIcon, RefreshCwIcon } from "lucide-react";
+import { ArrowRightIcon, CalculatorIcon, HistoryIcon, ListChecksIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -99,7 +99,7 @@ export function PricingOverview() {
             </Card>
           )}
 
-          <section className="grid gap-3 lg:grid-cols-3">
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <Link href="/pricing/rate-plans" className="rounded-xl border bg-card p-4 transition hover:border-brand/35 hover:bg-brand/[0.02]">
               <ListChecksIcon className="size-5 text-brand" />
               <h3 className="mt-3 font-black">Bảng giá & phiên bản</h3>
@@ -109,6 +109,11 @@ export function PricingOverview() {
               <CalculatorIcon className="size-5 text-brand" />
               <h3 className="mt-3 font-black">Mô phỏng tính cước</h3>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">Chọn địa chỉ thật, nhập kiện hàng và xem Standard/Express mà Quote Engine trả về.</p>
+            </Link>
+            <Link href="/pricing/quotes" className="rounded-xl border bg-card p-4 transition hover:border-brand/35 hover:bg-brand/[0.02]">
+              <SearchIcon className="size-5 text-brand" />
+              <h3 className="mt-3 font-black">Kiểm tra quote</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Tra snapshot quote đã phát hành để support đối chiếu bảng giá, phí và tuyến giá.</p>
             </Link>
             <Link href="/pricing/audit" className="rounded-xl border bg-card p-4 transition hover:border-brand/35 hover:bg-brand/[0.02]">
               <HistoryIcon className="size-5 text-brand" />

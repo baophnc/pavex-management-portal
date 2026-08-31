@@ -12,15 +12,28 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getCapacityReservation, getLaneCapacity, getLanes } from "@/features/network/api";
+import { useAccess } from "@/features/auth/access-context";
+import {
+  consumeCapacityLeg,
+  getCapacityReservation,
+  getLaneCapacity,
+  getLanes,
+  releaseCapacityReservation,
+} from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import type {
   CapacityReservation,
   HubLane,
   LaneCapacity,
 } from "@/features/network/contracts";
-import { reservationStatusLabel, routeSourceLabel, transportModeLabel } from "@/features/network/contracts";
 import {
+  reservationStatusLabel,
+  routeSourceLabel,
+  transportModeLabel,
+} from "@/features/network/contracts";
+import {
+  ActionPolicyNote,
+  ConfirmActionDialog,
   EmptyState,
   FormField,
   NetworkPageHeader,
@@ -33,22 +46,36 @@ function ratio(allocated: number, total: number) {
   return Math.min(100, Math.max(0, (allocated / total) * 100));
 }
 
-export function NetworkCapacity() {
+type PendingCapacityAction =
+  | { kind: "release" }
+  | { kind: "consume"; legSequence: number };
+
+export function NetworkCapacity({ initialShipmentId = "", initialRouteRevision = "" }: { initialShipmentId?: string; initialRouteRevision?: string }) {
+  const { hasPermission } = useAccess();
+  const canManage = hasPermission("network.manage");
   const [lanes, setLanes] = useState<HubLane[]>([]);
   const [laneId, setLaneId] = useState("");
   const [serviceDate, setServiceDate] = useState("");
   const [capacity, setCapacity] = useState<LaneCapacity | null>(null);
   const [reservation, setReservation] = useState<CapacityReservation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingCapacityAction | null>(null);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
       void getLanes(new URLSearchParams({ page: "1", pageSize: "100" }))
         .then((result) => setLanes(result.items))
-        .catch((reason) => toast.error(networkErrorMessage(reason, "Không thể tải tuyến vận chuyển.")));
+        .catch((reason) =>
+          toast.error(networkErrorMessage(reason, "Không thể tải tuyến vận chuyển.")),
+        );
     }, 0);
     return () => window.clearTimeout(task);
   }, []);
+
+  async function refreshCapacity() {
+    if (!laneId || !serviceDate) return;
+    setCapacity(await getLaneCapacity(laneId, serviceDate));
+  }
 
   async function loadCapacity(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -58,7 +85,7 @@ export function NetworkCapacity() {
     }
     setLoading(true);
     try {
-      setCapacity(await getLaneCapacity(laneId, serviceDate));
+      await refreshCapacity();
     } catch (reason) {
       setCapacity(null);
       toast.error(networkErrorMessage(reason, "Không thể tải sức chứa."));
@@ -73,7 +100,7 @@ export function NetworkCapacity() {
     const shipmentId = String(form.get("shipmentId") ?? "").trim();
     const routeRevision = Number(form.get("routeRevision"));
     if (!shipmentId || !Number.isInteger(routeRevision) || routeRevision < 1) {
-      toast.error("Nhập mã vận đơn và phiên bản tuyến hợp lệ.");
+      toast.error("Nhập Shipment ID và phiên bản tuyến hợp lệ.");
       return;
     }
     setLoading(true);
@@ -87,15 +114,58 @@ export function NetworkCapacity() {
     }
   }
 
+  async function runAction(reason: string) {
+    if (!canManage || !reservation || !pendingAction) return;
+    setLoading(true);
+    try {
+      const next = pendingAction.kind === "release"
+        ? await releaseCapacityReservation(
+            reservation.shipmentId,
+            reservation.routeRevision,
+            reason,
+          )
+        : await consumeCapacityLeg(
+            reservation.shipmentId,
+            reservation.routeRevision,
+            pendingAction.legSequence,
+          );
+      setReservation(next);
+      setPendingAction(null);
+      toast.success(
+        pendingAction.kind === "release"
+          ? "Đã giải phóng các chặng còn giữ chỗ."
+          : `Đã ghi nhận sử dụng tải chặng ${pendingAction.legSequence}.`,
+      );
+      try {
+        await refreshCapacity();
+      } catch {
+        // Reservation mutation succeeded. Capacity refresh is best-effort.
+      }
+    } catch (actionError) {
+      toast.error(networkErrorMessage(actionError, "Không thể cập nhật giữ chỗ sức chứa."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const selectedLane = lanes.find((lane) => lane.id === laneId) ?? null;
+  const firstReservedSequence = reservation?.legs.find((leg) => leg.status === "RESERVED")?.sequence ?? null;
+  const hasReservedLeg = firstReservedSequence !== null;
 
   return (
     <div className="space-y-4">
       <NetworkPageHeader
         eyebrow="Sức chứa chuyến"
         title="Sức chứa"
-        description="Theo dõi tổng tải, tải đã giữ và tải còn lại của từng chuyến trong một ngày cụ thể."
-        help={{ description: "Sức chứa được tính theo từng chuyến cụ thể, không dùng một con số chung cho cả tuyến.", bullets: ["Chọn tuyến và ngày để xem tải của từng giờ khởi hành.", "Khi Shipment giữ chỗ, phần tải còn lại sẽ giảm.", "Tra cứu giữ chỗ chỉ dùng cho kiểm tra kỹ thuật cho đến khi Shipment được nối hoàn chỉnh."] }}
+        description="Theo dõi tổng tải, tải đã giữ và tải còn lại của từng chuyến; người có quyền quản lý có thể xử lý reservation khi cần khắc phục vận hành."
+        help={{
+          description: "Sức chứa được tính theo từng chuyến cụ thể, không dùng một con số chung cho cả tuyến.",
+          bullets: [
+            "Chọn tuyến và ngày để xem tải của từng giờ khởi hành.",
+            "Shipment giữ chỗ theo shipmentId + routeRevision và từng leg theo thứ tự.",
+            "Giải phóng/consume ở trang này là thao tác vận hành có audit; chỉ dùng khi hiểu rõ trạng thái Shipment.",
+          ],
+        }}
         actions={
           <Button variant="outline" disabled={!laneId || !serviceDate || loading} onClick={() => void loadCapacity()}>
             <RefreshCwIcon className="size-4" /> Tải lại
@@ -103,7 +173,7 @@ export function NetworkCapacity() {
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_28rem]">
         <div className="space-y-4">
           <Card>
             <CardHeader><p className="text-sm font-black">Sức chứa theo ngày</p></CardHeader>
@@ -142,18 +212,71 @@ export function NetworkCapacity() {
         </div>
 
         <Card className="h-fit xl:sticky xl:top-32">
-          <CardHeader><p className="text-sm font-black">Tra cứu giữ chỗ</p><p className="mt-1 text-xs text-muted-foreground">Dùng để kiểm tra dữ liệu giữ tải của vận đơn.</p></CardHeader>
+          <CardHeader><p className="text-sm font-black">Tra cứu giữ chỗ</p><p className="mt-1 text-xs text-muted-foreground">Dùng Shipment UUID và route revision để kiểm tra reservation thật.</p></CardHeader>
           <CardContent className="space-y-4">
             <form className="grid gap-3" onSubmit={lookupReservation}>
-              <FormField label="Mã vận đơn"><Input name="shipmentId" placeholder="UUID" /></FormField>
-              <FormField label="Phiên bản tuyến"><Input name="routeRevision" type="number" min="1" defaultValue="1" /></FormField>
+              <FormField label="Shipment ID"><Input name="shipmentId" placeholder="UUID" className="font-mono" defaultValue={initialShipmentId} /></FormField>
+              <FormField label="Phiên bản tuyến"><Input name="routeRevision" type="number" min="1" defaultValue={initialRouteRevision || "1"} /></FormField>
               <Button type="submit" variant="outline" disabled={loading}><SearchIcon className="size-4" />Tra cứu</Button>
             </form>
 
-            {reservation ? <div className="space-y-3 border-t pt-4"><div className="rounded-lg border bg-muted/20 p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs font-black">{reservationStatusLabel(reservation.status)}</p><span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">{routeSourceLabel(reservation.source)}</span></div><p className="mt-2 text-xs text-muted-foreground">Dự kiến đến {formatDateTime(reservation.estimatedDeliveryAt)}</p><p className="mt-1 text-xs text-muted-foreground">{Number(reservation.shipmentWeightKg).toLocaleString("vi-VN")} kg · phiên bản {reservation.routeRevision}</p></div>{reservation.legs.map((leg) => <div key={leg.reservationId} className="rounded-lg border p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs font-black">Chặng {leg.sequence}</p><span className="text-[0.65rem] font-black">{reservationStatusLabel(leg.status)}</span></div><p className="mt-2 text-xs text-muted-foreground">{formatDateTime(leg.departureAt)} → {formatDateTime(leg.arrivalAt)}</p><p className="mt-1 text-xs text-muted-foreground">Đã giữ {Number(leg.reservedWeightKg).toLocaleString("vi-VN")} kg / {Number(leg.departureCapacityKg).toLocaleString("vi-VN")} kg</p></div>)}</div> : null}
+            {reservation ? (
+              <div className="space-y-3 border-t pt-4">
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between gap-2"><p className="text-xs font-black">{reservationStatusLabel(reservation.status)}</p><span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">{routeSourceLabel(reservation.source)}</span></div>
+                  <p className="mt-2 break-all font-mono text-[0.65rem] text-muted-foreground">{reservation.shipmentId}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Dự kiến đến {formatDateTime(reservation.estimatedDeliveryAt)}</p><p className="mt-1 text-xs text-muted-foreground">{Number(reservation.shipmentWeightKg).toLocaleString("vi-VN")} kg · phiên bản {reservation.routeRevision}</p>
+                </div>
+                {reservation.legs.map((leg) => (
+                  <div key={leg.reservationId} className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between gap-2"><p className="text-xs font-black">Chặng {leg.sequence}</p><span className="text-[0.65rem] font-black">{reservationStatusLabel(leg.status)}</span></div>
+                    <p className="mt-2 text-xs text-muted-foreground">{formatDateTime(leg.departureAt)} → {formatDateTime(leg.arrivalAt)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Đã giữ {Number(leg.reservedWeightKg).toLocaleString("vi-VN")} kg / {Number(leg.departureCapacityKg).toLocaleString("vi-VN")} kg</p>
+                    {canManage && leg.status === "RESERVED" ? (
+                      <div className="mt-3 grid gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={loading || leg.sequence !== firstReservedSequence}
+                          title={leg.sequence !== firstReservedSequence ? "Cần consume các chặng trước theo đúng thứ tự." : undefined}
+                          onClick={() => setPendingAction({ kind: "consume", legSequence: leg.sequence })}
+                        >
+                          Ghi nhận đã dùng tải
+                        </Button>
+                        {leg.sequence !== firstReservedSequence ? (
+                          <p className="text-[0.65rem] text-muted-foreground">Chờ chặng trước được consume.</p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+                {canManage && hasReservedLeg ? (
+                  <div className="grid gap-2 border-t pt-3">
+                    <Button type="button" variant="destructive" disabled={loading} onClick={() => setPendingAction({ kind: "release" })}>Giải phóng tải còn giữ</Button>
+                    <ActionPolicyNote>Release chỉ chuyển các leg còn ở trạng thái RESERVED sang RELEASED. Leg đã CONSUMED không bị hoàn tác.</ActionPolicyNote>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmActionDialog
+        open={Boolean(pendingAction)}
+        title={pendingAction?.kind === "release" ? "Giải phóng reservation?" : "Ghi nhận đã dùng tải?"}
+        description={pendingAction?.kind === "release"
+          ? "Các chặng vẫn còn RESERVED sẽ được giải phóng và sức chứa tương ứng trở lại khả dụng. Thao tác được ghi audit."
+          : `Chặng ${pendingAction?.kind === "consume" ? pendingAction.legSequence : ""} sẽ chuyển sang CONSUMED. Backend yêu cầu consume đúng thứ tự các chặng.`}
+        confirmLabel={pendingAction?.kind === "release" ? "Giải phóng tải" : "Xác nhận đã dùng"}
+        destructive={pendingAction?.kind === "release"}
+        loading={loading}
+        reason={pendingAction?.kind === "release"}
+        reasonLabel="Lý do giải phóng (không bắt buộc)"
+        onCancel={() => setPendingAction(null)}
+        onConfirm={runAction}
+      />
     </div>
   );
 }

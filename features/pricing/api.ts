@@ -5,6 +5,7 @@ import type {
   PricingPageResponse,
   PricingQuote,
   PricingQuoteRequest,
+  PricingQuoteSnapshot,
   Province,
   RatePlan,
   RatePlanPayload,
@@ -95,6 +96,12 @@ export async function createPricingQuote(payload: PricingQuoteRequest) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function getPricingQuoteSnapshot(quoteId: string) {
+  return apiRequest<PricingQuoteSnapshot>(
+    `admin/pricing/quotes/${encodeURIComponent(quoteId)}`,
+  );
 }
 
 export async function getPricingAudit(params: URLSearchParams) {

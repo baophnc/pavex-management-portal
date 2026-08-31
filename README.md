@@ -72,6 +72,32 @@ truth; hiding a menu or button is only a UX guard, never the security boundary.
 - Partners / Merchant administration
 - Network
 - Pricing
+- Shipment administration
 
-Shipment administration is added after the backend exposes the corresponding
-admin query contract.
+Shipment administration uses the dedicated admin query contract and never reuses
+merchant-owned shipment endpoints.
+
+## Network and Pricing operator tools
+
+Network screens use the Kotlin admin contracts under `/api/v1/admin/network/**` for
+regions, hubs, service areas, coverage, lanes/schedules, route templates, route
+planning, capacity reservations and audit. Read-only users can inspect the network;
+mutating actions are only rendered for `network.manage`.
+
+Pricing screens use `/api/v1/admin/pricing/**` for rate-plan lifecycle, audit and
+quote inspection. The simulator still calls the real public Quote Engine, while the
+quote inspector reads the immutable admin snapshot so support can verify the exact
+rate revision, location resolution, parcel weights and fee breakdown used by a quote.
+Mutating rate-plan actions require `pricing.manage`.
+
+## Shipment operator tools
+
+Shipment screens use `GET /api/v1/admin/shipments` and
+`GET /api/v1/admin/shipments/{trackingCode}` guarded by `shipments.admin.read`.
+The list supports status/lifecycle/Merchant/search filters with cursor pagination
+and an exact `totalCount` for dashboard metrics. The detail workspace exposes the
+customer snapshot together with internal ownership/routing identifiers, the complete
+event stream, and delivery-attempt/POD records for support and operations.
+
+Management V1 intentionally keeps Shipment admin actions read-only until the backend
+adds explicit operational command contracts guarded by `shipments.admin.manage`.

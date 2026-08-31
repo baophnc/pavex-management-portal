@@ -17,7 +17,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getHubs, getLanes, getRouteTemplates } from "@/features/network/api";
+import {
+  createRouteTemplate,
+  deleteRouteTemplate,
+  getHubs,
+  getLanes,
+  getRouteTemplates,
+  updateRouteTemplate,
+  updateRouteTemplateStatus,
+} from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import type { Hub, HubLane, PageResponse, RouteTemplate } from "@/features/network/contracts";
 import { transportModeLabel } from "@/features/network/contracts";
@@ -33,7 +41,6 @@ import {
   selectClassName,
   textareaClassName,
 } from "@/features/network/ui";
-import { apiRequest } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 function move<T>(items: T[], from: number, to: number) {
@@ -136,21 +143,17 @@ export function NetworkRouteTemplates() {
 
     setSaving(true);
     try {
-      const template = (await apiRequest(
-        selected ? `admin/network/route-templates/${selected.id}` : "admin/network/route-templates",
-        {
-          method: selected ? "PUT" : "POST",
-          body: JSON.stringify({
-            ...(!selected ? { code } : {}),
-            name,
-            description,
-            originHubId,
-            destinationHubId,
-            priority,
-            laneIds,
-          }),
-        },
-      )) as RouteTemplate;
+      const payload = {
+        name,
+        description,
+        originHubId,
+        destinationHubId,
+        priority,
+        laneIds,
+      };
+      const template = selected
+        ? await updateRouteTemplate(selected.id, payload)
+        : await createRouteTemplate({ code, ...payload });
       toast.success(selected ? `Đã cập nhật tuyến mẫu · phiên bản ${template.revision}.` : "Đã tạo tuyến mẫu ở trạng thái ngừng hoạt động.");
       setCreating(false);
       await load();
@@ -168,9 +171,9 @@ export function NetworkRouteTemplates() {
     const active = template.status !== "ACTIVE";
     setSaving(true);
     try {
-      await apiRequest(`admin/network/route-templates/${template.id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ active, reason: reason || null }),
+      await updateRouteTemplateStatus(template.id, {
+        active,
+        reason: reason || null,
       });
       toast.success(active ? "Đã kích hoạt tuyến mẫu." : "Đã ngừng tuyến mẫu.");
       setPendingAction(null);
@@ -186,11 +189,7 @@ export function NetworkRouteTemplates() {
     if (!canManage || template.status === "ACTIVE") return;
     setSaving(true);
     try {
-      const params = new URLSearchParams();
-      if (reason) params.set("reason", reason);
-      const query = params.toString();
-      const suffix = query ? `?${query}` : "";
-      await apiRequest(`admin/network/route-templates/${template.id}${suffix}`, { method: "DELETE" });
+      await deleteRouteTemplate(template.id, reason);
       toast.success("Đã xóa tuyến mẫu.");
       setPendingAction(null);
       setSelected(null);

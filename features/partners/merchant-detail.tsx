@@ -4,11 +4,13 @@ import {
   ArrowLeftIcon,
   Building2Icon,
   CheckCircle2Icon,
+  CircleHelpIcon,
   Clock3Icon,
   ExternalLinkIcon,
   HistoryIcon,
   LoaderCircleIcon,
   MailIcon,
+  MapPinIcon,
   PhoneIcon,
   RefreshCwIcon,
   ShieldAlertIcon,
@@ -24,6 +26,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
+import { getUser } from "@/features/identity/api";
+import type { UserDetail } from "@/features/identity/contracts";
+import {
+  isMerchantIdentityEligible,
+  profileLabels,
+  rolePresentation,
+} from "@/features/identity/presentation";
 import {
   merchantReasonLabel,
   merchantStatusLabel,
@@ -32,7 +41,8 @@ import {
   type MerchantStatus,
   type MerchantStatusReason,
 } from "@/features/partners/contracts";
-import { ApiError, apiRequest } from "@/lib/api/client";
+import { changeMerchantStatus, getMerchant } from "@/features/partners/api";
+import { ApiError } from "@/lib/api/client";
 import { cn, formatDateTime } from "@/lib/utils";
 
 type Decision = {
@@ -43,16 +53,19 @@ type Decision = {
   destructive?: boolean;
 };
 
-type DetailView = "overview" | "review" | "history";
+type DetailView = "overview" | "readiness" | "review" | "history";
 
 const views: Array<{ value: DetailView; label: string }> = [
   { value: "overview", label: "Tổng quan" },
+  { value: "readiness", label: "Sẵn sàng tạo đơn" },
   { value: "review", label: "Xét duyệt" },
   { value: "history", label: "Lịch sử" },
 ];
 
 function detailView(value: string | null): DetailView {
-  return value === "review" || value === "history" ? value : "overview";
+  return value === "readiness" || value === "review" || value === "history"
+    ? value
+    : "overview";
 }
 
 function statusClass(status: MerchantStatus) {
@@ -174,6 +187,51 @@ function StatusPill({ status }: { status: MerchantStatus }) {
   );
 }
 
+function ReadinessRow({
+  state,
+  title,
+  detail,
+}: {
+  state: "ok" | "blocked" | "pending" | "unknown";
+  title: string;
+  detail: string;
+}) {
+  const icon =
+    state === "ok" ? (
+      <CheckCircle2Icon className="size-4" />
+    ) : state === "blocked" ? (
+      <XCircleIcon className="size-4" />
+    ) : state === "pending" ? (
+      <RefreshCwIcon className="size-4" />
+    ) : (
+      <CircleHelpIcon className="size-4" />
+    );
+
+  return (
+    <div className="flex items-start gap-3 rounded-lg border bg-muted/10 p-3.5">
+      <span
+        className={cn(
+          "grid size-9 shrink-0 place-items-center rounded-lg",
+          state === "ok" &&
+            "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+          state === "blocked" && "bg-destructive/10 text-destructive",
+          state === "pending" &&
+            "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+          state === "unknown" && "bg-muted text-muted-foreground",
+        )}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-black">{title}</p>
+        <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
+          {detail}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function MerchantDetail({ merchantId }: { merchantId: string }) {
   const { hasPermission } = useAccess();
   const pathname = usePathname();
@@ -184,6 +242,9 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
   const canReadIdentity = hasPermission("identity.users.read");
 
   const [detail, setDetail] = useState<AdminMerchantResponse | null>(null);
+  const [identityUser, setIdentityUser] = useState<UserDetail | null>(null);
+  const [identityLoading, setIdentityLoading] = useState(false);
+  const [identityError, setIdentityError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
@@ -194,13 +255,39 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
   const decisionTriggerRef = useRef<HTMLButtonElement | null>(null);
   const savingRef = useRef(false);
 
+  const loadIdentity = useCallback(
+    async (userId: string) => {
+      if (!canReadIdentity) {
+        setIdentityUser(null);
+        setIdentityError(null);
+        return;
+      }
+
+      setIdentityLoading(true);
+      setIdentityError(null);
+      try {
+        setIdentityUser(await getUser(userId));
+      } catch (reason) {
+        setIdentityUser(null);
+        setIdentityError(
+          reason instanceof Error
+            ? reason.message
+            : "Không thể tải trạng thái Identity của Merchant.",
+        );
+      } finally {
+        setIdentityLoading(false);
+      }
+    },
+    [canReadIdentity],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setDetail(
-        (await apiRequest(`admin/merchants/${merchantId}`)) as AdminMerchantResponse,
-      );
+      const result = await getMerchant(merchantId);
+      setDetail(result);
+      await loadIdentity(result.merchant.userId);
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -210,7 +297,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [merchantId]);
+  }, [loadIdentity, merchantId]);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
@@ -280,6 +367,15 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
     () => (merchant ? decisionsFor(merchant.status) : []),
     [merchant],
   );
+  const identityEligible = identityUser
+    ? isMerchantIdentityEligible(identityUser)
+    : null;
+  const merchantRolePresent = identityUser
+    ? identityUser.roles.includes("MERCHANT")
+    : null;
+  const merchantRoleExpected = merchant?.status === "ACTIVE";
+  const roleSyncHealthy =
+    merchantRolePresent === null || merchantRoleExpected === merchantRolePresent;
 
   function setView(view: DetailView) {
     const params = new URLSearchParams(searchParams.toString());
@@ -307,19 +403,15 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
 
     setSaving(true);
     try {
-      const updated = (await apiRequest(
-        `admin/merchants/${merchant.id}/status`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            status: decision.status,
-            reasonCode: decision.requiresReason ? reasonCode : null,
-            reasonDetail: reasonDetail.trim() || null,
-          }),
-        },
-      )) as AdminMerchantResponse;
+      const updated = await changeMerchantStatus(merchant.id, {
+        status: decision.status,
+        reasonCode:
+          decision.requiresReason && reasonCode !== "" ? reasonCode : null,
+        reasonDetail: reasonDetail.trim() || null,
+      });
 
       setDetail(updated);
+      void loadIdentity(updated.merchant.userId);
       setDecision(null);
       setReasonCode("");
       setReasonDetail("");
@@ -565,6 +657,162 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                     Bạn không có quyền đọc tài khoản Identity.
                   </p>
                 )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : null}
+
+      {activeView === "readiness" ? (
+        <div className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-black">Merchant order readiness</h2>
+                  <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
+                    Đối chiếu những điều Management đọc được từ Partners và Identity.
+                  </p>
+                </div>
+                {canReadIdentity ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={identityLoading}
+                    onClick={() => void loadIdentity(merchant.userId)}
+                  >
+                    <RefreshCwIcon
+                      className={cn("size-3.5", identityLoading && "animate-spin")}
+                    />
+                    Kiểm tra Identity
+                  </Button>
+                ) : null}
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <ReadinessRow
+                state={merchant.status === "ACTIVE" ? "ok" : "blocked"}
+                title="Merchant status"
+                detail={
+                  merchant.status === "ACTIVE"
+                    ? "Merchant đang ACTIVE."
+                    : `Merchant đang ${merchantStatusLabel(merchant.status)}; order capability sẽ bị chặn.`
+                }
+              />
+              <ReadinessRow
+                state={
+                  identityLoading
+                    ? "pending"
+                    : identityEligible === null
+                      ? "unknown"
+                      : identityEligible
+                        ? "ok"
+                        : "blocked"
+                }
+                title="Identity eligibility"
+                detail={
+                  !canReadIdentity
+                    ? "Cần identity.users.read để đối chiếu account status, email verification và profile status."
+                    : identityError
+                      ? identityError
+                      : identityUser
+                        ? `${identityUser.status} · email ${identityUser.emailVerified ? "verified" : "chưa verified"} · profile ${profileLabels[identityUser.profileStatus]}`
+                        : "Đang chờ dữ liệu Identity."
+                }
+              />
+              <ReadinessRow
+                state={
+                  identityLoading
+                    ? "pending"
+                    : merchantRolePresent === null
+                      ? "unknown"
+                      : roleSyncHealthy
+                        ? "ok"
+                        : "pending"
+                }
+                title="MERCHANT role sync"
+                detail={
+                  !canReadIdentity
+                    ? "Không thể kiểm tra role sync khi thiếu identity.users.read."
+                    : identityError
+                      ? "Identity hiện không đọc được; chưa kết luận được role sync."
+                      : merchantRolePresent === null
+                        ? "Chưa có dữ liệu role."
+                        : roleSyncHealthy
+                          ? merchantRolePresent
+                            ? "Identity đang có role MERCHANT đúng với Merchant ACTIVE."
+                            : "Merchant không ACTIVE và Identity không còn role MERCHANT."
+                          : merchantRoleExpected
+                            ? "Merchant đã ACTIVE nhưng Identity chưa có MERCHANT. Có thể outbox đang chờ xử lý; refresh lại sau vài giây."
+                            : "Merchant không ACTIVE nhưng Identity vẫn còn MERCHANT. Có thể outbox gỡ role đang chờ xử lý."
+                }
+              />
+              <ReadinessRow
+                state="unknown"
+                title="Default pickup address"
+                detail="Partners AdminMerchantResponse hiện chưa expose pickup address hoặc order-capability. Management Web không thể kết luận DEFAULT_PICKUP_REQUIRED từ API admin hiện tại."
+              />
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <UserRoundIcon className="size-4 text-brand" />
+                  <h2 className="text-sm font-black">Identity snapshot</h2>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {!canReadIdentity ? (
+                  <p className="rounded-lg bg-muted p-3 text-xs leading-5 text-muted-foreground">
+                    Bạn không có identity.users.read nên Management chỉ hiển thị trạng thái Partners.
+                  </p>
+                ) : identityLoading && !identityUser ? (
+                  <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                    Đang đọc Identity...
+                  </p>
+                ) : identityUser ? (
+                  <>
+                    <Fact label="Email" value={identityUser.email} />
+                    <Fact label="Account" value={identityUser.status} />
+                    <Fact
+                      label="Profile"
+                      value={profileLabels[identityUser.profileStatus]}
+                    />
+                    <Fact
+                      label="Roles"
+                      value={
+                        identityUser.roles.length
+                          ? identityUser.roles
+                              .map((role) => rolePresentation(role).name)
+                              .join(", ")
+                          : "Không có role"
+                      }
+                    />
+                  </>
+                ) : (
+                  <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs leading-5 text-destructive">
+                    {identityError ?? "Không có Identity snapshot."}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-amber-500/20 bg-amber-500/[0.035]">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <MapPinIcon className="size-4 text-amber-700 dark:text-amber-300" />
+                  <h2 className="text-sm font-black">Giới hạn contract hiện tại</h2>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-xs leading-5 text-muted-foreground">
+                <p>
+                  Backend Partners admin hiện trả merchant profile + status history, chưa trả default pickup hay restrictions của order capability.
+                </p>
+                <p>
+                  Vì vậy UI cố tình hiển thị “không xác định” thay vì đoán. Nếu cần readiness 100%, backend phải bổ sung admin capability snapshot ở một patch riêng.
+                </p>
               </CardContent>
             </Card>
           </div>

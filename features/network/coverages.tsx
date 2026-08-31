@@ -12,10 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
 import {
+  createCoverage,
   getCoverages,
   getProvinces,
   getServiceAreas,
   getWards,
+  updateCoverage,
+  updateCoverageStatus,
 } from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import {
@@ -39,7 +42,6 @@ import {
   StatusBadge,
   selectClassName,
 } from "@/features/network/ui";
-import { apiRequest } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 30;
@@ -181,15 +183,9 @@ export function NetworkCoverage() {
 
     setSaving(true);
     try {
-      const updated = (await apiRequest(
-        selected
-          ? `admin/network/coverages/${selected.id}`
-          : "admin/network/coverages",
-        {
-          method: selected ? "PUT" : "POST",
-          body: JSON.stringify(payload),
-        },
-      )) as ServiceAreaCoverage;
+      const updated = selected
+        ? await updateCoverage(selected.id, payload)
+        : await createCoverage(payload);
       toast.success(selected ? "Đã cập nhật phạm vi phục vụ." : "Đã tạo phạm vi phục vụ.");
       await load();
       edit(updated);
@@ -206,13 +202,10 @@ export function NetworkCoverage() {
 
     setSaving(true);
     try {
-      const updated = (await apiRequest(
-        `admin/network/coverages/${coverage.id}/status`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ active, reason: reason || null }),
-        },
-      )) as ServiceAreaCoverage;
+      const updated = await updateCoverageStatus(coverage.id, {
+        active,
+        reason: reason || null,
+      });
       toast.success(active ? "Đã kích hoạt phạm vi phục vụ." : "Đã ngừng phạm vi phục vụ.");
       setPendingStatus(null);
       await load();

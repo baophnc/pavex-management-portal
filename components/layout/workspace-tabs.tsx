@@ -5,6 +5,7 @@ import {
   CircleDollarSignIcon,
   CircleGaugeIcon,
   ShieldCheckIcon,
+  TruckIcon,
   UserRoundCogIcon,
   XIcon,
 } from "lucide-react";
@@ -54,7 +55,10 @@ function tabTitle(pathname: string) {
   if (pathname === "/pricing") return "Pricing";
   if (pathname === "/pricing/rate-plans") return "Bảng giá";
   if (pathname === "/pricing/simulator") return "Mô phỏng tính cước";
+  if (pathname === "/pricing/quotes") return "Kiểm tra quote";
   if (pathname === "/pricing/audit") return "Nhật ký Pricing";
+  if (pathname === "/shipments") return "Vận đơn";
+  if (/^\/shipments\/[^/]+$/.test(pathname)) return "Chi tiết vận đơn";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);
   return segment
@@ -70,6 +74,7 @@ function tabIcon(path: string) {
   if (path.startsWith("/network/hubs")) return Building2Icon;
   if (path.startsWith("/network")) return CircleGaugeIcon;
   if (path.startsWith("/pricing")) return CircleDollarSignIcon;
+  if (path.startsWith("/shipments")) return TruckIcon;
   if (path === "/account") return UserRoundCogIcon;
   return CircleGaugeIcon;
 }

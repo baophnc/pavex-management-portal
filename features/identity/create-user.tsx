@@ -19,18 +19,15 @@ import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import {
   genders,
-  type CreateUserResponse,
   type Gender,
   type RoleItem,
 } from "@/features/identity/contracts";
-import { apiRequest } from "@/lib/api/client";
-
-const genderLabels: Record<Gender, string> = {
-  UNSPECIFIED: "Chưa xác định",
-  MALE: "Nam",
-  FEMALE: "Nữ",
-  OTHER: "Khác",
-};
+import { createUser, getRoles } from "@/features/identity/api";
+import {
+  genderLabels,
+  isIdentityAssignableRole,
+  rolePresentation,
+} from "@/features/identity/presentation";
 
 function optionalText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return null;
@@ -57,7 +54,7 @@ export function CreateIdentityUser() {
     if (!canReadRoles) return;
     setRolesLoading(true);
     try {
-      const value = (await apiRequest("roles")) as RoleItem[];
+      const value = await getRoles();
       setRoles(value);
       if (value.length === 1) setRoleCode(value[0].code);
     } catch (reason) {
@@ -97,23 +94,26 @@ export function CreateIdentityUser() {
       setError("Hãy chọn vai trò ban đầu.");
       return;
     }
+    if (!isIdentityAssignableRole(normalizedRole)) {
+      setError(
+        "Role MERCHANT do Partners đồng bộ sau xét duyệt Merchant; không tạo/gán thủ công từ Identity UI.",
+      );
+      return;
+    }
 
     setSaving(true);
     setError(null);
     try {
-      const created = (await apiRequest("users", {
-        method: "POST",
-        body: JSON.stringify({
-          email,
-          roleCode: normalizedRole,
-          firstName: optionalText(form.get("firstName")),
-          lastName: optionalText(form.get("lastName")),
-          displayName: optionalText(form.get("displayName")),
-          gender,
-          dateOfBirth: optionalText(form.get("dateOfBirth")),
-          avatarUrl: optionalText(form.get("avatarUrl")),
-        }),
-      })) as CreateUserResponse;
+      const created = await createUser({
+        email,
+        roleCode: normalizedRole,
+        firstName: optionalText(form.get("firstName")),
+        lastName: optionalText(form.get("lastName")),
+        displayName: optionalText(form.get("displayName")),
+        gender,
+        dateOfBirth: optionalText(form.get("dateOfBirth")),
+        avatarUrl: optionalText(form.get("avatarUrl")),
+      });
 
       toast.success("Đã tạo tài khoản và gửi invitation khởi tạo.");
       router.push(`/identity/users/${created.userId}`);
@@ -211,7 +211,7 @@ export function CreateIdentityUser() {
                 </label>
                 <label className="grid gap-2 text-xs font-bold">
                   Ngày sinh
-                  <Input name="dateOfBirth" type="date" max={new Date().toISOString().slice(0, 10)} />
+                  <Input name="dateOfBirth" type="date" />
                 </label>
               </div>
               <label className="grid gap-2 text-xs font-bold">
@@ -234,7 +234,19 @@ export function CreateIdentityUser() {
                   className="h-10 w-full rounded-md border bg-background px-3 text-xs font-bold disabled:opacity-60"
                 >
                   <option value="">{rolesLoading ? "Đang tải vai trò..." : "Chọn vai trò"}</option>
-                  {roles.map((role) => <option key={role.id} value={role.code}>{role.name} ({role.code})</option>)}
+                  {roles.map((role) => {
+                    const presentation = rolePresentation(role.code, role);
+                    return (
+                      <option
+                        key={role.id}
+                        value={role.code}
+                        disabled={!presentation.assignableFromIdentity}
+                      >
+                        {presentation.name} ({role.code})
+                        {!presentation.assignableFromIdentity ? " · quản lý bởi Partners" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               ) : (
                 <label className="grid gap-2 text-xs font-bold">
@@ -245,14 +257,22 @@ export function CreateIdentityUser() {
 
               {selectedRole ? (
                 <div className="rounded-lg border bg-muted/25 p-3">
-                  <p className="text-xs font-black">{selectedRole.name}</p>
+                  <p className="text-xs font-black">{rolePresentation(selectedRole.code, selectedRole).name}</p>
                   <p className="mt-1 font-mono text-[0.65rem] text-brand">{selectedRole.code}</p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{selectedRole.description ?? `${selectedRole.permissions.length} quyền`}</p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    {rolePresentation(selectedRole.code, selectedRole).description}
+                  </p>
+                  <p className="mt-2 text-[0.65rem] font-bold text-muted-foreground">
+                    {selectedRole.permissions.length} quyền · {rolePresentation(selectedRole.code, selectedRole).ownershipLabel}
+                  </p>
                 </div>
               ) : null}
 
               <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
                 Sau khi tạo, backend tự provision invitation credential. Nếu cần gửi lại email invitation, dùng nút ở trang chi tiết user.
+              </div>
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">
+                Không dùng màn Identity để tạo role MERCHANT. Hãy để user hoàn tất Merchant onboarding và duyệt ở Partners; backend sẽ đồng bộ MERCHANT role qua outbox.
               </div>
             </CardContent>
           </Card>

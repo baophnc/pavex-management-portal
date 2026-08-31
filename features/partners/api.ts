@@ -1,0 +1,45 @@
+import type {
+  AdminMerchantResponse,
+  MerchantListResponse,
+  MerchantStatus,
+  MerchantStatusReason,
+} from "@/features/partners/contracts";
+import { apiRequest } from "@/lib/api/client";
+
+export type MerchantSearchParams = {
+  page: number;
+  pageSize: number;
+  status?: MerchantStatus | "";
+  search?: string;
+};
+
+export function searchMerchants(params: MerchantSearchParams) {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    pageSize: String(params.pageSize),
+  });
+  if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+  return apiRequest<MerchantListResponse>(`admin/merchants?${query.toString()}`);
+}
+
+export function getMerchant(merchantId: string) {
+  return apiRequest<AdminMerchantResponse>(`admin/merchants/${merchantId}`);
+}
+
+export function changeMerchantStatus(
+  merchantId: string,
+  input: {
+    status: MerchantStatus;
+    reasonCode: MerchantStatusReason | null;
+    reasonDetail: string | null;
+  },
+) {
+  return apiRequest<AdminMerchantResponse>(
+    `admin/merchants/${merchantId}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
+  );
+}

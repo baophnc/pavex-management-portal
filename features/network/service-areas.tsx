@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getHubs, getRegions, getServiceAreas } from "@/features/network/api";
+import { createServiceArea, getHubs, getRegions, getServiceAreas, updateServiceArea, updateServiceAreaStatus } from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import type {
   Hub,
@@ -33,7 +33,6 @@ import {
   StatusBadge,
   selectClassName,
 } from "@/features/network/ui";
-import { apiRequest } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -146,7 +145,6 @@ export function NetworkServiceAreas() {
     }
 
     const payload = {
-      ...(selected ? {} : { code: draft.code.trim().toUpperCase() }),
       name: draft.name.trim(),
       regionId: draft.regionId,
       primaryHubId: draft.primaryHubId,
@@ -154,15 +152,12 @@ export function NetworkServiceAreas() {
 
     setSaving(true);
     try {
-      const updated = (await apiRequest(
-        selected
-          ? `admin/network/service-areas/${selected.id}`
-          : "admin/network/service-areas",
-        {
-          method: selected ? "PUT" : "POST",
-          body: JSON.stringify(payload),
-        },
-      )) as ServiceArea;
+      const updated = selected
+        ? await updateServiceArea(selected.id, payload)
+        : await createServiceArea({
+            code: draft.code.trim().toUpperCase(),
+            ...payload,
+          });
       toast.success(
         selected ? "Đã cập nhật vùng phục vụ." : "Đã tạo vùng phục vụ.",
       );
@@ -181,13 +176,10 @@ export function NetworkServiceAreas() {
 
     setSaving(true);
     try {
-      const updated = (await apiRequest(
-        `admin/network/service-areas/${area.id}/status`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ active, reason: reason || null }),
-        },
-      )) as ServiceArea;
+      const updated = await updateServiceAreaStatus(area.id, {
+        active,
+        reason: reason || null,
+      });
       toast.success(
         active ? "Đã kích hoạt vùng phục vụ." : "Đã ngừng vùng phục vụ.",
       );

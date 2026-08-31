@@ -12,16 +12,24 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getHubs, getProvinces, getWards, planRoute } from "@/features/network/api";
+import {
+  getHubs,
+  getProvinces,
+  getWards,
+  planRoute,
+  resolveNetworkLocation,
+} from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import type {
   Hub,
   Province,
   RoutePlan,
   RoutePlanningMode,
+  ServiceAreaResolution,
   Ward,
 } from "@/features/network/contracts";
 import {
+  coverageTierLabel,
   planningModeLabel,
   planningModes,
   routeSourceLabel,
@@ -48,6 +56,8 @@ export function NetworkRoutePlanner() {
   const [loadingDestination, setLoadingDestination] = useState(false);
   const [planning, setPlanning] = useState(false);
   const [plan, setPlan] = useState<RoutePlan | null>(null);
+  const [originResolution, setOriginResolution] = useState<ServiceAreaResolution | null>(null);
+  const [destinationResolution, setDestinationResolution] = useState<ServiceAreaResolution | null>(null);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
@@ -112,8 +122,17 @@ export function NetworkRoutePlanner() {
 
     setPlanning(true);
     setPlan(null);
+    setOriginResolution(null);
+    setDestinationResolution(null);
     try {
-      setPlan(await planRoute(params));
+      const [nextPlan, origin, destination] = await Promise.all([
+        planRoute(params),
+        resolveNetworkLocation(originProvince, originWard),
+        resolveNetworkLocation(destinationProvince, destinationWard),
+      ]);
+      setPlan(nextPlan);
+      setOriginResolution(origin);
+      setDestinationResolution(destination);
     } catch (reason) {
       toast.error(networkErrorMessage(reason, "Không tìm được tuyến phù hợp."));
     } finally {
@@ -171,6 +190,28 @@ export function NetworkRoutePlanner() {
             <div className="grid min-h-96 place-items-center p-6 text-center"><div><RouteIcon className="mx-auto size-8 text-muted-foreground" /><p className="mt-3 text-sm font-black">Chưa có kết quả</p><p className="mt-1 text-xs text-muted-foreground">Chọn điểm gửi, điểm nhận rồi bấm Tìm tuyến.</p></div></div>
           ) : (
             <CardContent className="space-y-5">
+              {originResolution && destinationResolution ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {[
+                    ["Điểm gửi", originResolution],
+                    ["Điểm nhận", destinationResolution],
+                  ].map(([label, resolution]) => {
+                    const item = resolution as ServiceAreaResolution;
+                    return (
+                      <div key={String(label)} className="rounded-xl border bg-muted/20 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[0.62rem] font-black uppercase tracking-[0.1em] text-muted-foreground">{String(label)}</p>
+                          <span className="rounded-full border px-2 py-1 text-[0.6rem] font-black">{coverageTierLabel(item.coverageTier)}</span>
+                        </div>
+                        <p className="mt-2 text-sm font-black">{item.serviceAreaName}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{item.regionName} · {item.primaryHubName}</p>
+                        <p className="mt-2 font-mono text-[0.62rem] text-muted-foreground">Khớp theo {item.matchedBy === "WARD" ? "phường/xã" : "tỉnh/thành"}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
               <div className="grid overflow-hidden rounded-xl border sm:grid-cols-2 lg:grid-cols-4">
                 <div className="p-3"><p className="text-[0.6rem] font-black uppercase text-muted-foreground">Tuyến</p><p className="mt-1 text-sm font-black">{hubName(plan.originHubId, "Điểm gửi")} → {hubName(plan.destinationHubId, "Điểm nhận")}</p></div>
                 <div className="border-t p-3 sm:border-l sm:border-t-0"><p className="text-[0.6rem] font-black uppercase text-muted-foreground">Tổng thời gian</p><p className="mt-1 text-sm font-black">{plan.totalJourneyMinutes.toLocaleString("vi-VN")} phút</p></div>

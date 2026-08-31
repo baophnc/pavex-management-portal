@@ -233,3 +233,59 @@ export function auditActionLabel(action: PricingAuditAction) {
       return "Xóa bản nháp";
   }
 }
+
+export type PricingQuoteCoverageTier = "STANDARD" | "REMOTE" | "ISLAND";
+
+export type PricingQuoteLocationSnapshot = {
+  provinceCode: string;
+  wardCode: string;
+  serviceAreaId: string;
+  regionId: string;
+  primaryHubId: string;
+  coverageTier: PricingQuoteCoverageTier;
+};
+
+export type PricingQuoteParcelSnapshot = {
+  sequence: number;
+  actualWeightKg: number;
+  volumetricWeightKg: number;
+  chargeableWeightKg: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+};
+
+export type PricingQuoteFeeSnapshot = {
+  baseFee: number;
+  additionalWeightFee: number;
+  areaSurcharge: number;
+  codFee: number;
+  insuranceFee: number;
+  total: number;
+};
+
+export type PricingQuoteSnapshot = {
+  quoteId: string;
+  requestId: string;
+  ratePlanId: string;
+  rateCode: string;
+  rateRevision: number;
+  rateVersion: string;
+  currency: string;
+  serviceLevel: ServiceLevel;
+  pricingZone: PricingZone;
+  origin: PricingQuoteLocationSnapshot;
+  destination: PricingQuoteLocationSnapshot;
+  actualWeightKg: number;
+  volumetricWeightKg: number;
+  chargeableWeightKg: number;
+  parcelCount: number;
+  parcels: PricingQuoteParcelSnapshot[];
+  codAmount: number;
+  declaredValue: number;
+  fees: PricingQuoteFeeSnapshot;
+  estimatedMinDays: number;
+  estimatedMaxDays: number;
+  createdAt: string;
+  expiresAt: string;
+};

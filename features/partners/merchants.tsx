@@ -14,19 +14,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  merchantReasonLabel,
   merchantStatuses,
   merchantStatusLabel,
   type MerchantListResponse,
   type MerchantProfile,
   type MerchantStatus,
 } from "@/features/partners/contracts";
-import { apiRequest } from "@/lib/api/client";
+import { searchMerchants } from "@/features/partners/api";
 import { cn, formatDateTime } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -123,6 +124,31 @@ function MerchantCard({ merchant }: { merchant: MerchantProfile }) {
   );
 }
 
+function QuickStatusFilter({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1.5 text-[0.65rem] font-black transition",
+        active
+          ? "border-brand/30 bg-brand/10 text-brand"
+          : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function MerchantManagement() {
   const pathname = usePathname();
   const router = useRouter();
@@ -136,22 +162,19 @@ export function MerchantManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const endpoint = useMemo(() => {
-    const params = new URLSearchParams({
-      page: String(page),
-      pageSize: String(PAGE_SIZE),
-    });
-    if (status) params.set("status", status);
-    if (query) params.set("search", query);
-    return `admin/merchants?${params.toString()}`;
-  }, [page, query, status]);
-
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      setResult((await apiRequest(endpoint)) as MerchantListResponse);
+      setResult(
+        await searchMerchants({
+          page,
+          pageSize: PAGE_SIZE,
+          status,
+          search: query,
+        }),
+      );
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -161,7 +184,7 @@ export function MerchantManagement() {
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, [page, query, status]);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
@@ -331,6 +354,36 @@ export function MerchantManagement() {
               <div className="hidden lg:block" />
             )}
           </form>
+
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Lọc nhanh Merchant">
+            <QuickStatusFilter
+              active={!status}
+              label="Tất cả"
+              onClick={() => updateQuery({ status: null, page: 1 })}
+            />
+            <QuickStatusFilter
+              active={status === "PENDING_VERIFICATION"}
+              label="Chờ xét duyệt"
+              onClick={() =>
+                updateQuery({ status: "PENDING_VERIFICATION", page: 1 })
+              }
+            />
+            <QuickStatusFilter
+              active={status === "ACTIVE"}
+              label="Đang hoạt động"
+              onClick={() => updateQuery({ status: "ACTIVE", page: 1 })}
+            />
+            <QuickStatusFilter
+              active={status === "SUSPENDED"}
+              label="Tạm ngưng"
+              onClick={() => updateQuery({ status: "SUSPENDED", page: 1 })}
+            />
+            <QuickStatusFilter
+              active={status === "REJECTED"}
+              label="Đã từ chối"
+              onClick={() => updateQuery({ status: "REJECTED", page: 1 })}
+            />
+          </div>
         </div>
 
         {error ? (
@@ -399,6 +452,11 @@ export function MerchantManagement() {
                       </td>
                       <td className="px-4 py-3.5 align-top">
                         <StatusBadge status={merchant.status} />
+                        {merchant.statusReasonCode ? (
+                          <p className="mt-1.5 max-w-48 text-[0.62rem] leading-4 text-muted-foreground">
+                            {merchantReasonLabel(merchant.statusReasonCode)}
+                          </p>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3.5 align-top">
                         <p className="font-bold">{formatDateTime(merchant.updatedAt)}</p>

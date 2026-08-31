@@ -1,6 +1,7 @@
 "use client";
 
-import { CalculatorIcon, LoaderCircleIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { ArrowUpRightIcon, CalculatorIcon, LoaderCircleIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -177,6 +178,15 @@ export function PricingSimulator() {
                     <div className="flex justify-between gap-3"><span className="text-muted-foreground">Phụ phí khu vực</span><strong>{money(option.areaSurcharge)}</strong></div>
                     <div className="flex justify-between gap-3"><span className="text-muted-foreground">Phí COD</span><strong>{money(option.codFee)}</strong></div>
                     <div className="flex justify-between gap-3"><span className="text-muted-foreground">Phí bảo hiểm</span><strong>{money(option.insuranceFee)}</strong></div>
+                  </div>
+                  <div className="border-t px-4 py-3">
+                    <Link
+                      href={`/pricing/quotes?quoteId=${encodeURIComponent(option.quoteId)}`}
+                      className="inline-flex items-center gap-1 text-xs font-black text-brand hover:underline"
+                    >
+                      Kiểm tra snapshot quote
+                      <ArrowUpRightIcon className="size-3.5" />
+                    </Link>
                   </div>
                 </Card>
               ))}

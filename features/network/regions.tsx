@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getRegions } from "@/features/network/api";
+import { createRegion, getRegions, updateRegion, updateRegionStatus } from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import type { NetworkRegion } from "@/features/network/contracts";
 import {
@@ -25,7 +25,6 @@ import {
   NetworkPageHeader,
   StatusBadge,
 } from "@/features/network/ui";
-import { apiRequest } from "@/lib/api/client";
 import { cn, formatDateTime } from "@/lib/utils";
 
 export function NetworkRegions() {
@@ -75,13 +74,9 @@ export function NetworkRegions() {
 
     setSaving(true);
     try {
-      const updated = (await apiRequest(
-        selected ? `admin/network/regions/${selected.id}` : "admin/network/regions",
-        {
-          method: selected ? "PUT" : "POST",
-          body: JSON.stringify(selected ? { name } : { code, name }),
-        },
-      )) as NetworkRegion;
+      const updated = selected
+        ? await updateRegion(selected.id, { name })
+        : await createRegion({ code, name });
 
       toast.success(selected ? "Đã cập nhật vùng." : "Đã tạo vùng.");
       setCreating(false);
@@ -100,10 +95,7 @@ export function NetworkRegions() {
 
     setSaving(true);
     try {
-      await apiRequest(`admin/network/regions/${region.id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ active, reason: reason || null }),
-      });
+      await updateRegionStatus(region.id, { active, reason: reason || null });
       toast.success(active ? "Đã kích hoạt vùng." : "Đã ngừng hoạt động vùng.");
       setPendingStatus(null);
       await load();

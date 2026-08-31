@@ -10,6 +10,7 @@ import {
   ShieldCheckIcon,
   UserRoundCogIcon,
   UsersRoundIcon,
+  TruckIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -25,6 +26,10 @@ const PATHS = {
   merchants: "admin/merchants?page=1&pageSize=1",
   pendingMerchants:
     "admin/merchants?page=1&pageSize=1&status=PENDING_VERIFICATION",
+  activeShipments: "admin/shipments?limit=1&lifecycleStatus=ACTIVE",
+  awaitingPickup: "admin/shipments?limit=1&status=AWAITING_PICKUP",
+  outForDelivery: "admin/shipments?limit=1&status=OUT_FOR_DELIVERY",
+  deliveryFailed: "admin/shipments?limit=1&status=DELIVERY_FAILED",
 } as const;
 
 type Metric = {
@@ -68,6 +73,38 @@ const metrics: Metric[] = [
     permission: "partners.merchants.read",
     hint: "Xử lý hồ sơ đang chờ",
     icon: UserRoundCogIcon,
+  },
+  {
+    key: "activeShipments",
+    label: "Vận đơn đang hoạt động",
+    href: "/shipments?lifecycleStatus=ACTIVE",
+    permission: "shipments.admin.read",
+    hint: "Mở vận đơn đang vận hành",
+    icon: TruckIcon,
+  },
+  {
+    key: "awaitingPickup",
+    label: "Chờ lấy hàng",
+    href: "/shipments?status=AWAITING_PICKUP",
+    permission: "shipments.admin.read",
+    hint: "Theo dõi backlog lấy hàng",
+    icon: TruckIcon,
+  },
+  {
+    key: "outForDelivery",
+    label: "Đang giao",
+    href: "/shipments?status=OUT_FOR_DELIVERY",
+    permission: "shipments.admin.read",
+    hint: "Theo dõi chặng giao cuối",
+    icon: TruckIcon,
+  },
+  {
+    key: "deliveryFailed",
+    label: "Giao thất bại",
+    href: "/shipments?status=DELIVERY_FAILED",
+    permission: "shipments.admin.read",
+    hint: "Ưu tiên xử lý ngoại lệ giao",
+    icon: TruckIcon,
   },
 ];
 
@@ -134,21 +171,20 @@ export function DashboardOverview() {
   }, [load]);
 
   const pendingMerchant = values.pendingMerchants;
+  const deliveryFailed = values.deliveryFailed;
   const identityTotal = values.users;
 
   const priorityText = useMemo(() => {
-    if (!hasPermission("partners.merchants.read")) {
-      return "Tài khoản hiện tại không có quyền đọc hàng chờ Merchant.";
-    }
     if (loading) return "Đang tải dữ liệu mới nhất từ backend.";
-    if (failed.includes("pendingMerchants")) {
-      return "Chưa đọc được hàng chờ Merchant. Có thể tải lại để thử lại.";
+    if (hasPermission("shipments.admin.read") && typeof deliveryFailed === "number" && deliveryFailed > 0) {
+      return `Có ${deliveryFailed.toLocaleString("vi-VN")} vận đơn đang ở trạng thái giao thất bại cần theo dõi.`;
     }
-    if (typeof pendingMerchant === "number" && pendingMerchant > 0) {
+    if (hasPermission("partners.merchants.read") && typeof pendingMerchant === "number" && pendingMerchant > 0) {
       return `Có ${pendingMerchant.toLocaleString("vi-VN")} hồ sơ Merchant đang chờ xét duyệt.`;
     }
-    return "Không có hồ sơ Merchant đang chờ xét duyệt.";
-  }, [failed, hasPermission, loading, pendingMerchant]);
+    if (failed.length > 0) return "Một số chỉ số vận hành chưa tải được. Có thể làm mới để thử lại.";
+    return "Không có cảnh báo ưu tiên từ các module bạn được phép xem.";
+  }, [deliveryFailed, failed.length, hasPermission, loading, pendingMerchant]);
 
   return (
     <div className="space-y-5">
@@ -178,8 +214,8 @@ export function DashboardOverview() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Management Portal chỉ hiển thị module backend mà tài khoản hiện
-              tại được cấp quyền: Identity, Partners, Network và Pricing. Các
-              phase tiếp theo sẽ bổ sung Shipment và Operations vào cùng nền này.
+              tại được cấp quyền: Identity, Partners, Shipment, Network và Pricing.
+              Operations sẽ được bổ sung khi backend workforce/assignment hoàn thiện.
             </p>
           </div>
 
@@ -188,7 +224,15 @@ export function DashboardOverview() {
               Ưu tiên hiện tại
             </p>
             <p className="mt-2 text-sm font-black leading-5">{priorityText}</p>
-            {hasPermission("partners.merchants.read") ? (
+            {hasPermission("shipments.admin.read") && typeof deliveryFailed === "number" && deliveryFailed > 0 ? (
+              <Link
+                href="/shipments?status=DELIVERY_FAILED"
+                className="mt-4 inline-flex items-center gap-1 text-xs font-black text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+              >
+                Mở vận đơn giao thất bại
+                <ArrowUpRightIcon className="size-3.5" />
+              </Link>
+            ) : hasPermission("partners.merchants.read") ? (
               <Link
                 href="/partners/merchants?status=PENDING_VERIFICATION"
                 className="mt-4 inline-flex items-center gap-1 text-xs font-black text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
@@ -237,7 +281,7 @@ export function DashboardOverview() {
       ) : null}
 
       <section
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4"
         aria-label="Chỉ số quản trị"
       >
         {metrics.map((metric) => {
@@ -340,6 +384,15 @@ export function DashboardOverview() {
               >
                 <CircleDollarSignIcon className="size-4 text-brand" />
                 <span className="text-xs font-black">Quản lý Pricing</span>
+              </Link>
+            ) : null}
+            {hasPermission("shipments.admin.read") ? (
+              <Link
+                href="/shipments"
+                className="flex items-center gap-3 rounded-xl border bg-background p-3 transition hover:bg-muted"
+              >
+                <TruckIcon className="size-4 text-brand" />
+                <span className="text-xs font-black">Điều hành vận đơn</span>
               </Link>
             ) : null}
             <Link

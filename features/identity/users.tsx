@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,36 +25,19 @@ import {
   type AccountStatus,
   type ProfileStatus,
   type RoleItem,
-  type UserListItem,
   type UserPage,
 } from "@/features/identity/contracts";
-import { apiRequest } from "@/lib/api/client";
+import { getRoles, searchUsers } from "@/features/identity/api";
+import {
+  accountLabels,
+  displayUserName,
+  initialsOf,
+  profileLabels,
+  roleLabel,
+} from "@/features/identity/presentation";
 import { cn, formatDateTime } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
-
-const accountLabels: Record<AccountStatus, string> = {
-  ACTIVE: "Hoạt động",
-  SUSPENDED: "Tạm khóa",
-  DISABLED: "Vô hiệu hóa",
-};
-
-const profileLabels: Record<ProfileStatus, string> = {
-  COMPLETED: "Đã hoàn tất",
-  INCOMPLETE: "Chưa hoàn tất",
-  PENDING_VERIFICATION: "Chờ xác minh",
-  REJECTED: "Bị từ chối",
-};
-
-const roleLabels: Record<string, string> = {
-  ADMIN: "Quản trị hệ thống",
-  OPERATIONS_MANAGER: "Quản lý vận hành",
-  HUB_MANAGER: "Quản lý bưu cục",
-  WAREHOUSE_STAFF: "Nhân viên kho",
-  DRIVER: "Nhân viên giao nhận",
-  MERCHANT: "Đối tác gửi hàng",
-  CUSTOMER: "Khách hàng",
-};
 
 function parseAccountStatus(value: string | null): AccountStatus | "" {
   return accountStatuses.includes(value as AccountStatus)
@@ -66,13 +49,6 @@ function parseProfileStatus(value: string | null): ProfileStatus | "" {
   return profileStatuses.includes(value as ProfileStatus)
     ? (value as ProfileStatus)
     : "";
-}
-
-function displayUserName(user: UserListItem) {
-  return (
-    user.displayName ??
-    (`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Chưa đặt tên")
-  );
 }
 
 function accountBadge(status: AccountStatus) {
@@ -139,23 +115,20 @@ export function IdentityUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const endpoint = useMemo(() => {
-    const params = new URLSearchParams({
-      page: String(page),
-      pageSize: String(PAGE_SIZE),
-    });
-    if (search) params.set("search", search);
-    if (role) params.set("role", role);
-    if (status) params.set("status", status);
-    if (profileStatus) params.set("profileStatus", profileStatus);
-    return `users?${params.toString()}`;
-  }, [page, profileStatus, role, search, status]);
-
   const loadUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setResult((await apiRequest(endpoint)) as UserPage);
+      setResult(
+        await searchUsers({
+          page,
+          pageSize: PAGE_SIZE,
+          search,
+          role,
+          status,
+          profileStatus,
+        }),
+      );
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -165,7 +138,7 @@ export function IdentityUsers() {
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, [page, profileStatus, role, search, status]);
 
   const loadRoles = useCallback(async () => {
     if (!canReadRoles) {
@@ -174,8 +147,8 @@ export function IdentityUsers() {
     }
 
     try {
-      const payload = await apiRequest("roles");
-      setRoles(Array.isArray(payload) ? (payload as RoleItem[]) : []);
+      const payload = await getRoles();
+      setRoles(Array.isArray(payload) ? payload : []);
     } catch {
       setRoles([]);
     }
@@ -336,7 +309,7 @@ export function IdentityUsers() {
               </option>
               {roles.map((item) => (
                 <option key={item.id} value={item.code}>
-                  {roleLabels[item.code] ?? item.name} ({item.code})
+                  {roleLabel(item.code)} ({item.code})
                 </option>
               ))}
             </select>
@@ -464,7 +437,7 @@ export function IdentityUsers() {
                               className="rounded-md border bg-muted/30 px-2 py-1 text-[0.65rem] font-bold"
                               title={roleCode}
                             >
-                              {roleLabels[roleCode] ?? roleCode}
+                              {roleLabel(roleCode)}
                             </span>
                           ))
                         ) : (
@@ -532,15 +505,6 @@ export function IdentityUsers() {
       </Card>
     </div>
   );
-}
-
-function initialsOf(user: UserListItem) {
-  const source = displayUserName(user) || user.email;
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]?.[0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
-  }
-  return source.slice(0, 2).toUpperCase();
 }
 
 function Metric({

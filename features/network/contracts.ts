@@ -404,3 +404,111 @@ export function auditActionLabel(action: NetworkAuditAction) {
     case "RELEASED": return "Đã giải phóng tải";
   }
 }
+
+export type CreateNetworkRegionPayload = {
+  code: string;
+  name: string;
+};
+
+export type UpdateNetworkRegionPayload = {
+  name: string;
+};
+
+export type NetworkStatusPayload = {
+  active: boolean;
+  reason?: string | null;
+};
+
+export type CreateHubPayload = {
+  code: string;
+  name: string;
+  type: HubType;
+  addressLine: string;
+  provinceCode: string;
+  wardCode: string;
+  parentHubId?: string | null;
+  publicVisible?: boolean;
+  publicName?: string | null;
+};
+
+export type UpdateHubPayload = Omit<CreateHubPayload, "code">;
+
+export type CreateServiceAreaPayload = {
+  code: string;
+  name: string;
+  regionId: string;
+  primaryHubId: string;
+};
+
+export type UpdateServiceAreaPayload = Omit<CreateServiceAreaPayload, "code">;
+
+export type CoveragePayload = {
+  serviceAreaId: string;
+  provinceCode: string;
+  wardCode?: string | null;
+  tier: CoverageTier;
+};
+
+export type CreateHubLanePayload = {
+  code: string;
+  fromHubId: string;
+  toHubId: string;
+  transportMode: TransportMode;
+  estimatedTransitMinutes: number;
+  distanceKm?: number | null;
+  maxShipmentWeightKg: number;
+};
+
+export type UpdateHubLanePayload = Omit<CreateHubLanePayload, "code">;
+
+export type CreateLaneSchedulePayload = {
+  departureTime: string;
+  daysOfWeek: string[];
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  capacityKg: number;
+  active?: boolean;
+};
+
+export type UpdateLaneSchedulePayload = Omit<CreateLaneSchedulePayload, "active">;
+
+export type CreateRouteTemplatePayload = {
+  code: string;
+  name: string;
+  description?: string | null;
+  originHubId: string;
+  destinationHubId: string;
+  priority: number;
+  laneIds: string[];
+};
+
+export type UpdateRouteTemplatePayload = Omit<CreateRouteTemplatePayload, "code">;
+
+export type CoverageMatch = "WARD" | "PROVINCE";
+
+export type ServiceAreaResolution = {
+  serviceAreaId: string;
+  serviceAreaCode: string;
+  serviceAreaName: string;
+  regionId: string;
+  regionCode: string;
+  regionName: string;
+  primaryHubId: string;
+  primaryHubCode: string;
+  primaryHubName: string;
+  coverageId: string;
+  coverageTier: CoverageTier;
+  matchedBy: CoverageMatch;
+};
+
+export type ReserveLaneCapacityPayload = {
+  shipmentId: string;
+  routeRevision: number;
+  originProvinceCode: string;
+  originWardCode: string;
+  destinationProvinceCode: string;
+  destinationWardCode: string;
+  shipmentWeightKg: number;
+  readyAt: string;
+  mode?: RoutePlanningMode;
+};

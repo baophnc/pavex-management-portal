@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getHubs, getProvinces, getWards } from "@/features/network/api";
+import { createHub, getHubs, getProvinces, getWards, updateHub, updateHubStatus } from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import {
   hubTypeLabel,
@@ -36,7 +36,6 @@ import {
   StatusBadge,
   selectClassName,
 } from "@/features/network/ui";
-import { apiRequest } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -196,7 +195,6 @@ export function NetworkHubs() {
     }
 
     const payload = {
-      ...(selected ? {} : { code: draft.code.trim().toUpperCase() }),
       name: draft.name.trim(),
       type: draft.type,
       addressLine: draft.addressLine.trim(),
@@ -209,13 +207,9 @@ export function NetworkHubs() {
 
     setSaving(true);
     try {
-      const updated = (await apiRequest(
-        selected ? `admin/network/hubs/${selected.id}` : "admin/network/hubs",
-        {
-          method: selected ? "PUT" : "POST",
-          body: JSON.stringify(payload),
-        },
-      )) as Hub;
+      const updated = selected
+        ? await updateHub(selected.id, payload)
+        : await createHub({ code: draft.code.trim().toUpperCase(), ...payload });
       toast.success(selected ? "Đã cập nhật điểm trung chuyển." : "Đã tạo điểm trung chuyển.");
       await load();
       edit(updated);
@@ -232,10 +226,10 @@ export function NetworkHubs() {
 
     setSaving(true);
     try {
-      const updated = (await apiRequest(`admin/network/hubs/${hub.id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ active, reason: reason || null }),
-      })) as Hub;
+      const updated = await updateHubStatus(hub.id, {
+        active,
+        reason: reason || null,
+      });
       toast.success(active ? "Đã kích hoạt điểm trung chuyển." : "Đã ngừng điểm trung chuyển.");
       setPendingStatus(null);
       await load();

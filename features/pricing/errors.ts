@@ -19,6 +19,12 @@ const messages: Record<string, string> = {
   rate_plan_changed: "Bảng giá vừa được người khác thay đổi. Hãy tải lại dữ liệu trước khi lưu tiếp.",
   pricing_conflict: "Thay đổi này xung đột với dữ liệu bảng giá hiện có.",
   location_required: "Vui lòng chọn đầy đủ tỉnh/thành và xã/phường của điểm gửi, điểm nhận.",
+  invalid_location: "Địa chỉ không hợp lệ theo danh mục hoặc không khớp tỉnh/thành đã chọn.",
+  location_not_covered: "Điểm gửi hoặc nhận chưa nằm trong phạm vi Network đang phục vụ.",
+  network_authentication_failed: "Pricing không xác thực được với Network. Hãy kiểm tra service JWT giữa Pricing và Network.",
+  network_authorization_failed: "Network từ chối quyền của Pricing. Hãy kiểm tra service JWT scope/audience.",
+  network_invalid_response: "Network trả dữ liệu không hợp lệ cho Pricing. Hãy kiểm tra contract giữa hai service.",
+  network_unavailable: "Pricing không kết nối được Network. Hãy kiểm tra Network service rồi thử lại.",
   parcel_required: "Cần ít nhất một kiện hàng để tính cước.",
   invalid_parcel_count: "Mỗi lần tính cước hỗ trợ từ 1 đến 20 kiện hàng.",
   invalid_weight: "Khối lượng kiện hàng không nằm trong giới hạn của bảng giá hiện tại.",
@@ -30,6 +36,8 @@ const messages: Record<string, string> = {
   audit_log_not_found: "Không tìm thấy bản ghi nhật ký Pricing.",
   pricing_calculation_overflow: "Không thể tính cước an toàn với dữ liệu đã nhập.",
   invalid_request: "Dữ liệu nhập chưa hợp lệ hoặc vượt giới hạn Pricing hỗ trợ.",
+  pricing_quote_not_found: "Không tìm thấy quote này. Kiểm tra lại Quote ID hoặc dữ liệu Pricing.",
+  pricing_quote_expired: "Quote đã hết hạn. Admin vẫn có thể xem snapshot nhưng Shipment mới không thể sử dụng quote này.",
 };
 
 export function pricingErrorMessage(reason: unknown, fallback = "Thao tác Pricing thất bại.") {

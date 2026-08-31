@@ -12,6 +12,7 @@ import {
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   RefreshCwIcon,
+  TruckIcon,
   ShieldAlertIcon,
   ShieldCheckIcon,
   SunIcon,
@@ -180,6 +181,17 @@ const navigationSections: NavigationSection[] = [
     ],
   },
   {
+    label: "Vận hành",
+    items: [
+      {
+        href: "/shipments",
+        label: "Vận đơn",
+        icon: TruckIcon,
+        permission: "shipments.admin.read",
+      },
+    ],
+  },
+  {
     label: "Pricing",
     items: [
       {
@@ -198,6 +210,12 @@ const navigationSections: NavigationSection[] = [
         href: "/pricing/simulator",
         label: "Mô phỏng tính cước",
         icon: CircleGaugeIcon,
+        permissionsAny: ["pricing.read", "pricing.manage"],
+      },
+      {
+        href: "/pricing/quotes",
+        label: "Kiểm tra quote",
+        icon: CircleDollarSignIcon,
         permissionsAny: ["pricing.read", "pricing.manage"],
       },
       {
