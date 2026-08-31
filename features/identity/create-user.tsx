@@ -96,7 +96,7 @@ export function CreateIdentityUser() {
     }
     if (!isIdentityAssignableRole(normalizedRole)) {
       setError(
-        "Role MERCHANT do Partners đồng bộ sau xét duyệt Merchant; không tạo/gán thủ công từ Identity UI.",
+        "Vai trò Đối tác gửi hàng được đồng bộ sau khi hồ sơ đối tác được duyệt; không gán thủ công tại màn tài khoản.",
       );
       return;
     }
@@ -115,7 +115,7 @@ export function CreateIdentityUser() {
         avatarUrl: optionalText(form.get("avatarUrl")),
       });
 
-      toast.success("Đã tạo tài khoản và gửi invitation khởi tạo.");
+      toast.success("Đã tạo tài khoản và chuẩn bị lời mời kích hoạt.");
       router.push(`/identity/users/${created.userId}`);
       router.refresh();
     } catch (reason) {
@@ -135,7 +135,7 @@ export function CreateIdentityUser() {
             <ShieldCheckIcon className="mx-auto size-10 text-muted-foreground" />
             <h1 className="mt-4 text-lg font-black">Không đủ quyền tạo tài khoản</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Backend yêu cầu đồng thời identity.users.create và identity.roles.assign.
+              Bạn cần đồng thời quyền tạo tài khoản và quyền phân vai để thực hiện thao tác này.
             </p>
             <Link
               href="/identity/users"
@@ -155,7 +155,7 @@ export function CreateIdentityUser() {
         <div className="flex items-start gap-3 bg-gradient-to-br from-brand/[0.08] via-card to-card p-4 sm:p-5">
           <Link
             href="/identity/users"
-            aria-label="Quay lại danh sách user"
+            aria-label="Quay lại danh sách tài khoản"
             className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-md border bg-background transition hover:bg-muted"
           >
             <ArrowLeftIcon className="size-4" />
@@ -165,11 +165,11 @@ export function CreateIdentityUser() {
           </span>
           <div>
             <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">
-              Identity / Create
+              Tài khoản / Tạo mới
             </p>
             <h1 className="mt-1 text-xl font-black sm:text-2xl">Tạo tài khoản mới</h1>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-              Backend tạo account, gán role ban đầu và provision invitation. Management không đặt mật khẩu thay người dùng.
+              Hệ thống tạo tài khoản, gán vai trò ban đầu và chuẩn bị lời mời kích hoạt. Quản trị viên không đặt mật khẩu thay người dùng.
             </p>
           </div>
         </div>
@@ -182,7 +182,7 @@ export function CreateIdentityUser() {
             <CardContent className="grid gap-4">
               <label className="grid gap-2 text-xs font-bold">
                 Email <span className="text-destructive">*</span>
-                <Input name="email" type="email" required maxLength={255} placeholder="user@pavex.vn" />
+                <Input name="email" type="email" required maxLength={255} placeholder="nguoidung@pavex.vn" />
               </label>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-2 text-xs font-bold">
@@ -242,23 +242,23 @@ export function CreateIdentityUser() {
                         value={role.code}
                         disabled={!presentation.assignableFromIdentity}
                       >
-                        {presentation.name} ({role.code})
-                        {!presentation.assignableFromIdentity ? " · quản lý bởi Partners" : ""}
+                        {presentation.name}
+                        {!presentation.assignableFromIdentity ? " · đồng bộ tự động" : ""}
                       </option>
                     );
                   })}
                 </select>
               ) : (
-                <label className="grid gap-2 text-xs font-bold">
-                  Role code
-                  <Input value={roleCode} onChange={(event) => setRoleCode(event.target.value.toUpperCase())} placeholder="ADMIN" />
-                </label>
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">
+                  Tài khoản hiện tại chưa có quyền xem danh mục vai trò nên
+                  không thể chọn vai trò ban đầu. Hãy bổ sung quyền xem vai trò
+                  trước khi tạo tài khoản.
+                </div>
               )}
 
               {selectedRole ? (
                 <div className="rounded-lg border bg-muted/25 p-3">
                   <p className="text-xs font-black">{rolePresentation(selectedRole.code, selectedRole).name}</p>
-                  <p className="mt-1 font-mono text-[0.65rem] text-brand">{selectedRole.code}</p>
                   <p className="mt-2 text-xs leading-5 text-muted-foreground">
                     {rolePresentation(selectedRole.code, selectedRole).description}
                   </p>
@@ -269,10 +269,10 @@ export function CreateIdentityUser() {
               ) : null}
 
               <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
-                Sau khi tạo, backend tự provision invitation credential. Nếu cần gửi lại email invitation, dùng nút ở trang chi tiết user.
+                Sau khi tạo, hệ thống chuẩn bị thông tin kích hoạt tài khoản. Nếu cần gửi lại thư mời, dùng nút ở trang chi tiết tài khoản.
               </div>
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">
-                Không dùng màn Identity để tạo role MERCHANT. Hãy để user hoàn tất Merchant onboarding và duyệt ở Partners; backend sẽ đồng bộ MERCHANT role qua outbox.
+                Không dùng màn tài khoản để cấp vai trò Đối tác gửi hàng. Người dùng cần hoàn tất hồ sơ đối tác và được duyệt tại mục Đối tác; hệ thống sẽ đồng bộ vai trò này tự động.
               </div>
             </CardContent>
           </Card>

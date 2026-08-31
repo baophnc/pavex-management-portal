@@ -46,7 +46,7 @@ import {
   groupPermissionCodes,
   initialsOf,
   isIdentityAssignableRole,
-  permissionLabels,
+  permissionLabel,
   profileLabels,
   rolePresentation,
 } from "@/features/identity/presentation";
@@ -202,7 +202,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
     if (
       status !== "ACTIVE" &&
       !window.confirm(
-        `Chuyển tài khoản sang ${accountLabels[status]}? Backend sẽ thu hồi session đang hoạt động.`,
+        `Chuyển tài khoản sang ${accountLabels[status]}? Hệ thống sẽ thu hồi các phiên đăng nhập đang hoạt động.`,
       )
     ) {
       setStatus(user.status);
@@ -231,16 +231,16 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
     setSaving("assign-role");
     try {
       if (!isIdentityAssignableRole(selectedRole)) {
-        toast.error("Role MERCHANT phải được đồng bộ từ Partners, không gán thủ công.");
+        toast.error("Vai trò Đối tác gửi hàng được đồng bộ theo trạng thái hồ sơ đối tác, không gán thủ công.");
         return;
       }
       await assignUserRole(user.userId, selectedRole);
-      toast.success(`Đã gán role ${selectedRole}.`);
+      toast.success(`Đã gán vai trò ${rolePresentation(selectedRole).name}.`);
       setSelectedRole("");
       await loadUser();
     } catch (reason) {
       toast.error(
-        reason instanceof Error ? reason.message : "Không thể gán role.",
+        reason instanceof Error ? reason.message : "Không thể gán vai trò.",
       );
     } finally {
       setSaving(null);
@@ -249,20 +249,21 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
 
   async function removeRole(roleCode: string) {
     if (!user || !canAssignRole) return;
-    if (!window.confirm(`Gỡ role ${roleCode} khỏi tài khoản này?`)) return;
+    const roleName = rolePresentation(roleCode).name;
+    if (!window.confirm(`Gỡ vai trò ${roleName} khỏi tài khoản này?`)) return;
 
     setSaving(`remove-role:${roleCode}`);
     try {
       if (!isIdentityAssignableRole(roleCode)) {
-        toast.error("Role MERCHANT phải được thay đổi qua trạng thái Merchant ở Partners.");
+        toast.error("Vai trò Đối tác gửi hàng phải được thay đổi thông qua trạng thái hồ sơ đối tác.");
         return;
       }
       await removeUserRole(user.userId, roleCode);
-      toast.success(`Đã gỡ role ${roleCode}.`);
+      toast.success(`Đã gỡ vai trò ${roleName}.`);
       await loadUser();
     } catch (reason) {
       toast.error(
-        reason instanceof Error ? reason.message : "Không thể gỡ role.",
+        reason instanceof Error ? reason.message : "Không thể gỡ vai trò.",
       );
     } finally {
       setSaving(null);
@@ -274,10 +275,10 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
     setSaving("invite");
     try {
       await inviteUser(user.userId);
-      toast.success("Đã yêu cầu gửi invitation đến người dùng.");
+      toast.success("Đã yêu cầu gửi lời mời đến người dùng.");
     } catch (reason) {
       toast.error(
-        reason instanceof Error ? reason.message : "Không thể gửi invitation.",
+        reason instanceof Error ? reason.message : "Không thể gửi lời mời.",
       );
     } finally {
       setSaving(null);
@@ -290,7 +291,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
         <div className="text-center">
           <LoaderCircleIcon className="mx-auto size-6 animate-spin text-brand" />
           <p className="mt-3 text-xs font-bold text-muted-foreground">
-            Đang tải hồ sơ Identity...
+            Đang tải hồ sơ tài khoản...
           </p>
         </div>
       </div>
@@ -303,7 +304,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
         <div>
           <p className="font-black">Không thể tải tài khoản</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            {error ?? "User không tồn tại."}
+            {error ?? "Tài khoản không tồn tại."}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Link
@@ -344,14 +345,14 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">
-                  Identity / User
+                  Tài khoản / Người dùng
                 </p>
                 <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[0.58rem] font-black", statusClass(user.status))}>
                   {accountLabels[user.status]}
                 </span>
                 {user.emailVerified ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[0.58rem] font-black text-emerald-700 dark:text-emerald-300">
-                    <BadgeCheckIcon className="size-3" /> Email verified
+                    <BadgeCheckIcon className="size-3" /> Đã xác minh email
                   </span>
                 ) : null}
               </div>
@@ -374,7 +375,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
             {canInvite ? (
               <Button variant="outline" onClick={() => void sendInvitation()} disabled={saving === "invite"}>
                 {saving === "invite" ? <LoaderCircleIcon className="size-4 animate-spin" /> : <MailPlusIcon className="size-4" />}
-                Gửi invitation
+                Gửi lời mời
               </Button>
             ) : null}
           </div>
@@ -404,24 +405,24 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
             <CardHeader><p className="text-sm font-black">Thông tin tài khoản</p></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <Fact label="Email" value={user.email} />
-              <Fact label="Email verification" value={user.emailVerified ? "Đã xác minh" : "Chưa xác minh"} />
-              <Fact label="Account status" value={accountLabels[user.status]} />
-              <Fact label="Profile status" value={profileLabels[user.profileStatus]} />
-              <Fact label="Gender" value={user.gender ? genderLabels[user.gender as Gender] ?? user.gender : "Chưa khai báo"} />
-              <Fact label="Date of birth" value={user.dateOfBirth ?? "Chưa khai báo"} />
-              <Fact label="User ID" value={user.userId} mono />
-              <Fact label="Version" value={String(user.version)} mono />
-              <Fact label="Roles" value={user.roles.length ? user.roles.map((role) => rolePresentation(role).name).join(", ") : "Chưa có role"} />
+              <Fact label="Xác minh email" value={user.emailVerified ? "Đã xác minh" : "Chưa xác minh"} />
+              <Fact label="Trạng thái tài khoản" value={accountLabels[user.status]} />
+              <Fact label="Trạng thái hồ sơ" value={profileLabels[user.profileStatus]} />
+              <Fact label="Giới tính" value={user.gender ? genderLabels[user.gender as Gender] ?? user.gender : "Chưa khai báo"} />
+              <Fact label="Ngày sinh" value={user.dateOfBirth ?? "Chưa khai báo"} />
+              <Fact label="ID người dùng" value={user.userId} mono />
+              <Fact label="Phiên bản" value={String(user.version)} mono />
+              <Fact label="Vai trò" value={user.roles.length ? user.roles.map((role) => rolePresentation(role).name).join(", ") : "Chưa có vai trò"} />
             </CardContent>
           </Card>
 
           <Card className="h-fit">
             <CardHeader><p className="text-sm font-black">Dấu thời gian</p></CardHeader>
             <CardContent className="space-y-3">
-              <Fact label="Account created" value={formatDateTime(user.createdAt)} />
-              <Fact label="Account updated" value={formatDateTime(user.updatedAt)} />
-              <Fact label="Profile created" value={user.profileCreatedAt ? formatDateTime(user.profileCreatedAt) : "Chưa tạo profile"} />
-              <Fact label="Profile updated" value={user.profileUpdatedAt ? formatDateTime(user.profileUpdatedAt) : "—"} />
+              <Fact label="Tạo tài khoản" value={formatDateTime(user.createdAt)} />
+              <Fact label="Cập nhật tài khoản" value={formatDateTime(user.updatedAt)} />
+              <Fact label="Tạo hồ sơ" value={user.profileCreatedAt ? formatDateTime(user.profileCreatedAt) : "Chưa tạo hồ sơ"} />
+              <Fact label="Cập nhật hồ sơ" value={user.profileUpdatedAt ? formatDateTime(user.profileUpdatedAt) : "—"} />
             </CardContent>
           </Card>
         </div>
@@ -435,7 +436,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                 <UserCogIcon className="size-4 text-brand" />
                 <div>
                   <p className="text-sm font-black">Hồ sơ người dùng</p>
-                  <p className="mt-0.5 text-[0.65rem] text-muted-foreground">Cập nhật dữ liệu profile thuộc Identity.</p>
+                  <p className="mt-0.5 text-[0.65rem] text-muted-foreground">Cập nhật thông tin hồ sơ của tài khoản.</p>
                 </div>
               </div>
             </CardHeader>
@@ -464,17 +465,17 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                     </Button>
                   </div>
                 ) : (
-                  <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">Bạn chỉ có quyền xem profile.</p>
+                  <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">Bạn chỉ có quyền xem hồ sơ.</p>
                 )}
               </form>
             </CardContent>
           </Card>
 
           <Card className="h-fit">
-            <CardHeader><p className="text-sm font-black">Invariant profile</p></CardHeader>
+            <CardHeader><p className="text-sm font-black">Điều kiện hồ sơ hoàn chỉnh</p></CardHeader>
             <CardContent className="space-y-3 text-xs leading-5 text-muted-foreground">
-              <Fact label="Profile status" value={profileLabels[user.profileStatus]} />
-              <p>Profile COMPLETED phải giữ đủ first name, last name, gender khác UNSPECIFIED và ngày sinh. Backend sẽ từ chối update làm mất invariant này.</p>
+              <Fact label="Trạng thái hồ sơ" value={profileLabels[user.profileStatus]} />
+              <p>Hồ sơ ở trạng thái Đã hoàn tất phải có đủ họ, tên, giới tính đã chọn và ngày sinh. Hệ thống sẽ từ chối thay đổi nếu làm thiếu các thông tin bắt buộc này.</p>
             </CardContent>
           </Card>
         </div>
@@ -499,7 +500,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                 ) : null}
               </div>
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">
-                SUSPENDED hoặc DISABLED sẽ làm backend thu hồi session. Backend cũng chặn khóa ADMIN active cuối cùng.
+                Tạm khóa hoặc Vô hiệu hóa sẽ làm hệ thống thu hồi phiên đăng nhập. Hệ thống cũng không cho khóa quản trị viên đang hoạt động cuối cùng.
               </div>
             </CardContent>
           </Card>
@@ -511,7 +512,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                 <div>
                   <p className="text-sm font-black">Vai trò</p>
                   <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
-                    Phân biệt role gán thủ công và role do domain khác đồng bộ.
+                    Hiển thị vai trò hiện có và cách mỗi vai trò được cấp cho tài khoản.
                   </p>
                 </div>
               </div>
@@ -534,9 +535,6 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                             <p className="text-xs font-black">
                               {presentation.name}
                             </p>
-                            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.58rem] font-bold text-muted-foreground">
-                              {roleCode}
-                            </span>
                             <span className="rounded bg-muted px-1.5 py-0.5 text-[0.58rem] font-black text-muted-foreground">
                               {presentation.ownershipLabel}
                             </span>
@@ -556,7 +554,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                             onClick={() => void removeRole(roleCode)}
                             disabled={saving === `remove-role:${roleCode}`}
                             className="grid size-8 shrink-0 place-items-center rounded-md border transition hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                            aria-label={`Gỡ role ${roleCode}`}
+                            aria-label={`Gỡ vai trò ${presentation.name}`}
                           >
                             {saving === `remove-role:${roleCode}` ? (
                               <LoaderCircleIcon className="size-3 animate-spin" />
@@ -569,7 +567,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                     );
                   })
                 ) : (
-                  <span className="text-xs text-muted-foreground">Chưa có role.</span>
+                  <span className="text-xs text-muted-foreground">Chưa có vai trò.</span>
                 )}
               </div>
 
@@ -580,10 +578,10 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                     onChange={(event) => setSelectedRole(event.target.value)}
                     className="h-10 min-w-0 rounded-md border bg-background px-3 text-xs"
                   >
-                    <option value="">Chọn role để gán</option>
+                    <option value="">Chọn vai trò để gán</option>
                     {availableRoles.map((role) => (
                       <option key={role.code} value={role.code}>
-                        {rolePresentation(role.code, role).name} ({role.code})
+                        {rolePresentation(role.code, role).name}
                       </option>
                     ))}
                   </select>
@@ -596,19 +594,17 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                     ) : (
                       <ShieldPlusIcon className="size-4" />
                     )}
-                    Gán role
+                    Gán vai trò
                   </Button>
                 </div>
               ) : canAssignRole ? (
                 <p className="text-xs text-muted-foreground">
-                  Cần identity.roles.read để tải danh mục role mới.
+                  Tài khoản hiện tại chưa có quyền xem danh mục vai trò để thực hiện phân vai.
                 </p>
               ) : null}
 
               <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-[0.68rem] leading-5 text-muted-foreground">
-                MERCHANT không xuất hiện trong danh sách gán/gỡ. Role này phải
-                theo trạng thái Merchant ở Partners để tránh lệch quyền giữa hai
-                service.
+                Vai trò Đối tác gửi hàng không xuất hiện trong danh sách gán hoặc gỡ thủ công. Vai trò này được đồng bộ theo trạng thái hồ sơ đối tác để tránh lệch quyền giữa các phần của hệ thống.
               </p>
             </CardContent>
           </Card>
@@ -617,13 +613,13 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
             <CardHeader>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-black">Effective permissions</p>
+                  <p className="text-sm font-black">Quyền đang có</p>
                   <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
-                    Quyền hiệu lực backend tính từ toàn bộ role hiện tại, nhóm theo nghiệp vụ để dễ audit.
+                    Hệ thống tổng hợp quyền từ tất cả vai trò hiện tại và nhóm theo nghiệp vụ để dễ kiểm tra.
                   </p>
                 </div>
                 <span className="rounded-full bg-muted px-2.5 py-1 text-[0.65rem] font-black">
-                  {user.permissions.length} permissions
+                  {user.permissions.length} quyền
                 </span>
               </div>
             </CardHeader>
@@ -642,10 +638,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                         {group.permissions.map((permission) => (
                           <div key={permission.code} className="rounded-md bg-background p-2">
                             <p className="text-[0.68rem] font-bold">
-                              {permissionLabels[permission.code] ?? permission.code}
-                            </p>
-                            <p className="mt-0.5 break-all font-mono text-[0.58rem] text-muted-foreground">
-                              {permission.code}
+                              {permissionLabel(permission.code)}
                             </p>
                           </div>
                         ))}
@@ -654,7 +647,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                   ))}
                 </div>
               ) : (
-                <span className="text-xs text-muted-foreground">Không có permission.</span>
+                <span className="text-xs text-muted-foreground">Tài khoản chưa có quyền nào.</span>
               )}
             </CardContent>
           </Card>

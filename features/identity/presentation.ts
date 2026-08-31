@@ -16,61 +16,83 @@ export type RolePresentation = {
   ownership: RoleOwnership;
   ownershipLabel: string;
   assignableFromIdentity: boolean;
+  assignmentSummary: string;
   note?: string;
 };
 
 const ROLE_PRESENTATION: Record<string, RolePresentation> = {
   ADMIN: {
     name: "Quản trị hệ thống",
-    description: "Quản trị tài khoản, đối tác và cấu hình nền tảng.",
+    description:
+      "Quản trị tài khoản, phân quyền, đối tác và các cấu hình dùng chung của nền tảng.",
     ownership: "IDENTITY",
-    ownershipLabel: "Identity quản lý",
+    ownershipLabel: "Quản trị viên cấp",
     assignableFromIdentity: true,
-    note: "Quyền rất cao. Backend bảo vệ ADMIN đang hoạt động cuối cùng.",
+    assignmentSummary:
+      "Người có quyền phân vai có thể gán trực tiếp cho tài khoản nội bộ phù hợp.",
+    note: "Đây là vai trò có quyền rất cao. Hệ thống bảo vệ quản trị viên đang hoạt động cuối cùng để tránh mất quyền quản trị.",
   },
   OPERATIONS_MANAGER: {
     name: "Quản lý vận hành",
-    description: "Điều phối nhân sự, công việc và hoạt động logistics.",
+    description:
+      "Điều phối mạng lưới, nhân sự và các công việc vận hành trên phạm vi rộng.",
     ownership: "IDENTITY",
-    ownershipLabel: "Identity quản lý",
+    ownershipLabel: "Quản trị viên cấp",
     assignableFromIdentity: true,
+    assignmentSummary:
+      "Người có quyền phân vai có thể gán trực tiếp cho nhân sự quản lý vận hành.",
   },
   HUB_MANAGER: {
     name: "Quản lý bưu cục",
-    description: "Quản lý hoạt động và nhân sự tại bưu cục được giao.",
+    description:
+      "Quản lý hoạt động, dòng tiền và công việc tại bưu cục được phân công.",
     ownership: "IDENTITY",
-    ownershipLabel: "Identity quản lý",
+    ownershipLabel: "Quản trị viên cấp",
     assignableFromIdentity: true,
+    assignmentSummary:
+      "Người có quyền phân vai có thể gán trực tiếp cho người phụ trách bưu cục.",
   },
   WAREHOUSE_STAFF: {
     name: "Nhân viên kho",
-    description: "Quét, tiếp nhận và xử lý kiện hàng tại bưu cục.",
+    description:
+      "Tiếp nhận, quét và xử lý kiện hàng cùng các công việc kho tại bưu cục.",
     ownership: "IDENTITY",
-    ownershipLabel: "Identity quản lý",
+    ownershipLabel: "Quản trị viên cấp",
     assignableFromIdentity: true,
+    assignmentSummary:
+      "Người có quyền phân vai có thể gán trực tiếp cho nhân viên kho.",
   },
   DRIVER: {
     name: "Nhân viên giao nhận",
-    description: "Nhận và thực hiện công việc lấy, vận chuyển, giao hàng.",
+    description:
+      "Nhận công việc lấy hàng, vận chuyển, giao hàng và cập nhật vị trí khi làm nhiệm vụ.",
     ownership: "IDENTITY",
-    ownershipLabel: "Identity quản lý",
+    ownershipLabel: "Quản trị viên cấp",
     assignableFromIdentity: true,
+    assignmentSummary:
+      "Người có quyền phân vai có thể gán trực tiếp cho nhân viên giao nhận.",
   },
   MERCHANT: {
     name: "Đối tác gửi hàng",
-    description: "Quyền nghiệp vụ gửi hàng của Merchant đã được xét duyệt.",
+    description:
+      "Tạo và quản lý vận đơn của doanh nghiệp sau khi hồ sơ đối tác được duyệt.",
     ownership: "PARTNERS",
-    ownershipLabel: "Partners đồng bộ",
+    ownershipLabel: "Đồng bộ theo trạng thái đối tác",
     assignableFromIdentity: false,
-    note: "Không gán/gỡ thủ công tại Identity UI. Role này phải theo trạng thái Merchant qua Partners outbox.",
+    assignmentSummary:
+      "Hệ thống tự cấp hoặc thu hồi theo trạng thái duyệt của hồ sơ đối tác gửi hàng.",
+    note: "Không gán hoặc gỡ thủ công vai trò này tại màn tài khoản để tránh lệch trạng thái giữa tài khoản và hồ sơ đối tác.",
   },
   CUSTOMER: {
     name: "Khách hàng",
-    description: "Vai trò nền cho tài khoản khách hàng Pavex.",
+    description:
+      "Theo dõi vận đơn liên quan và sử dụng các chức năng hỗ trợ dành cho khách hàng.",
     ownership: "PLATFORM",
-    ownershipLabel: "Vai trò nền",
+    ownershipLabel: "Vai trò nền của khách hàng",
     assignableFromIdentity: true,
-    note: "Identity tự gán CUSTOMER cho tài khoản self-service. Admin vẫn có thể dùng vai trò này khi tạo user hỗ trợ.",
+    assignmentSummary:
+      "Hệ thống tự gán cho tài khoản khách hàng; quản trị viên vẫn có thể chọn khi tạo tài khoản hỗ trợ.",
+    note: "Đây là vai trò nền cho tài khoản khách hàng đăng ký trực tiếp trên hệ thống.",
   },
 };
 
@@ -102,49 +124,53 @@ export const permissionLabels: Record<string, string> = {
   "shipments.update-own": "Sửa vận đơn của mình trước khi lấy hàng",
   "shipments.cancel-own": "Hủy vận đơn của mình",
   "shipments.exceptions.manage": "Xử lý ngoại lệ vận đơn",
-  "shipments.weight.adjust": "Điều chỉnh trọng lượng kiện",
-  "shipments.cases.manage": "Quản lý hồ sơ sự cố kiện hàng",
+  "shipments.weight.adjust": "Điều chỉnh khối lượng kiện hàng",
+  "shipments.cases.manage": "Quản lý hồ sơ sự cố vận đơn",
   "shipments.control-tower.read": "Theo dõi cảnh báo vận đơn",
+  "shipments.admin.read": "Tra cứu toàn bộ vận đơn phục vụ quản trị",
+  "shipments.admin.manage": "Thực hiện nghiệp vụ quản trị vận đơn",
   "assignments.read-own": "Xem công việc được giao",
   "assignments.accept-own": "Nhận công việc được giao",
   "assignments.execute-own": "Thực hiện công việc được giao",
-  "deliveries.complete-own": "Hoàn tất giao hàng",
-  "locations.update-own": "Cập nhật vị trí của mình",
-  "quotes.create": "Tạo báo giá vận chuyển",
+  "deliveries.complete-own": "Hoàn tất công việc giao hàng",
+  "locations.update-own": "Cập nhật vị trí khi làm nhiệm vụ",
+  "quotes.create": "Tính cước cho vận đơn",
   "billing.invoices.read-own": "Xem hóa đơn của mình",
   "billing.invoices.pay-own": "Thanh toán hóa đơn của mình",
   "billing.manage": "Quản lý hóa đơn và thanh toán",
   "billing.cash.collect": "Thu tiền mặt",
-  "billing.cash.submit-own": "Nộp tiền thu hộ của mình",
+  "billing.cash.submit-own": "Nộp tiền đã thu của mình",
   "billing.cash.read-hub": "Theo dõi tiền mặt tại bưu cục",
   "billing.cash.approve": "Duyệt hoặc từ chối bàn giao tiền",
   "call-monitoring.read": "Xem lịch sử cuộc gọi",
   "call-monitoring.manage": "Quản lý và đánh giá cuộc gọi",
   "call-monitoring.reports.read": "Xem báo cáo cuộc gọi",
   "network.read": "Xem cấu hình mạng lưới",
-  "network.manage": "Quản lý mạng lưới bưu cục và tuyến",
+  "network.manage": "Quản lý bưu cục, vùng và tuyến vận chuyển",
+  "pricing.read": "Xem bảng giá và quy tắc tính cước",
+  "pricing.manage": "Quản lý bảng giá và quy tắc tính cước",
   "operations.workforce.manage": "Quản lý nhân sự vận hành",
-  "operations.assignments.manage": "Điều phối công việc",
-  "operations.hub.manage": "Quản lý vận hành tại bưu cục được giao",
-  "scans.create": "Quét kiện hàng",
+  "operations.assignments.manage": "Điều phối công việc vận hành",
+  "operations.hub.manage": "Quản lý hoạt động tại bưu cục được giao",
+  "scans.create": "Quét và ghi nhận kiện hàng",
   "identity.users.read": "Xem danh sách tài khoản",
   "identity.users.manage-profile": "Chỉnh sửa hồ sơ tài khoản",
-  "identity.roles.read": "Xem vai trò và quyền",
+  "identity.roles.read": "Xem vai trò và quyền hạn",
   "identity.users.create": "Tạo tài khoản",
-  "identity.users.invite": "Mời người dùng",
-  "identity.roles.assign": "Gán vai trò cho tài khoản",
+  "identity.users.invite": "Gửi lời mời kích hoạt tài khoản",
+  "identity.roles.assign": "Phân vai cho tài khoản",
   "identity.users.manage-status": "Khóa hoặc kích hoạt tài khoản",
-  "partners.merchants.manage-own": "Quản lý hồ sơ doanh nghiệp của mình",
-  "partners.merchants.read": "Xem danh sách đối tác",
+  "partners.merchants.manage-own": "Quản lý hồ sơ đối tác của mình",
+  "partners.merchants.read": "Xem danh sách đối tác gửi hàng",
   "partners.merchants.manage-status": "Duyệt và quản lý trạng thái đối tác",
 };
 
 export const permissionGroups = [
   { id: "identity", label: "Tài khoản & phân quyền", prefixes: ["identity."] },
-  { id: "partners", label: "Đối tác", prefixes: ["partners."] },
+  { id: "partners", label: "Đối tác gửi hàng", prefixes: ["partners."] },
   {
     id: "shipments",
-    label: "Vận đơn & báo giá",
+    label: "Vận đơn & tính cước",
     prefixes: ["shipments.", "tracking.", "quotes."],
   },
   {
@@ -159,6 +185,7 @@ export const permissionGroups = [
     ],
   },
   { id: "network", label: "Mạng lưới", prefixes: ["network."] },
+  { id: "pricing", label: "Bảng giá & cước", prefixes: ["pricing."] },
   { id: "billing", label: "Tài chính", prefixes: ["billing."] },
   {
     id: "support",
@@ -168,13 +195,19 @@ export const permissionGroups = [
 ] as const;
 
 export function rolePresentation(roleCode: string, fallback?: Partial<RoleItem>) {
+  const fallbackName =
+    fallback?.isSystem === false ? "Vai trò tùy chỉnh" : "Vai trò hệ thống";
+
   return (
     ROLE_PRESENTATION[roleCode] ?? {
-      name: fallback?.name ?? roleCode,
-      description: fallback?.description ?? "Vai trò được khai báo trong Identity.",
+      name: fallbackName,
+      description:
+        "Vai trò được hệ thống khai báo để cấp một nhóm quyền cho tài khoản.",
       ownership: "IDENTITY" as const,
-      ownershipLabel: "Identity quản lý",
+      ownershipLabel: "Quản trị viên cấp",
       assignableFromIdentity: true,
+      assignmentSummary:
+        "Người có quyền phân vai có thể gán trực tiếp cho tài khoản phù hợp.",
     }
   );
 }
@@ -185,6 +218,42 @@ export function roleLabel(roleCode: string) {
 
 export function isIdentityAssignableRole(roleCode: string) {
   return rolePresentation(roleCode).assignableFromIdentity;
+}
+
+export function permissionLabel(code: string) {
+  return permissionLabels[code] ?? genericPermissionLabel(code);
+}
+
+function genericPermissionLabel(code: string) {
+  const domain = code.split(".")[0] ?? "";
+  const domainLabel: Record<string, string> = {
+    identity: "Tài khoản",
+    partners: "Đối tác",
+    shipments: "Vận đơn",
+    tracking: "Theo dõi vận đơn",
+    quotes: "Tính cước",
+    assignments: "Công việc",
+    deliveries: "Giao hàng",
+    locations: "Vị trí",
+    scans: "Quét kiện hàng",
+    network: "Mạng lưới",
+    pricing: "Bảng giá",
+    billing: "Tài chính",
+    operations: "Vận hành",
+    support: "Hỗ trợ",
+    "call-monitoring": "Cuộc gọi",
+  };
+
+  if (code.endsWith(".read") || code.endsWith(".read-own")) {
+    return `Xem ${domainLabel[domain] ?? "dữ liệu hệ thống"}`;
+  }
+  if (code.endsWith(".create")) {
+    return `Tạo ${domainLabel[domain] ?? "dữ liệu hệ thống"}`;
+  }
+  if (code.endsWith(".manage")) {
+    return `Quản lý ${domainLabel[domain] ?? "dữ liệu hệ thống"}`;
+  }
+  return `Quyền ${domainLabel[domain] ?? "hệ thống"}`;
 }
 
 export function displayUserName(user: UserListItem | UserDetail) {
@@ -215,7 +284,7 @@ export function groupPermissionCodes(codes: string[]) {
   const items: PermissionItem[] = codes.map((code) => ({
     id: code,
     code,
-    name: permissionLabels[code] ?? code,
+    name: permissionLabel(code),
     description: null,
   }));
   return groupPermissions(items);

@@ -309,7 +309,7 @@ export function IdentityUsers() {
               </option>
               {roles.map((item) => (
                 <option key={item.id} value={item.code}>
-                  {roleLabel(item.code)} ({item.code})
+                  {roleLabel(item.code)}
                 </option>
               ))}
             </select>
@@ -435,7 +435,6 @@ export function IdentityUsers() {
                             <span
                               key={roleCode}
                               className="rounded-md border bg-muted/30 px-2 py-1 text-[0.65rem] font-bold"
-                              title={roleCode}
                             >
                               {roleLabel(roleCode)}
                             </span>

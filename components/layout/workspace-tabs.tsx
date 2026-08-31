@@ -38,7 +38,7 @@ function tabTitle(pathname: string) {
   if (pathname === "/identity/users") return "Người dùng";
   if (pathname === "/identity/users/new") return "Tạo người dùng";
   if (/^\/identity\/users\/[^/]+$/.test(pathname)) return "Chi tiết người dùng";
-  if (pathname === "/identity/roles") return "Vai trò & quyền";
+  if (pathname === "/identity/roles") return "Vai trò & quyền hạn";
   if (pathname === "/account") return "Tài khoản của tôi";
   if (pathname === "/partners/merchants") return "Merchant";
   if (/^\/partners\/merchants\/[^/]+$/.test(pathname)) return "Hồ sơ Merchant";

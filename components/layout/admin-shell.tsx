@@ -34,6 +34,7 @@ import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { useAppTheme } from "@/components/theme/app-theme-provider";
 import { Button } from "@/components/ui/button";
 import { AccessProvider } from "@/features/auth/access-context";
+import { roleLabel } from "@/features/identity/presentation";
 import {
   canAccessManagementPath,
   hasAnyPermission,
@@ -261,7 +262,8 @@ function currentSection(item: NavigationItem | undefined) {
 }
 
 function primaryRole(user: CurrentUser | null) {
-  return user?.roles[0]?.replaceAll("_", " ") ?? "PAVEX";
+  const role = user?.roles[0];
+  return role ? roleLabel(role) : "PAVEX";
 }
 
 function initialsOf(user: CurrentUser | null) {
