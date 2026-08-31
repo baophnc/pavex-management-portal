@@ -183,6 +183,15 @@ const navigationSections: NavigationSection[] = [
         ],
       },
       {
+        href: "/operations/workforce",
+        label: "Nhân sự vận hành",
+        icon: UsersRoundIcon,
+        permissionsAny: [
+          "operations.workforce.manage",
+          "operations.hub.manage",
+        ],
+      },
+      {
         href: "/shipments",
         label: "Vận đơn",
         icon: TruckIcon,

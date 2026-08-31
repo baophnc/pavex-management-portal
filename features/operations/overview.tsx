@@ -6,6 +6,7 @@ import {
   ShieldCheckIcon,
   UsersRoundIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
@@ -16,18 +17,21 @@ const capabilities = [
     title: "Nhân sự vận hành",
     description: "Quản lý workforce, hub membership, trạng thái và sức chứa công việc.",
     icon: UsersRoundIcon,
+    href: "/operations/workforce",
   },
   {
     permission: "operations.hub.manage",
     title: "Vận hành theo bưu cục",
     description: "Giới hạn phạm vi quản trị theo các hub được backend xác thực.",
     icon: CalendarClockIcon,
+    href: null,
   },
   {
     permission: "operations.assignments.manage",
     title: "Điều phối assignment",
     description: "Theo dõi hàng đợi, phân công, sự kiện dispatch và reliability tooling.",
     icon: ClipboardListIcon,
+    href: null,
   },
 ] as const;
 
@@ -79,9 +83,16 @@ export function OperationsOverview() {
                 <p className="mt-3 font-mono text-[0.62rem] text-muted-foreground">
                   {item.permission}
                 </p>
-                <p className="mt-2 text-[0.68rem] font-black text-brand">
-                  {enabled ? "Tài khoản hiện tại có quyền" : "Không có quyền trong JWT hiện tại"}
-                </p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <p className="text-[0.68rem] font-black text-brand">
+                    {enabled ? "Tài khoản hiện tại có quyền" : "Không có quyền trong JWT hiện tại"}
+                  </p>
+                  {enabled && item.href ? (
+                    <Link href={item.href} className="text-[0.68rem] font-black text-brand hover:underline">
+                      Mở workspace →
+                    </Link>
+                  ) : null}
+                </div>
               </CardContent>
             </Card>
           );
