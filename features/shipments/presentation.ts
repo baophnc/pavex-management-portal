@@ -8,6 +8,7 @@ import type {
   ShipmentRoutingStatus,
   ShipmentServiceLevel,
   ShipmentStatus,
+  ShippingFeePayer,
 } from "@/features/shipments/contracts";
 import { ApiError } from "@/lib/api/client";
 
@@ -37,6 +38,42 @@ export function lifecycleLabel(status: ShipmentLifecycleStatus) {
 
 export function serviceLevelLabel(level: ShipmentServiceLevel) {
   return level === "EXPRESS" ? "Hỏa tốc" : "Tiêu chuẩn";
+}
+
+export function shippingFeePayerLabel(payer: ShippingFeePayer) {
+  return payer === "SENDER" ? "Người gửi trả cước" : "Người nhận trả cước";
+}
+
+export function shipmentEventLabel(code: string, status: ShipmentStatus) {
+  const labels: Record<string, string> = {
+    "shipment.created": "Tạo vận đơn",
+    "shipment.cancelled": "Hủy vận đơn",
+    "shipment.completed": "Hoàn tất vận đơn",
+    "shipment.parcel-scanned": "Ghi nhận quét kiện hàng",
+    "shipment.delivery-attempt-recorded": "Ghi nhận lần giao hàng",
+    "parcel.scanned": "Quét kiện hàng",
+    "parcel.at-destination-hub": "Kiện hàng đến điểm trung chuyển đích",
+    "parcel.delivered": "Giao kiện hàng thành công",
+    "parcel.delivery-failed": "Giao kiện hàng không thành công",
+  };
+  return labels[code] ?? shipmentStatusLabel(status);
+}
+
+export function shipmentEventDescription(
+  code: string,
+  description: string,
+  status: ShipmentStatus,
+) {
+  if (code === "shipment.created") return "Vận đơn đã được tạo và đang chờ lấy hàng.";
+  if (code === "shipment.completed") return "Vòng đời vận đơn đã hoàn tất.";
+  if (code === "parcel.delivered") return "Kiện hàng đã được giao thành công.";
+  if (code === "parcel.delivery-failed") return "Lần giao hàng không thành công.";
+  if (code === "parcel.at-destination-hub") return "Kiện hàng đã đến điểm trung chuyển đích.";
+  if (code === "parcel.scanned" && description.trim().toLowerCase() === "scan") {
+    return "Kiện hàng đã được quét tại điểm xử lý.";
+  }
+  if (description.trim()) return description;
+  return shipmentStatusLabel(status);
 }
 
 export function routingStatusLabel(status: ShipmentRoutingStatus) {
@@ -113,11 +150,11 @@ export function shipmentErrorMessage(reason: unknown, fallback: string) {
     return "Trạng thái vận đơn không hợp lệ.";
   }
   if (reason.code === "invalid_shipment_lifecycle_status") {
-    return "Lifecycle vận đơn không hợp lệ.";
+    return "Vòng đời vận đơn không hợp lệ.";
   }
   if (reason.code === "invalid_admin_shipment_query") {
     return "Từ khóa tìm kiếm quá dài.";
   }
-  if (reason.status === 403) return "Tài khoản không có quyền đọc vận đơn quản trị.";
+  if (reason.status === 403) return "Tài khoản không có quyền xem vận đơn toàn hệ thống.";
   return reason.message || fallback;
 }

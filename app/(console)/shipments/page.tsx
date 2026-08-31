@@ -30,7 +30,6 @@ export default async function ShipmentsPage({
       initialQuery={first(params.q)?.trim() ?? ""}
       initialStatus={status}
       initialLifecycleStatus={lifecycleStatus}
-      initialMerchantId={first(params.merchantId)?.trim() ?? ""}
     />
   );
 }
