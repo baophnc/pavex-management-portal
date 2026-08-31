@@ -123,3 +123,74 @@ export const workforceStatuses: WorkforceMemberStatus[] = [
   "SUSPENDED",
   "OFFBOARDED",
 ];
+
+export type WorkShiftStatus = "SCHEDULED" | "CANCELLED";
+export type WorkforceShiftAssignmentStatus =
+  | "SCHEDULED"
+  | "CHECKED_IN"
+  | "CHECKED_OUT"
+  | "ABSENT"
+  | "CANCELLED";
+
+export type WorkShift = {
+  id: string;
+  hubId: string;
+  hubCode: string | null;
+  hubName: string | null;
+  code: string;
+  name: string;
+  startsAt: string;
+  endsAt: string;
+  status: WorkShiftStatus;
+  rosterCount: number;
+  createdByUserId: string;
+  cancelledByUserId: string | null;
+  cancelReason: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkforceShiftAssignment = {
+  id: string;
+  shiftId: string;
+  workforceMemberId: string;
+  employeeCode: string;
+  kind: WorkforceMemberKind;
+  status: WorkforceShiftAssignmentStatus;
+  assignedByUserId: string;
+  statusChangedByUserId: string;
+  assignedAt: string;
+  checkedInAt: string | null;
+  checkedOutAt: string | null;
+  markedAbsentAt: string | null;
+  cancelledAt: string | null;
+  note: string | null;
+  updatedAt: string;
+};
+
+export type WorkShiftDetail = {
+  shift: WorkShift;
+  roster: WorkforceShiftAssignment[];
+};
+
+export type WorkShiftPage = {
+  items: WorkShift[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type CreateWorkShiftInput = {
+  hubId: string;
+  name: string;
+  startsAt: string;
+  endsAt: string;
+};
+
+export type UpdateWorkShiftInput = {
+  name: string;
+  startsAt: string;
+  endsAt: string;
+};

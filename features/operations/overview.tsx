@@ -13,21 +13,21 @@ import { useAccess } from "@/features/auth/access-context";
 
 const capabilities = [
   {
-    permission: "operations.workforce.manage",
+    permissionsAny: ["operations.workforce.manage", "operations.hub.manage"],
     title: "Nhân sự vận hành",
     description: "Quản lý workforce, hub membership, trạng thái và sức chứa công việc.",
     icon: UsersRoundIcon,
     href: "/operations/workforce",
   },
   {
-    permission: "operations.hub.manage",
-    title: "Vận hành theo bưu cục",
-    description: "Giới hạn phạm vi quản trị theo các hub được backend xác thực.",
+    permissionsAny: ["operations.workforce.manage", "operations.hub.manage"],
+    title: "Ca làm việc",
+    description: "Lập ca, quản roster và theo dõi attendance theo phạm vi hub được backend xác thực.",
     icon: CalendarClockIcon,
-    href: null,
+    href: "/operations/shifts",
   },
   {
-    permission: "operations.assignments.manage",
+    permissionsAny: ["operations.assignments.manage", "operations.hub.manage"],
     title: "Điều phối assignment",
     description: "Theo dõi hàng đợi, phân công, sự kiện dispatch và reliability tooling.",
     icon: ClipboardListIcon,
@@ -37,7 +37,9 @@ const capabilities = [
 
 export function OperationsOverview() {
   const { hasPermission } = useAccess();
-  const allowed = capabilities.filter((item) => hasPermission(item.permission));
+  const enabled = (item: (typeof capabilities)[number]) =>
+    item.permissionsAny.some((permission) => hasPermission(permission));
+  const allowed = capabilities.filter(enabled);
 
   return (
     <div className="space-y-4">
@@ -55,9 +57,8 @@ export function OperationsOverview() {
                 Điều phối vận hành
               </h1>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Management đã nhận diện quyền Operations từ backend. Các màn hình
-                workforce, shifts và assignments sẽ dùng chính phạm vi quyền này,
-                không suy diễn quyền từ role ở frontend.
+                Workforce và Shifts đã nối API thật. Phạm vi global hoặc theo hub
+                luôn do backend xác thực, Management không suy diễn quyền từ role.
               </p>
             </div>
           </div>
@@ -67,9 +68,9 @@ export function OperationsOverview() {
       <div className="grid gap-3 md:grid-cols-3">
         {capabilities.map((item) => {
           const Icon = item.icon;
-          const enabled = hasPermission(item.permission);
+          const allowedItem = enabled(item);
           return (
-            <Card key={item.permission} className={!enabled ? "opacity-60" : undefined}>
+            <Card key={item.title} className={!allowedItem ? "opacity-60" : undefined}>
               <CardContent>
                 <div className="flex items-center gap-2">
                   <span className="grid size-8 place-items-center rounded-md bg-brand/10 text-brand">
@@ -81,13 +82,13 @@ export function OperationsOverview() {
                   {item.description}
                 </p>
                 <p className="mt-3 font-mono text-[0.62rem] text-muted-foreground">
-                  {item.permission}
+                  {item.permissionsAny.join(" | ")}
                 </p>
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <p className="text-[0.68rem] font-black text-brand">
-                    {enabled ? "Tài khoản hiện tại có quyền" : "Không có quyền trong JWT hiện tại"}
+                    {allowedItem ? "Tài khoản hiện tại có quyền" : "Không có quyền trong JWT hiện tại"}
                   </p>
-                  {enabled && item.href ? (
+                  {allowedItem && item.href ? (
                     <Link href={item.href} className="text-[0.68rem] font-black text-brand hover:underline">
                       Mở workspace →
                     </Link>
@@ -101,13 +102,12 @@ export function OperationsOverview() {
 
       <Card>
         <CardContent>
-          <p className="text-sm font-black">Phạm vi Management hiện tại</p>
+          <p className="text-sm font-black">Phạm vi Operations hiện tại</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             {allowed.length
-              ? `Backend đang cấp ${allowed.length}/${capabilities.length} nhóm quyền Operations cho tài khoản này.`
+              ? `Backend đang cấp quyền truy cập ${allowed.length}/${capabilities.length} workspace Operations cho tài khoản này.`
               : "Tài khoản hiện tại chưa có capability Operations."}
-            {" "}Trang này chỉ là điểm vào và kiểm tra access; các thao tác nghiệp vụ
-            được bổ sung theo từng workspace để giữ UI và permission boundary rõ ràng.
+            {" "}Workforce và Shifts đã hoạt động; Assignments/Dispatch sẽ được nối ở patch kế tiếp.
           </p>
         </CardContent>
       </Card>

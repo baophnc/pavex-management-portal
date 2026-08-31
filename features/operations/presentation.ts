@@ -68,3 +68,29 @@ export function workforceIdentityName(input: {
     "Chưa có hồ sơ Identity"
   );
 }
+
+export function workShiftStatusLabel(status: import("@/features/operations/contracts").WorkShiftStatus) {
+  switch (status) {
+    case "SCHEDULED":
+      return "Đã lên lịch";
+    case "CANCELLED":
+      return "Đã hủy";
+  }
+}
+
+export function workforceShiftStatusLabel(
+  status: import("@/features/operations/contracts").WorkforceShiftAssignmentStatus,
+) {
+  switch (status) {
+    case "SCHEDULED":
+      return "Đã xếp ca";
+    case "CHECKED_IN":
+      return "Đã vào ca";
+    case "CHECKED_OUT":
+      return "Đã kết ca";
+    case "ABSENT":
+      return "Vắng mặt";
+    case "CANCELLED":
+      return "Đã gỡ khỏi ca";
+  }
+}

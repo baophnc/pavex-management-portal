@@ -2,6 +2,7 @@
 
 import {
   Building2Icon,
+  CalendarClockIcon,
   ChevronRightIcon,
   CircleDollarSignIcon,
   CircleGaugeIcon,
@@ -186,6 +187,15 @@ const navigationSections: NavigationSection[] = [
         href: "/operations/workforce",
         label: "Nhân sự vận hành",
         icon: UsersRoundIcon,
+        permissionsAny: [
+          "operations.workforce.manage",
+          "operations.hub.manage",
+        ],
+      },
+      {
+        href: "/operations/shifts",
+        label: "Ca làm việc",
+        icon: CalendarClockIcon,
         permissionsAny: [
           "operations.workforce.manage",
           "operations.hub.manage",
