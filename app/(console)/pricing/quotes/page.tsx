@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 import { PricingQuoteInspector } from "@/features/pricing/quote-inspector";
+
+export const metadata: Metadata = { title: "Chi tiết cách tính cước" };
 
 export default async function PricingQuotesPage({
   searchParams,

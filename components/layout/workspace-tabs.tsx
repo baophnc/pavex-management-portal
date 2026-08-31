@@ -52,11 +52,11 @@ function tabTitle(pathname: string) {
   if (pathname === "/network/route-planner") return "Tìm tuyến";
   if (pathname === "/network/capacity") return "Sức chứa";
   if (pathname === "/network/audit") return "Nhật ký mạng lưới";
-  if (pathname === "/pricing") return "Pricing";
+  if (pathname === "/pricing") return "Bảng giá & cước";
   if (pathname === "/pricing/rate-plans") return "Bảng giá";
-  if (pathname === "/pricing/simulator") return "Mô phỏng tính cước";
-  if (pathname === "/pricing/quotes") return "Kiểm tra quote";
-  if (pathname === "/pricing/audit") return "Nhật ký Pricing";
+  if (pathname === "/pricing/simulator") return "Tính thử cước";
+  if (pathname === "/pricing/quotes") return "Chi tiết cách tính cước";
+  if (pathname === "/pricing/audit") return "Nhật ký giá cước";
   if (pathname === "/shipments") return "Vận đơn";
   if (/^\/shipments\/[^/]+$/.test(pathname)) return "Chi tiết vận đơn";
 

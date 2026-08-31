@@ -192,11 +192,11 @@ const navigationSections: NavigationSection[] = [
     ],
   },
   {
-    label: "Pricing",
+    label: "Bảng giá & cước",
     items: [
       {
         href: "/pricing",
-        label: "Tổng quan giá",
+        label: "Tổng quan cước",
         icon: CircleDollarSignIcon,
         permissionsAny: ["pricing.read", "pricing.manage"],
       },
@@ -208,14 +208,8 @@ const navigationSections: NavigationSection[] = [
       },
       {
         href: "/pricing/simulator",
-        label: "Mô phỏng tính cước",
+        label: "Tính thử cước",
         icon: CircleGaugeIcon,
-        permissionsAny: ["pricing.read", "pricing.manage"],
-      },
-      {
-        href: "/pricing/quotes",
-        label: "Kiểm tra quote",
-        icon: CircleDollarSignIcon,
         permissionsAny: ["pricing.read", "pricing.manage"],
       },
       {

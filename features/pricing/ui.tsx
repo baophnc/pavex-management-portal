@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import type { RatePlanStatus } from "@/features/pricing/contracts";
 import { cn } from "@/lib/utils";
 
@@ -107,7 +108,7 @@ export function PricingError({ message, onRetry }: { message: string; onRetry?: 
   );
 }
 
-export function PricingLoading({ label = "Đang tải dữ liệu Pricing..." }: { label?: string }) {
+export function PricingLoading({ label = "Đang tải dữ liệu giá cước..." }: { label?: string }) {
   return <div className="grid min-h-52 place-items-center rounded-xl border bg-card"><div className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><LoaderCircleIcon className="size-4 animate-spin" />{label}</div></div>;
 }
 
@@ -117,6 +118,43 @@ export function PricingMetric({ label, value, note }: { label: string; value: Re
 
 export function PricingField({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return <label className="grid gap-1.5 text-xs font-bold"><span>{label}</span>{children}{hint ? <span className="text-[0.65rem] font-normal leading-5 text-muted-foreground">{hint}</span> : null}</label>;
+}
+
+export function PricingMoneyInput({
+  value,
+  onValueChange,
+  disabled = false,
+  placeholder = "0",
+}: {
+  value: number;
+  onValueChange: (value: number) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const displayValue = value > 0
+    ? new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(value)
+    : "";
+
+  return (
+    <div className="relative">
+      <Input
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        disabled={disabled}
+        value={displayValue}
+        placeholder={placeholder}
+        className="pr-9 text-right font-bold tabular-nums"
+        onChange={(event) => {
+          const digits = event.target.value.replace(/\D/g, "");
+          onValueChange(digits ? Number(digits) : 0);
+        }}
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-xs font-bold text-muted-foreground">
+        ₫
+      </span>
+    </div>
+  );
 }
 
 export function PricingConfirmDialog({

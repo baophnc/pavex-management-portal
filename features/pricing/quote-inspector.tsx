@@ -1,19 +1,20 @@
 "use client";
 
-import {
-  BoxesIcon,
-  CircleDollarSignIcon,
-  CopyIcon,
-  SearchIcon,
-} from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { BoxesIcon, CircleDollarSignIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { getPricingQuoteSnapshot } from "@/features/pricing/api";
-import type { PricingQuoteSnapshot } from "@/features/pricing/contracts";
+import {
+  getPricingQuoteSnapshot,
+  getProvinces,
+  getWards,
+} from "@/features/pricing/api";
+import type {
+  PricingQuoteLocationSnapshot,
+  PricingQuoteSnapshot,
+  Province,
+  Ward,
+} from "@/features/pricing/contracts";
 import {
   pricingZoneLabel,
   serviceLevelLabel,
@@ -28,119 +29,117 @@ import {
   PricingPageHeader,
 } from "@/features/pricing/ui";
 
-function locationSummary(location: PricingQuoteSnapshot["origin"]) {
-  return `${location.provinceCode} / ${location.wardCode}`;
-}
-
-function tierLabel(tier: PricingQuoteSnapshot["origin"]["coverageTier"]) {
+function tierLabel(tier: PricingQuoteLocationSnapshot["coverageTier"]) {
   if (tier === "REMOTE") return "Vùng xa";
   if (tier === "ISLAND") return "Hải đảo";
   return "Tiêu chuẩn";
 }
 
-export function PricingQuoteInspector({ initialQuoteId = "" }: { initialQuoteId?: string }) {
-  const [quoteId, setQuoteId] = useState(initialQuoteId);
+function placeName(
+  location: PricingQuoteLocationSnapshot,
+  provinces: Province[],
+  wards: Ward[],
+) {
+  const province = provinces.find((item) => item.code === location.provinceCode);
+  const ward = wards.find((item) => item.code === location.wardCode);
+  const provinceName = province?.fullName || province?.name || location.provinceCode;
+  const wardName = ward?.fullName || ward?.name || location.wardCode;
+  return `${wardName}, ${provinceName}`;
+}
+
+export function PricingQuoteInspector({
+  initialQuoteId = "",
+}: {
+  initialQuoteId?: string;
+}) {
   const [quote, setQuote] = useState<PricingQuoteSnapshot | null>(null);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [originWards, setOriginWards] = useState<Ward[]>([]);
+  const [destinationWards, setDestinationWards] = useState<Ward[]>([]);
   const [loading, setLoading] = useState(Boolean(initialQuoteId));
   const [error, setError] = useState<string | null>(null);
-
-  async function load(target = quoteId) {
-    const value = target.trim();
-    if (!value) {
-      toast.error("Nhập Quote ID cần kiểm tra.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      setQuote(await getPricingQuoteSnapshot(value));
-    } catch (reason) {
-      setQuote(null);
-      setError(pricingErrorMessage(reason, "Không thể tải snapshot quote."));
-    } finally {
-      setLoading(false);
-    }
-  }
 
   useEffect(() => {
     if (!initialQuoteId) return;
     let active = true;
-    const task = window.setTimeout(() => {
-      void getPricingQuoteSnapshot(initialQuoteId)
-        .then((result) => {
-          if (!active) return;
-          setQuote(result);
-          setError(null);
-        })
-        .catch((reason) => {
-          if (!active) return;
-          setQuote(null);
-          setError(pricingErrorMessage(reason, "Không thể tải snapshot quote."));
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
-    }, 0);
+
+    void getPricingQuoteSnapshot(initialQuoteId)
+      .then(async (result) => {
+        if (!active) return;
+        setQuote(result);
+        setError(null);
+
+        const [provinceItems, originWardItems, destinationWardItems] =
+          await Promise.all([
+            getProvinces().catch(() => []),
+            getWards(result.origin.provinceCode).catch(() => []),
+            result.destination.provinceCode === result.origin.provinceCode
+              ? getWards(result.origin.provinceCode).catch(() => [])
+              : getWards(result.destination.provinceCode).catch(() => []),
+          ]);
+
+        if (!active) return;
+        setProvinces(provinceItems);
+        setOriginWards(originWardItems);
+        setDestinationWards(destinationWardItems);
+      })
+      .catch((reason) => {
+        if (!active) return;
+        setQuote(null);
+        setError(pricingErrorMessage(reason, "Không thể tải chi tiết cách tính cước."));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
     return () => {
       active = false;
-      window.clearTimeout(task);
     };
   }, [initialQuoteId]);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void load();
-  }
-
-  async function copy(value: string, label: string) {
-    await navigator.clipboard.writeText(value);
-    toast.success(`Đã sao chép ${label}.`);
-  }
+  const originName = useMemo(
+    () =>
+      quote
+        ? placeName(quote.origin, provinces, originWards)
+        : "Điểm gửi",
+    [originWards, provinces, quote],
+  );
+  const destinationName = useMemo(
+    () =>
+      quote
+        ? placeName(quote.destination, provinces, destinationWards)
+        : "Điểm nhận",
+    [destinationWards, provinces, quote],
+  );
 
   return (
     <div className="grid gap-4">
       <PricingPageHeader
-        eyebrow="Pricing support"
-        title="Kiểm tra quote"
-        description="Tra cứu snapshot giá đã phát hành theo Quote ID để support đối chiếu bảng giá, tuyến giá, trọng lượng và từng khoản phí mà Shipment sẽ sử dụng."
+        eyebrow="Bảng giá & cước"
+        title="Chi tiết cách tính cước"
+        description="Xem lại mức cước đã được hệ thống tính cho một vận đơn hoặc một lần tính thử, bao gồm khối lượng, phụ phí và dịch vụ bổ sung."
         help={{
           description:
-            "Admin endpoint đọc đúng snapshot bất biến của quote. Đây là dữ liệu phù hợp để điều tra vì sao một vận đơn nhận mức giá cụ thể.",
+            "Trang này dùng để đối chiếu cách hệ thống đã tính ra tổng cước tại thời điểm kết quả được phát hành.",
           bullets: [
-            "Quote snapshot giữ rate code/revision tại lúc phát hành, không đổi theo bảng giá hiện tại.",
-            "Kiểm tra origin/destination resolution để biết vùng giá và tier phụ phí.",
-            "Quote hết hạn vẫn có thể được admin xem để support; Shipment mới sẽ không được dùng quote hết hạn.",
+            "Tổng cước bằng phí cơ bản, phí khối lượng tăng thêm, phụ phí khu vực, phí thu hộ và phí bảo hiểm.",
+            "Số tiền thu hộ là tiền cần thu từ người nhận, không phải một phần của cước vận chuyển.",
+            "Thông tin bảng giá được giữ theo thời điểm tính để việc đối chiếu không bị thay đổi bởi cấu hình mới.",
           ],
         }}
       />
 
-      <Card className="p-4">
-        <form className="flex flex-col gap-3 sm:flex-row" onSubmit={submit}>
-          <Input
-            value={quoteId}
-            onChange={(event) => setQuoteId(event.target.value)}
-            placeholder="Quote ID (UUID)"
-            className="font-mono"
-          />
-          <Button type="submit" disabled={loading} className="shrink-0">
-            <SearchIcon className="size-4" />
-            Tra cứu quote
-          </Button>
-        </form>
-      </Card>
-
       {loading ? (
-        <PricingLoading label="Đang tải snapshot quote..." />
+        <PricingLoading label="Đang tải chi tiết cách tính cước..." />
       ) : error ? (
-        <PricingError message={error} onRetry={() => void load()} />
-      ) : !quote ? (
+        <PricingError message={error} />
+      ) : !initialQuoteId || !quote ? (
         <Card className="grid min-h-64 place-items-center p-6 text-center">
           <div>
             <CircleDollarSignIcon className="mx-auto size-8 text-muted-foreground" />
-            <p className="mt-3 text-sm font-black">Chưa chọn quote</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Dán Quote ID từ Shipment, log Pricing hoặc trang mô phỏng để kiểm tra.
+            <p className="mt-3 text-sm font-black">Chưa có dữ liệu cước để xem</p>
+            <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+              Mở trang này từ chi tiết vận đơn hoặc từ kết quả tính thử cước để xem đúng dữ liệu cần đối chiếu.
             </p>
           </div>
         </Card>
@@ -157,20 +156,19 @@ export function PricingQuoteInspector({ initialQuoteId = "" }: { initialQuoteId?
                     {pricingZoneLabel(quote.pricingZone)}
                   </span>
                 </div>
-                <p className="mt-3 font-mono text-xs font-black">{quote.quoteId}</p>
+                <h2 className="mt-3 text-base font-black">
+                  {originName} → {destinationName}
+                </h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Phát hành {dateTime(quote.createdAt)} · hết hạn {dateTime(quote.expiresAt)}
+                  Tính lúc {dateTime(quote.createdAt)} · có hiệu lực đến {dateTime(quote.expiresAt)}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void copy(quote.quoteId, "Quote ID")}
-              >
-                <CopyIcon className="size-3.5" />
-                Sao chép ID
-              </Button>
+              <div className="rounded-lg border bg-background px-3 py-2 text-right">
+                <p className="text-[0.62rem] font-bold text-muted-foreground">
+                  Phiên bản bảng giá
+                </p>
+                <p className="mt-0.5 text-sm font-black">{quote.rateRevision}</p>
+              </div>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4">
               <PricingMetric label="Tổng cước" value={money(quote.fees.total)} />
@@ -180,60 +178,83 @@ export function PricingQuoteInspector({ initialQuoteId = "" }: { initialQuoteId?
             </div>
           </Card>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <Card className="p-4">
-              <p className="text-sm font-black">Snapshot bảng giá</p>
-              <div className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
-                <div className="rounded-lg border p-3"><p className="text-muted-foreground">Rate code</p><p className="mt-1 font-mono font-black">{quote.rateCode}</p></div>
-                <div className="rounded-lg border p-3"><p className="text-muted-foreground">Revision</p><p className="mt-1 font-black">{quote.rateRevision}</p></div>
-                <div className="rounded-lg border p-3"><p className="text-muted-foreground">Rate version</p><p className="mt-1 font-mono font-black">{quote.rateVersion}</p></div>
-                <div className="rounded-lg border p-3"><p className="text-muted-foreground">Rate plan ID</p><p className="mt-1 break-all font-mono text-[0.68rem] font-black">{quote.ratePlanId}</p></div>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <Card className="overflow-hidden">
+              <div className="border-b p-4">
+                <p className="text-sm font-black">Chi tiết cước vận chuyển</p>
               </div>
-            </Card>
-
-            <Card className="p-4">
-              <p className="text-sm font-black">Các khoản phí</p>
-              <div className="mt-4 divide-y rounded-lg border text-xs">
+              <div className="divide-y text-xs">
                 {[
                   ["Phí cơ bản", quote.fees.baseFee],
-                  ["Khối lượng tăng thêm", quote.fees.additionalWeightFee],
+                  ["Phí khối lượng tăng thêm", quote.fees.additionalWeightFee],
                   ["Phụ phí khu vực", quote.fees.areaSurcharge],
-                  ["Phí COD", quote.fees.codFee],
+                  ["Phí dịch vụ thu hộ", quote.fees.codFee],
                   ["Phí bảo hiểm", quote.fees.insuranceFee],
                 ].map(([label, value]) => (
-                  <div key={String(label)} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <div
+                    key={String(label)}
+                    className="flex items-center justify-between gap-3 px-4 py-3"
+                  >
                     <span className="text-muted-foreground">{String(label)}</span>
                     <strong>{money(Number(value))}</strong>
                   </div>
                 ))}
-                <div className="flex items-center justify-between gap-3 bg-muted/25 px-3 py-3 text-sm">
-                  <strong>Tổng</strong><strong>{money(quote.fees.total)}</strong>
+                <div className="flex items-center justify-between gap-3 bg-muted/25 px-4 py-4 text-sm">
+                  <strong>Tổng cước</strong>
+                  <strong className="text-brand">{money(quote.fees.total)}</strong>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <p className="text-sm font-black">Thu hộ & giá trị hàng hóa</p>
+              <div className="mt-4 grid gap-3 text-xs">
+                <div className="rounded-lg border p-3">
+                  <p className="text-muted-foreground">Số tiền cần thu hộ</p>
+                  <p className="mt-1 text-lg font-black">{money(quote.codAmount)}</p>
+                  <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
+                    Không cộng trực tiếp vào tổng cước vận chuyển.
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-muted-foreground">Phí dịch vụ thu hộ</p>
+                  <p className="mt-1 text-base font-black">{money(quote.fees.codFee)}</p>
+                  {quote.codAmount > 0 && quote.fees.codFee === 0 ? (
+                    <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
+                      Được miễn theo chính sách bảng giá áp dụng tại thời điểm tính.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-muted-foreground">Giá trị khai báo</p>
+                  <p className="mt-1 text-base font-black">{money(quote.declaredValue)}</p>
+                  <p className="mt-1 text-[0.68rem] text-muted-foreground">
+                    Phí bảo hiểm: {money(quote.fees.insuranceFee)}
+                  </p>
                 </div>
               </div>
             </Card>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            {[
-              ["Điểm gửi", quote.origin],
-              ["Điểm nhận", quote.destination],
-            ].map(([label, rawLocation]) => {
-              const location = rawLocation as PricingQuoteSnapshot["origin"];
-              return (
-                <Card key={String(label)} className="p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-black">{String(label)}</p>
-                    <span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">{tierLabel(location.coverageTier)}</span>
-                  </div>
-                  <p className="mt-3 text-sm font-black">{locationSummary(location)}</p>
-                  <div className="mt-3 grid gap-2 font-mono text-[0.65rem] text-muted-foreground">
-                    <p>serviceAreaId: {location.serviceAreaId}</p>
-                    <p>regionId: {location.regionId}</p>
-                    <p>primaryHubId: {location.primaryHubId}</p>
-                  </div>
-                </Card>
-              );
-            })}
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-black">Điểm gửi</p>
+                <span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">
+                  {tierLabel(quote.origin.coverageTier)}
+                </span>
+              </div>
+              <p className="mt-3 text-sm font-black">{originName}</p>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-black">Điểm nhận</p>
+                <span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">
+                  {tierLabel(quote.destination.coverageTier)}
+                </span>
+              </div>
+              <p className="mt-3 text-sm font-black">{destinationName}</p>
+            </Card>
           </div>
 
           <Card className="overflow-hidden">
@@ -244,7 +265,13 @@ export function PricingQuoteInspector({ initialQuoteId = "" }: { initialQuoteId?
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-xs">
                 <thead className="bg-muted/35 text-[0.62rem] uppercase tracking-[0.08em] text-muted-foreground">
-                  <tr><th className="px-4 py-3">Kiện</th><th className="px-4 py-3">Thực</th><th className="px-4 py-3">Quy đổi</th><th className="px-4 py-3">Tính cước</th><th className="px-4 py-3">Kích thước</th></tr>
+                  <tr>
+                    <th className="px-4 py-3">Kiện</th>
+                    <th className="px-4 py-3">Khối lượng thực</th>
+                    <th className="px-4 py-3">Khối lượng quy đổi</th>
+                    <th className="px-4 py-3">Khối lượng tính cước</th>
+                    <th className="px-4 py-3">Kích thước</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y">
                   {quote.parcels.map((parcel) => (
@@ -253,7 +280,9 @@ export function PricingQuoteInspector({ initialQuoteId = "" }: { initialQuoteId?
                       <td className="px-4 py-3">{parcel.actualWeightKg} kg</td>
                       <td className="px-4 py-3">{parcel.volumetricWeightKg} kg</td>
                       <td className="px-4 py-3 font-black">{parcel.chargeableWeightKg} kg</td>
-                      <td className="px-4 py-3">{parcel.lengthCm} × {parcel.widthCm} × {parcel.heightCm} cm</td>
+                      <td className="px-4 py-3">
+                        {parcel.lengthCm} × {parcel.widthCm} × {parcel.heightCm} cm
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -261,10 +290,17 @@ export function PricingQuoteInspector({ initialQuoteId = "" }: { initialQuoteId?
             </div>
           </Card>
 
-          <Card className="grid gap-3 p-4 text-xs sm:grid-cols-3">
-            <div><p className="text-muted-foreground">COD</p><p className="mt-1 font-black">{money(quote.codAmount)}</p></div>
-            <div><p className="text-muted-foreground">Giá trị khai báo</p><p className="mt-1 font-black">{money(quote.declaredValue)}</p></div>
-            <div><p className="text-muted-foreground">SLA dự kiến</p><p className="mt-1 font-black">{quote.estimatedMinDays}–{quote.estimatedMaxDays} ngày</p></div>
+          <Card className="grid gap-3 p-4 text-xs sm:grid-cols-2">
+            <div>
+              <p className="text-muted-foreground">Thời gian giao dự kiến</p>
+              <p className="mt-1 font-black">
+                {quote.estimatedMinDays}–{quote.estimatedMaxDays} ngày
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Phạm vi tính cước</p>
+              <p className="mt-1 font-black">{pricingZoneLabel(quote.pricingZone)}</p>
+            </div>
           </Card>
         </>
       )}

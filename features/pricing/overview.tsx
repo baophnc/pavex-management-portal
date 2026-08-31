@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, CalculatorIcon, HistoryIcon, ListChecksIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
+import { ArrowRightIcon, CalculatorIcon, HistoryIcon, ListChecksIcon, RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -31,7 +31,7 @@ export function PricingOverview() {
         setError(null);
       })
       .catch((reason) => {
-        if (active) setError(pricingErrorMessage(reason, "Không thể tải tổng quan Pricing."));
+        if (active) setError(pricingErrorMessage(reason, "Không thể tải tổng quan giá cước."));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -47,15 +47,15 @@ export function PricingOverview() {
   return (
     <div className="grid gap-4">
       <PricingPageHeader
-        eyebrow="Pricing"
+        eyebrow="Bảng giá & cước"
         title="Quản lý giá cước"
-        description="Quản lý bảng giá theo phiên bản, kiểm soát chính sách phụ phí và mô phỏng cước trước khi Shipment sử dụng quote."
+        description="Quản lý bảng giá theo phiên bản, kiểm soát phụ phí và thử tính cước trước khi áp dụng vào vận đơn."
         help={{
-          description: "Pricing là nơi quyết định giá cước, phụ phí và SLA ước tính. Bảng giá đang áp dụng được dùng cho mọi yêu cầu tính cước mới.",
+          description: "Đây là nơi cấu hình cước vận chuyển, phụ phí và thời gian giao dự kiến. Bảng giá đang áp dụng được dùng cho mọi lần tính cước mới.",
           bullets: [
             "Không sửa trực tiếp bảng giá đang áp dụng; hãy tạo phiên bản nháp mới.",
             "Mỗi bảng giá cần đủ 6 quy tắc: Tiêu chuẩn/Nhanh × 3 phạm vi.",
-            "Mô phỏng cước gọi đúng Quote Engine thật và Network thật.",
+            "Tính thử cước dùng đúng bảng giá và phạm vi phục vụ hiện tại.",
           ],
         }}
         actions={<Button variant="outline" onClick={() => { setLoading(true); setRefreshKey((value) => value + 1); }}><RefreshCwIcon className="size-4" />Làm mới</Button>}
@@ -86,20 +86,20 @@ export function PricingOverview() {
                 </Link>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4">
-                <PricingMetric label="Phụ phí vùng xa / đầu" value={money(current.remoteEndpointSurcharge)} />
+                <PricingMetric label="Phụ phí mỗi đầu vùng xa" value={money(current.remoteEndpointSurcharge)} />
                 <PricingMetric label="Phụ phí hải đảo" value={percent(current.islandTransportRate)} note="Tính trên phí vận chuyển" />
-                <PricingMetric label="Quote hiệu lực" value={`${current.quoteTtlMinutes} phút`} />
+                <PricingMetric label="Kết quả có hiệu lực" value={`${current.quoteTtlMinutes} phút`} />
                 <PricingMetric label="Khối lượng đơn tối đa" value={`${current.maxShipmentChargeableWeightKg} kg`} />
               </div>
             </Card>
           ) : (
             <Card className="border-amber-500/25 bg-amber-500/[0.04] p-5">
               <h2 className="font-black">Chưa có bảng giá đang áp dụng</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">Quote Engine sẽ không thể tính cước cho khách hàng cho tới khi một bảng giá đầy đủ được kích hoạt.</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">Hệ thống sẽ không thể tính cước cho khách hàng cho tới khi một bảng giá đầy đủ được kích hoạt.</p>
             </Card>
           )}
 
-          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-3 md:grid-cols-3">
             <Link href="/pricing/rate-plans" className="rounded-xl border bg-card p-4 transition hover:border-brand/35 hover:bg-brand/[0.02]">
               <ListChecksIcon className="size-5 text-brand" />
               <h3 className="mt-3 font-black">Bảng giá & phiên bản</h3>
@@ -107,13 +107,8 @@ export function PricingOverview() {
             </Link>
             <Link href="/pricing/simulator" className="rounded-xl border bg-card p-4 transition hover:border-brand/35 hover:bg-brand/[0.02]">
               <CalculatorIcon className="size-5 text-brand" />
-              <h3 className="mt-3 font-black">Mô phỏng tính cước</h3>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Chọn địa chỉ thật, nhập kiện hàng và xem Standard/Express mà Quote Engine trả về.</p>
-            </Link>
-            <Link href="/pricing/quotes" className="rounded-xl border bg-card p-4 transition hover:border-brand/35 hover:bg-brand/[0.02]">
-              <SearchIcon className="size-5 text-brand" />
-              <h3 className="mt-3 font-black">Kiểm tra quote</h3>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Tra snapshot quote đã phát hành để support đối chiếu bảng giá, phí và tuyến giá.</p>
+              <h3 className="mt-3 font-black">Tính thử cước</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Chọn địa chỉ, nhập kiện hàng và xem mức cước Tiêu chuẩn/Nhanh mà hệ thống đang áp dụng.</p>
             </Link>
             <Link href="/pricing/audit" className="rounded-xl border bg-card p-4 transition hover:border-brand/35 hover:bg-brand/[0.02]">
               <HistoryIcon className="size-5 text-brand" />

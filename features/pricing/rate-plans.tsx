@@ -51,6 +51,7 @@ import {
   PricingError,
   PricingField,
   PricingLoading,
+  PricingMoneyInput,
   PricingPageHeader,
   PricingStatusBadge,
 } from "@/features/pricing/ui";
@@ -193,12 +194,12 @@ function RuleEditor({
         <span className={cn("rounded-full border px-2 py-1 text-[0.6rem] font-black", existing ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300")}>{existing ? "Đã cấu hình" : "Còn thiếu"}</span>
       </div>
       <div className="grid gap-3 p-4 sm:grid-cols-2">
-        <PricingField label="Phí cơ bản"><Input type="number" min={0} step={1000} disabled={!editable || saving} value={form.baseFee} onChange={(event) => setForm((value) => ({ ...value, baseFee: Number(event.target.value) }))} /></PricingField>
+        <PricingField label="Phí cơ bản"><PricingMoneyInput disabled={!editable || saving} value={form.baseFee} onValueChange={(value) => setForm((current) => ({ ...current, baseFee: value }))} /></PricingField>
         <PricingField label="Bao gồm đến (kg)"><Input type="number" min={0} step={0.1} disabled={!editable || saving} value={form.includedWeightKg} onChange={(event) => setForm((value) => ({ ...value, includedWeightKg: Number(event.target.value) }))} /></PricingField>
         <PricingField label="Mỗi bước cân thêm (kg)"><Input type="number" min={0.01} step={0.1} disabled={!editable || saving} value={form.additionalWeightStepKg} onChange={(event) => setForm((value) => ({ ...value, additionalWeightStepKg: Number(event.target.value) }))} /></PricingField>
-        <PricingField label="Phí mỗi bước cân"><Input type="number" min={0} step={1000} disabled={!editable || saving} value={form.additionalWeightStepFee} onChange={(event) => setForm((value) => ({ ...value, additionalWeightStepFee: Number(event.target.value) }))} /></PricingField>
-        <PricingField label="SLA tối thiểu (ngày)"><Input type="number" min={0} step={1} disabled={!editable || saving} value={form.estimatedMinDays} onChange={(event) => setForm((value) => ({ ...value, estimatedMinDays: Number(event.target.value) }))} /></PricingField>
-        <PricingField label="SLA tối đa (ngày)"><Input type="number" min={0} step={1} disabled={!editable || saving} value={form.estimatedMaxDays} onChange={(event) => setForm((value) => ({ ...value, estimatedMaxDays: Number(event.target.value) }))} /></PricingField>
+        <PricingField label="Phí mỗi bước cân"><PricingMoneyInput disabled={!editable || saving} value={form.additionalWeightStepFee} onValueChange={(value) => setForm((current) => ({ ...current, additionalWeightStepFee: value }))} /></PricingField>
+        <PricingField label="Giao sớm nhất (ngày)"><Input type="number" min={0} step={1} disabled={!editable || saving} value={form.estimatedMinDays} onChange={(event) => setForm((value) => ({ ...value, estimatedMinDays: Number(event.target.value) }))} /></PricingField>
+        <PricingField label="Giao chậm nhất (ngày)"><Input type="number" min={0} step={1} disabled={!editable || saving} value={form.estimatedMaxDays} onChange={(event) => setForm((value) => ({ ...value, estimatedMaxDays: Number(event.target.value) }))} /></PricingField>
       </div>
       {editable ? (
         <div className="flex justify-end gap-2 border-t px-4 py-3">
@@ -341,12 +342,12 @@ export function PricingRatePlans() {
   return (
     <div className="grid gap-4">
       <PricingPageHeader
-        eyebrow="Pricing"
+        eyebrow="Bảng giá & cước"
         title="Bảng giá & phiên bản"
         description="Quản lý chính sách giá theo phiên bản. Bảng giá đang áp dụng là bất biến; mọi thay đổi nên được chuẩn bị ở một bản nháp mới rồi mới kích hoạt."
         help={{
-          description: "Một bảng giá chứa chính sách chung và 6 quy tắc giá. Chỉ DRAFT được sửa để quote đã phát hành không bị thay đổi giá ngược về sau.",
-          bullets: ["Đủ 6 quy tắc trước khi kích hoạt.", "Không để hai bảng giá ACTIVE chồng lấn thời gian.", "Tạo phiên bản mới từ bảng giá cũ để thay đổi an toàn."],
+          description: "Một bảng giá chứa chính sách chung và 6 quy tắc giá. Chỉ bản nháp được sửa để mức cước đã tính trước đó không bị thay đổi ngược về sau.",
+          bullets: ["Đủ 6 quy tắc trước khi kích hoạt.", "Không để hai bảng giá đang áp dụng chồng lấn thời gian.", "Tạo phiên bản mới từ bảng giá cũ để thay đổi an toàn."],
         }}
         actions={<><Button variant="outline" onClick={() => { setLoading(true); setRefreshKey((value) => value + 1); }}><RefreshCwIcon className="size-4" />Làm mới</Button>{canManage ? <Button onClick={() => setCreateOpen(true)}><PlusIcon className="size-4" />Tạo bảng giá</Button> : null}</>}
       />
@@ -367,7 +368,7 @@ export function PricingRatePlans() {
             {plans.length ? plans.map((plan) => (
               <button key={plan.id} type="button" className={cn("w-full rounded-xl border bg-card p-4 text-left transition hover:border-brand/30", selected?.id === plan.id && "border-brand/40 ring-2 ring-brand/10")} onClick={() => selectPlan(plan)}>
                 <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{plan.name}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">Phiên bản {plan.revision} · cập nhật {dateTime(plan.updatedAt)}</p></div><PricingStatusBadge status={plan.status} /></div>
-                <div className="mt-3 flex items-center justify-between border-t pt-3 text-[0.68rem]"><span>{plan.ruleCount}/6 quy tắc</span><span className="text-muted-foreground">{plan.quoteTtlMinutes} phút / quote</span></div>
+                <div className="mt-3 flex items-center justify-between border-t pt-3 text-[0.68rem]"><span>{plan.ruleCount}/6 quy tắc</span><span className="text-muted-foreground">{plan.quoteTtlMinutes} phút hiệu lực</span></div>
               </button>
             )) : <Card className="p-5 text-sm text-muted-foreground">Chưa có bảng giá phù hợp bộ lọc.</Card>}
           </div>
@@ -392,17 +393,17 @@ export function PricingRatePlans() {
                   <PricingField label="Tên bảng giá"><Input disabled={!editable || saving} value={policy.name} onChange={(event) => setPolicy((value) => ({ ...value, name: event.target.value }))} /></PricingField>
                   <PricingField label="Bắt đầu hiệu lực"><Input type="datetime-local" disabled={!editable || saving} value={toLocalDateTime(policy.effectiveFrom)} onChange={(event) => setPolicy((value) => ({ ...value, effectiveFrom: fromLocalDateTime(event.target.value) }))} /></PricingField>
                   <PricingField label="Kết thúc hiệu lực"><Input type="datetime-local" disabled={!editable || saving} value={toLocalDateTime(policy.effectiveTo)} onChange={(event) => setPolicy((value) => ({ ...value, effectiveTo: fromLocalDateTime(event.target.value) }))} /></PricingField>
-                  <PricingField label="Quote hiệu lực (phút)"><Input type="number" min={1} max={240} disabled={!editable || saving} value={policy.quoteTtlMinutes} onChange={(event) => setPolicy((value) => ({ ...value, quoteTtlMinutes: Number(event.target.value) }))} /></PricingField>
+                  <PricingField label="Kết quả tính cước có hiệu lực (phút)"><Input type="number" min={1} max={240} disabled={!editable || saving} value={policy.quoteTtlMinutes} onChange={(event) => setPolicy((value) => ({ ...value, quoteTtlMinutes: Number(event.target.value) }))} /></PricingField>
                   <PricingField label="Hệ số khối lượng quy đổi"><Input type="number" min={100} step={100} disabled={!editable || saving} value={policy.volumetricDivisor} onChange={(event) => setPolicy((value) => ({ ...value, volumetricDivisor: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="Phụ phí vùng xa / đầu"><Input type="number" min={0} step={1000} disabled={!editable || saving} value={policy.remoteEndpointSurcharge} onChange={(event) => setPolicy((value) => ({ ...value, remoteEndpointSurcharge: Number(event.target.value) }))} /></PricingField>
+                  <PricingField label="Phụ phí mỗi đầu vùng xa"><PricingMoneyInput disabled={!editable || saving} value={policy.remoteEndpointSurcharge} onValueChange={(value) => setPolicy((current) => ({ ...current, remoteEndpointSurcharge: value }))} /></PricingField>
                   <PricingField label="Phụ phí hải đảo" hint="Nhập dạng 0.2 = 20%"><Input type="number" min={0} max={1} step={0.01} disabled={!editable || saving} value={policy.islandTransportRate} onChange={(event) => setPolicy((value) => ({ ...value, islandTransportRate: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="COD miễn phí đến"><Input type="number" min={0} step={1000} disabled={!editable || saving} value={policy.codFreeThreshold} onChange={(event) => setPolicy((value) => ({ ...value, codFreeThreshold: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="Tỷ lệ phí COD" hint="Nhập dạng 0.005 = 0,5%"><Input type="number" min={0} max={1} step={0.001} disabled={!editable || saving} value={policy.codRate} onChange={(event) => setPolicy((value) => ({ ...value, codRate: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="Phí COD tối thiểu"><Input type="number" min={0} step={1000} disabled={!editable || saving} value={policy.codMinimumFee} onChange={(event) => setPolicy((value) => ({ ...value, codMinimumFee: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="COD tối đa"><Input type="number" min={0} step={1000} disabled={!editable || saving} value={policy.maximumCod} onChange={(event) => setPolicy((value) => ({ ...value, maximumCod: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="Bảo hiểm miễn phí đến"><Input type="number" min={0} step={1000} disabled={!editable || saving} value={policy.insuranceFreeThreshold} onChange={(event) => setPolicy((value) => ({ ...value, insuranceFreeThreshold: Number(event.target.value) }))} /></PricingField>
+                  <PricingField label="Miễn phí thu hộ đến"><PricingMoneyInput disabled={!editable || saving} value={policy.codFreeThreshold} onValueChange={(value) => setPolicy((current) => ({ ...current, codFreeThreshold: value }))} /></PricingField>
+                  <PricingField label="Tỷ lệ phí thu hộ" hint="Nhập dạng 0.005 = 0,5%"><Input type="number" min={0} max={1} step={0.001} disabled={!editable || saving} value={policy.codRate} onChange={(event) => setPolicy((value) => ({ ...value, codRate: Number(event.target.value) }))} /></PricingField>
+                  <PricingField label="Phí thu hộ tối thiểu"><PricingMoneyInput disabled={!editable || saving} value={policy.codMinimumFee} onValueChange={(value) => setPolicy((current) => ({ ...current, codMinimumFee: value }))} /></PricingField>
+                  <PricingField label="Số tiền thu hộ tối đa"><PricingMoneyInput disabled={!editable || saving} value={policy.maximumCod} onValueChange={(value) => setPolicy((current) => ({ ...current, maximumCod: value }))} /></PricingField>
+                  <PricingField label="Bảo hiểm miễn phí đến"><PricingMoneyInput disabled={!editable || saving} value={policy.insuranceFreeThreshold} onValueChange={(value) => setPolicy((current) => ({ ...current, insuranceFreeThreshold: value }))} /></PricingField>
                   <PricingField label="Tỷ lệ bảo hiểm" hint="Nhập dạng 0.005 = 0,5%"><Input type="number" min={0} max={1} step={0.001} disabled={!editable || saving} value={policy.insuranceRate} onChange={(event) => setPolicy((value) => ({ ...value, insuranceRate: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="Giá trị khai báo tối đa"><Input type="number" min={0} step={1000} disabled={!editable || saving} value={policy.maximumDeclaredValue} onChange={(event) => setPolicy((value) => ({ ...value, maximumDeclaredValue: Number(event.target.value) }))} /></PricingField>
+                  <PricingField label="Giá trị khai báo tối đa"><PricingMoneyInput disabled={!editable || saving} value={policy.maximumDeclaredValue} onValueChange={(value) => setPolicy((current) => ({ ...current, maximumDeclaredValue: value }))} /></PricingField>
                   <PricingField label="Tối đa mỗi kiện (kg)"><Input type="number" min={0.01} step={0.5} disabled={!editable || saving} value={policy.maxParcelWeightKg} onChange={(event) => setPolicy((value) => ({ ...value, maxParcelWeightKg: Number(event.target.value) }))} /></PricingField>
                   <PricingField label="Tổng khối lượng tính cước tối đa (kg)"><Input type="number" min={0.01} step={0.5} disabled={!editable || saving} value={policy.maxShipmentChargeableWeightKg} onChange={(event) => setPolicy((value) => ({ ...value, maxShipmentChargeableWeightKg: Number(event.target.value) }))} /></PricingField>
                   <PricingField label="Kích thước mỗi chiều tối đa (cm)"><Input type="number" min={1} step={1} disabled={!editable || saving} value={policy.maxDimensionCm} onChange={(event) => setPolicy((value) => ({ ...value, maxDimensionCm: Number(event.target.value) }))} /></PricingField>
@@ -429,10 +430,10 @@ export function PricingRatePlans() {
           <div className="my-6 w-full max-w-3xl rounded-2xl border bg-card shadow-2xl" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="border-b p-5"><h2 className="text-lg font-black">Tạo bảng giá nháp</h2><p className="mt-1 text-xs text-muted-foreground">Tạo phần chính sách trước, sau đó cấu hình đủ 6 quy tắc giá.</p></div>
             <div className="grid gap-4 p-5 md:grid-cols-2">
-              <PricingField label="Mã kỹ thuật" hint="Chỉ dùng để định danh/versioning; UI vận hành sẽ ưu tiên tên."><Input value={createForm.code} disabled={saving} placeholder="DOMESTIC-2026" onChange={(event) => setCreateForm((value) => ({ ...value, code: event.target.value.toUpperCase() }))} /></PricingField>
+              <PricingField label="Mã bảng giá" hint="Mã định danh ổn định cho từng dòng bảng giá."><Input value={createForm.code} disabled={saving} placeholder="DOMESTIC-2026" onChange={(event) => setCreateForm((value) => ({ ...value, code: event.target.value.toUpperCase() }))} /></PricingField>
               <PricingField label="Tên bảng giá"><Input value={createForm.name} disabled={saving} placeholder="Bảng giá nội địa tháng 09/2026" onChange={(event) => setCreateForm((value) => ({ ...value, name: event.target.value }))} /></PricingField>
               <PricingField label="Phiên bản"><Input type="number" min={1} disabled={saving} value={createForm.revision} onChange={(event) => setCreateForm((value) => ({ ...value, revision: Number(event.target.value) }))} /></PricingField>
-              <PricingField label="Quote hiệu lực (phút)"><Input type="number" min={1} max={240} disabled={saving} value={createForm.quoteTtlMinutes} onChange={(event) => setCreateForm((value) => ({ ...value, quoteTtlMinutes: Number(event.target.value) }))} /></PricingField>
+              <PricingField label="Kết quả tính cước có hiệu lực (phút)"><Input type="number" min={1} max={240} disabled={saving} value={createForm.quoteTtlMinutes} onChange={(event) => setCreateForm((value) => ({ ...value, quoteTtlMinutes: Number(event.target.value) }))} /></PricingField>
               <PricingField label="Bắt đầu hiệu lực"><Input type="datetime-local" disabled={saving} value={toLocalDateTime(createForm.effectiveFrom)} onChange={(event) => setCreateForm((value) => ({ ...value, effectiveFrom: fromLocalDateTime(event.target.value) }))} /></PricingField>
               <PricingField label="Kết thúc hiệu lực"><Input type="datetime-local" disabled={saving} value={toLocalDateTime(createForm.effectiveTo)} onChange={(event) => setCreateForm((value) => ({ ...value, effectiveTo: fromLocalDateTime(event.target.value) }))} /></PricingField>
               <PricingField label="Khối lượng tối đa mỗi kiện (kg)"><Input type="number" min={0.01} step={0.5} disabled={saving} value={createForm.maxParcelWeightKg} onChange={(event) => setCreateForm((value) => ({ ...value, maxParcelWeightKg: Number(event.target.value) }))} /></PricingField>
@@ -443,10 +444,10 @@ export function PricingRatePlans() {
         </div>
       ) : null}
 
-      <PricingConfirmDialog open={dialog === "activate"} title="Bắt đầu áp dụng bảng giá?" description="Sau khi kích hoạt, bảng giá trở thành bất biến. Các quote mới trong khoảng hiệu lực sẽ sử dụng phiên bản này." confirmLabel="Bắt đầu áp dụng" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
-      <PricingConfirmDialog open={dialog === "retire"} title="Ngừng áp dụng bảng giá?" description="Quote đã phát hành vẫn giữ snapshot cũ; yêu cầu tính cước mới sẽ không dùng bảng giá này nữa." confirmLabel="Ngừng áp dụng" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
-      <PricingConfirmDialog open={dialog === "delete"} title="Xóa bảng giá nháp?" description="Chỉ DRAFT được xóa. Hành động này không ảnh hưởng các quote đã phát hành từ phiên bản khác." confirmLabel="Xóa bản nháp" destructive loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
-      <PricingConfirmDialog open={dialog === "revision"} title="Tạo phiên bản mới?" description="Pricing sẽ sao chép chính sách và toàn bộ quy tắc từ phiên bản đang chọn sang một DRAFT mới với số phiên bản tăng tự động." confirmLabel="Tạo phiên bản mới" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
+      <PricingConfirmDialog open={dialog === "activate"} title="Bắt đầu áp dụng bảng giá?" description="Sau khi kích hoạt, bảng giá không còn chỉnh sửa trực tiếp. Các lần tính cước mới trong khoảng hiệu lực sẽ sử dụng phiên bản này." confirmLabel="Bắt đầu áp dụng" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
+      <PricingConfirmDialog open={dialog === "retire"} title="Ngừng áp dụng bảng giá?" description="Các mức cước đã tính trước đó vẫn giữ dữ liệu cũ; lần tính cước mới sẽ không dùng bảng giá này nữa." confirmLabel="Ngừng áp dụng" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
+      <PricingConfirmDialog open={dialog === "delete"} title="Xóa bảng giá nháp?" description="Chỉ bản nháp được xóa. Hành động này không ảnh hưởng các mức cước đã được tính từ phiên bản khác." confirmLabel="Xóa bản nháp" destructive loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
+      <PricingConfirmDialog open={dialog === "revision"} title="Tạo phiên bản mới?" description="Hệ thống sẽ sao chép chính sách và toàn bộ quy tắc từ phiên bản đang chọn sang một bản nháp mới với số phiên bản tăng tự động." confirmLabel="Tạo phiên bản mới" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
     </div>
   );
 }
