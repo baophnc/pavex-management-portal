@@ -127,7 +127,7 @@ const navigationSections: NavigationSection[] = [
       },
       {
         href: "/network/regions",
-        label: "Vùng",
+        label: "Vùng mạng lưới",
         icon: CircleGaugeIcon,
         permissionsAny: ["network.read", "network.manage"],
       },

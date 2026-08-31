@@ -1,7 +1,11 @@
 "use client";
 
 import {
+  Building2Icon,
+  ChevronRightIcon,
   LoaderCircleIcon,
+  MapPinIcon,
+  PlusIcon,
   RefreshCwIcon,
   SaveIcon,
   SearchIcon,
@@ -13,18 +17,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { createHub, getHubs, getProvinces, getWards, updateHub, updateHubStatus } from "@/features/network/api";
-import { networkErrorMessage } from "@/features/network/errors";
+import {
+  createHub,
+  getAllHubs,
+  getProvinces,
+  getWards,
+  updateHub,
+  updateHubStatus,
+} from "@/features/network/api";
 import {
   hubTypeLabel,
   hubTypes,
   type Hub,
   type HubStatus,
   type HubType,
-  type PageResponse,
   type Province,
   type Ward,
 } from "@/features/network/contracts";
+import { networkErrorMessage } from "@/features/network/errors";
 import {
   ActionPolicyNote,
   ConfirmActionDialog,
@@ -32,13 +42,10 @@ import {
   FormField,
   NetworkError,
   NetworkPageHeader,
-  Pager,
   StatusBadge,
   selectClassName,
 } from "@/features/network/ui";
 import { cn } from "@/lib/utils";
-
-const PAGE_SIZE = 20;
 
 type HubDraft = {
   code: string;
@@ -78,23 +85,26 @@ function draftFromHub(hub: Hub): HubDraft {
   };
 }
 
+function normalizeSearch(value: string) {
+  return value.trim().toLocaleLowerCase("vi");
+}
+
 export function NetworkHubs() {
   const { hasPermission } = useAccess();
   const canManage = hasPermission("network.manage");
 
-  const [result, setResult] = useState<PageResponse<Hub> | null>(null);
-  const [allHubs, setAllHubs] = useState<Hub[]>([]);
+  const [hubs, setHubs] = useState<Hub[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
-  const [draft, setDraft] = useState<HubDraft>(emptyDraft);
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState("");
   const [selected, setSelected] = useState<Hub | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState<HubDraft>(emptyDraft);
 
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
+  const [provinceSearch, setProvinceSearch] = useState("");
+  const [hubSearch, setHubSearch] = useState("");
   const [status, setStatus] = useState<HubStatus | "">("");
   const [type, setType] = useState<HubType | "">("");
-  const [provinceCode, setProvinceCode] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -102,43 +112,34 @@ export function NetworkHubs() {
   const [error, setError] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<Hub | null>(null);
 
-  const endpointParams = useMemo(() => {
-    const params = new URLSearchParams({
-      page: String(page),
-      pageSize: String(PAGE_SIZE),
-    });
-    if (appliedSearch) params.set("search", appliedSearch);
-    if (status) params.set("status", status);
-    if (type) params.set("type", type);
-    if (provinceCode) params.set("provinceCode", provinceCode);
-    return params;
-  }, [appliedSearch, page, provinceCode, status, type]);
-
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [pageResult, lookupResult, provinceResult] = await Promise.all([
-        getHubs(endpointParams),
-        getHubs(new URLSearchParams({ page: "1", pageSize: "100" })),
+      const [hubResult, provinceResult] = await Promise.all([
+        getAllHubs(),
         getProvinces(),
       ]);
-      setResult(pageResult);
-      setAllHubs(lookupResult.items);
+      setHubs(hubResult);
       setProvinces(provinceResult);
+      setSelectedProvinceCode((current) => {
+        if (current && provinceResult.some((province) => province.code === current)) {
+          return current;
+        }
+        const firstWithHub = provinceResult.find((province) =>
+          hubResult.some((hub) => hub.provinceCode === province.code),
+        );
+        return firstWithHub?.code ?? provinceResult[0]?.code ?? "";
+      });
       setSelected((current) =>
-        current
-          ? pageResult.items.find((item) => item.id === current.id) ??
-            lookupResult.items.find((item) => item.id === current.id) ??
-            current
-          : null,
+        current ? hubResult.find((hub) => hub.id === current.id) ?? null : null,
       );
     } catch (reason) {
-      setError(networkErrorMessage(reason, "Không thể tải danh sách điểm trung chuyển."));
+      setError(networkErrorMessage(reason, "Không thể tải điểm trung chuyển."));
     } finally {
       setLoading(false);
     }
-  }, [endpointParams]);
+  }, []);
 
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
@@ -165,8 +166,74 @@ export function NetworkHubs() {
     };
   }, [draft.provinceCode]);
 
+  const provinceNames = useMemo(
+    () => new Map(provinces.map((province) => [province.code, province.fullName])),
+    [provinces],
+  );
+
+  const hubNames = useMemo(
+    () => new Map(hubs.map((hub) => [hub.id, hub.name])),
+    [hubs],
+  );
+
+  const hubCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const hub of hubs) {
+      counts.set(hub.provinceCode, (counts.get(hub.provinceCode) ?? 0) + 1);
+    }
+    return counts;
+  }, [hubs]);
+
+  const visibleProvinces = useMemo(() => {
+    const query = normalizeSearch(provinceSearch);
+    return [...provinces]
+      .filter((province) => {
+        if (!query) return true;
+        return normalizeSearch(`${province.fullName} ${province.name}`).includes(query);
+      })
+      .sort((left, right) => {
+        const leftHasHub = (hubCounts.get(left.code) ?? 0) > 0;
+        const rightHasHub = (hubCounts.get(right.code) ?? 0) > 0;
+        if (leftHasHub !== rightHasHub) return leftHasHub ? -1 : 1;
+        return left.fullName.localeCompare(right.fullName, "vi");
+      });
+  }, [hubCounts, provinceSearch, provinces]);
+
+  const provinceHubs = useMemo(
+    () => hubs.filter((hub) => hub.provinceCode === selectedProvinceCode),
+    [hubs, selectedProvinceCode],
+  );
+
+  const visibleHubs = useMemo(() => {
+    const query = normalizeSearch(hubSearch);
+    return provinceHubs.filter((hub) => {
+      if (status && hub.status !== status) return false;
+      if (type && hub.type !== type) return false;
+      if (!query) return true;
+      return normalizeSearch(
+        `${hub.name} ${hub.publicName ?? ""} ${hub.addressLine}`,
+      ).includes(query);
+    });
+  }, [hubSearch, provinceHubs, status, type]);
+
+  const selectedProvinceName =
+    provinceNames.get(selectedProvinceCode) ?? "Chọn tỉnh / thành phố";
+
+  function selectProvince(code: string) {
+    setSelectedProvinceCode(code);
+    setSelected(null);
+    setCreating(false);
+    setDraft(emptyDraft);
+    setWards([]);
+    setHubSearch("");
+    setStatus("");
+    setType("");
+  }
+
   function edit(hub: Hub) {
+    setSelectedProvinceCode(hub.provinceCode);
     setSelected(hub);
+    setCreating(false);
     setWards([]);
     setLoadingWards(Boolean(hub.provinceCode));
     setDraft(draftFromHub(hub));
@@ -174,9 +241,13 @@ export function NetworkHubs() {
 
   function createNew() {
     setSelected(null);
+    setCreating(true);
     setWards([]);
-    setLoadingWards(false);
-    setDraft(emptyDraft);
+    setLoadingWards(Boolean(selectedProvinceCode));
+    setDraft({
+      ...emptyDraft,
+      provinceCode: selectedProvinceCode,
+    });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -211,6 +282,7 @@ export function NetworkHubs() {
         ? await updateHub(selected.id, payload)
         : await createHub({ code: draft.code.trim().toUpperCase(), ...payload });
       toast.success(selected ? "Đã cập nhật điểm trung chuyển." : "Đã tạo điểm trung chuyển.");
+      setCreating(false);
       await load();
       edit(updated);
     } catch (reason) {
@@ -241,26 +313,32 @@ export function NetworkHubs() {
     }
   }
 
-  const rows = result?.items ?? [];
-  const provinceNames = useMemo(
-    () => new Map(provinces.map((province) => [province.code, province.fullName])),
-    [provinces],
-  );
-
   return (
     <div className="space-y-4">
       <NetworkPageHeader
-        eyebrow="Nền tảng mạng lưới"
+        eyebrow="Mạng lưới vận hành"
         title="Điểm trung chuyển"
-        description="Quản lý các điểm nhận, gom, chia chọn và trung chuyển hàng trong mạng lưới."
-        help={{ description: "Mỗi điểm trung chuyển là một nút vật lý để hệ thống gắn vùng phục vụ và nối các tuyến vận chuyển.", bullets: ["Điểm cha chỉ dùng cho tổ chức quản trị, không ép tuyến hàng phải đi theo cây cha-con.", "Tên địa danh là thông tin chính hiển thị cho người vận hành; mã kỹ thuật chỉ dùng nội bộ.", "Có thể lọc theo tên, loại điểm và tỉnh/thành."] }}
+        description="Duyệt điểm trung chuyển theo tỉnh / thành phố thay vì phải đọc một bảng dài của toàn mạng lưới."
+        help={{
+          description: "Cột bên trái là tỉnh / thành phố; cột giữa chỉ hiển thị các điểm thuộc khu vực đang chọn.",
+          bullets: [
+            "Chọn Hồ Chí Minh, Hà Nội, Đà Nẵng... để thu hẹp dữ liệu theo khu vực.",
+            "Chọn một điểm ở cột giữa để xem hoặc chỉnh sửa ở bên phải.",
+            "Điểm cha chỉ phục vụ tổ chức quản trị, không ép luồng hàng phải đi theo cây cha-con.",
+          ],
+        }}
         actions={
           <>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
               <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />
               Tải lại
             </Button>
-            {canManage ? <Button onClick={createNew}>Tạo điểm</Button> : null}
+            {canManage ? (
+              <Button onClick={createNew}>
+                <PlusIcon className="size-4" />
+                Tạo điểm
+              </Button>
+            ) : null}
           </>
         }
       />
@@ -268,359 +346,438 @@ export function NetworkHubs() {
       {error ? <NetworkError message={error} onRetry={() => void load()} /> : null}
 
       <Card className="overflow-hidden">
-        <CardContent className="grid gap-2 border-b lg:grid-cols-[minmax(16rem,1fr)_11rem_11rem_13rem_auto]">
-          <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm theo tên điểm trung chuyển..."
-              className="pl-9"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  setPage(1);
-                  setAppliedSearch(search.trim());
-                }
-              }}
-            />
-          </div>
-          <select
-            className={selectClassName}
-            value={status}
-            onChange={(event) => {
-              setPage(1);
-              setStatus(event.target.value as HubStatus | "");
-            }}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="ACTIVE">Đang hoạt động</option>
-            <option value="INACTIVE">Ngừng hoạt động</option>
-          </select>
-          <select
-            className={selectClassName}
-            value={type}
-            onChange={(event) => {
-              setPage(1);
-              setType(event.target.value as HubType | "");
-            }}
-          >
-            <option value="">Tất cả loại điểm</option>
-            {hubTypes.map((item) => (
-              <option key={item} value={item}>
-                {hubTypeLabel(item)}
-              </option>
-            ))}
-          </select>
-          <select
-            className={selectClassName}
-            value={provinceCode}
-            onChange={(event) => {
-              setPage(1);
-              setProvinceCode(event.target.value);
-            }}
-          >
-            <option value="">Tất cả tỉnh/thành</option>
-            {provinces.map((province) => (
-              <option key={province.code} value={province.code}>
-                {province.fullName}
-              </option>
-            ))}
-          </select>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setPage(1);
-              setAppliedSearch(search.trim());
-            }}
-          >
-            Tìm
-          </Button>
-        </CardContent>
-
-        {loading && !result ? (
-          <div className="grid min-h-56 place-items-center">
-            <LoaderCircleIcon className="size-5 animate-spin text-brand" />
-          </div>
-        ) : rows.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-left text-xs">
-              <thead className="border-b bg-muted/35 text-[0.62rem] uppercase tracking-[0.08em] text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-black">Điểm trung chuyển</th>
-                  <th className="px-4 py-3 font-black">Loại</th>
-                  <th className="px-4 py-3 font-black">Địa điểm</th>
-                  <th className="px-4 py-3 font-black">Hiển thị</th>
-                  <th className="px-4 py-3 font-black">Trạng thái</th>
-                  <th className="px-4 py-3 text-right font-black">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {rows.map((hub) => (
-                  <tr key={hub.id} className="hover:bg-muted/25">
-                    <td className="px-4 py-3">
-                      <p className="font-black">{hub.name}</p>
-                    </td>
-                    <td className="px-4 py-3 font-bold">{hubTypeLabel(hub.type)}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-bold">
-                        {provinceNames.get(hub.provinceCode) ?? hub.provinceCode}
-                      </p>
-                      <p className="mt-1 max-w-64 truncate text-[0.65rem] text-muted-foreground">
-                        {hub.addressLine}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 font-bold">
-                      {hub.publicVisible ? "Công khai" : "Nội bộ"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge active={hub.status === "ACTIVE"} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="outline" size="sm" onClick={() => edit(hub)}>
-                        {canManage ? "Sửa" : "Xem"}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState
-            title="Không có Hub phù hợp"
-            description="Thử thay đổi bộ lọc hoặc tạo điểm trung chuyển đầu tiên."
-          />
-        )}
-
-        <Pager
-          page={result?.page ?? page}
-          totalPages={result?.totalPages ?? 0}
-          totalItems={result?.totalItems ?? 0}
-          onPage={setPage}
-        />
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <p className="text-sm font-black">
-            {selected ? selected.name : "Tạo điểm trung chuyển mới"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {selected
-              ? "Bạn có thể cập nhật loại điểm, điểm cha, địa chỉ và thông tin hiển thị."
-              : "Điểm mới sẽ ở trạng thái ngừng hoạt động; cấu hình xong rồi kích hoạt."}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4" onSubmit={submit}>
-            <details className="rounded-lg border bg-muted/15 p-3">
-              <summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary>
-              <div className="mt-3 max-w-sm">
-                <FormField label="Mã kỹ thuật" hint="Chỉ cần khi tạo mới; mã không dùng để tìm kiếm hằng ngày.">
-                  <Input
-                    value={draft.code}
-                    disabled={Boolean(selected) || !canManage}
-                    maxLength={50}
-                    placeholder="HN-HOANKIEM"
-                    className="font-mono uppercase"
-                    onChange={(event) => setDraft((current) => ({ ...current, code: event.target.value }))}
-                  />
-                </FormField>
-              </div>
-            </details>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <FormField label="Tên điểm">
+        <div className="grid min-h-[40rem] xl:grid-cols-[17rem_22rem_minmax(0,1fr)]">
+          <aside className="border-b bg-muted/[0.14] xl:border-r xl:border-b-0">
+            <div className="border-b p-3.5">
+              <p className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-muted-foreground">
+                Tỉnh / Thành phố
+              </p>
+              <div className="relative mt-3">
+                <SearchIcon className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  value={draft.name}
-                  disabled={!canManage}
-                  maxLength={200}
-                  placeholder="Thủ Đức"
-                  onChange={(event) =>
-                    setDraft((current) => ({ ...current, name: event.target.value }))
-                  }
+                  value={provinceSearch}
+                  onChange={(event) => setProvinceSearch(event.target.value)}
+                  placeholder="Tìm khu vực..."
+                  className="h-9 pl-8 text-xs"
                 />
-              </FormField>
+              </div>
+            </div>
 
-              <FormField label="Loại điểm">
+            {loading && !provinces.length ? (
+              <div className="grid min-h-44 place-items-center">
+                <LoaderCircleIcon className="size-5 animate-spin text-brand" />
+              </div>
+            ) : visibleProvinces.length ? (
+              <nav className="max-h-[28rem] overflow-y-auto p-2 xl:max-h-[calc(100vh-15rem)]">
+                {visibleProvinces.map((province) => {
+                  const count = hubCounts.get(province.code) ?? 0;
+                  const active = selectedProvinceCode === province.code;
+                  return (
+                    <button
+                      key={province.code}
+                      type="button"
+                      onClick={() => selectProvince(province.code)}
+                      className={cn(
+                        "mb-1 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left transition",
+                        active
+                          ? "bg-brand/10 text-foreground ring-1 ring-brand/15"
+                          : "hover:bg-background/80",
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-black">{province.fullName}</p>
+                        <p className="mt-0.5 text-[0.6rem] text-muted-foreground">
+                          {count ? `${count} điểm trung chuyển` : "Chưa có điểm"}
+                        </p>
+                      </div>
+                      <ChevronRightIcon
+                        className={cn(
+                          "size-3.5 shrink-0 text-muted-foreground",
+                          active && "text-brand",
+                        )}
+                      />
+                    </button>
+                  );
+                })}
+              </nav>
+            ) : (
+              <EmptyState
+                title="Không tìm thấy khu vực"
+                description="Thử tìm bằng tên tỉnh hoặc thành phố khác."
+              />
+            )}
+          </aside>
+
+          <section className="min-w-0 border-b xl:border-r xl:border-b-0">
+            <div className="border-b p-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black">{selectedProvinceName}</p>
+                  <p className="mt-1 text-[0.65rem] text-muted-foreground">
+                    {visibleHubs.length === provinceHubs.length
+                      ? `${provinceHubs.length} điểm trung chuyển`
+                      : `${visibleHubs.length}/${provinceHubs.length} điểm phù hợp`}
+                  </p>
+                </div>
+                {canManage && selectedProvinceCode ? (
+                  <Button size="sm" variant="outline" onClick={createNew}>
+                    <PlusIcon className="size-3.5" />
+                    Thêm
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="relative mt-3">
+                <SearchIcon className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={hubSearch}
+                  onChange={(event) => setHubSearch(event.target.value)}
+                  placeholder="Tìm điểm trong khu vực này..."
+                  className="h-9 pl-8 text-xs"
+                />
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 <select
                   className={selectClassName}
-                  value={draft.type}
-                  disabled={!canManage}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      type: event.target.value as HubType,
-                    }))
-                  }
+                  value={type}
+                  onChange={(event) => setType(event.target.value as HubType | "")}
                 >
+                  <option value="">Mọi loại điểm</option>
                   {hubTypes.map((item) => (
                     <option key={item} value={item}>
                       {hubTypeLabel(item)}
                     </option>
                   ))}
                 </select>
-              </FormField>
-
-              <FormField
-                label="Điểm cha"
-                hint="Chỉ dùng để tổ chức quản trị, không quyết định đường vận chuyển."
-              >
                 <select
                   className={selectClassName}
-                  value={draft.parentHubId}
-                  disabled={!canManage}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      parentHubId: event.target.value,
-                    }))
-                  }
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value as HubStatus | "")}
                 >
-                  <option value="">Không có điểm cha</option>
-                  {allHubs
-                    .filter((hub) => hub.id !== selected?.id)
-                    .map((hub) => (
-                      <option key={hub.id} value={hub.id}>
-                        {hub.name}
-                      </option>
-                    ))}
+                  <option value="">Mọi trạng thái</option>
+                  <option value="ACTIVE">Đang hoạt động</option>
+                  <option value="INACTIVE">Ngừng hoạt động</option>
                 </select>
-              </FormField>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <FormField label="Tỉnh / Thành phố">
-                <select
-                  className={selectClassName}
-                  value={draft.provinceCode}
-                  disabled={!canManage}
-                  onChange={(event) => {
-                    const nextProvinceCode = event.target.value;
-                    setWards([]);
-                    setLoadingWards(Boolean(nextProvinceCode));
-                    setDraft((current) => ({
-                      ...current,
-                      provinceCode: nextProvinceCode,
-                      wardCode: "",
-                    }));
-                  }}
-                >
-                  <option value="">Chọn tỉnh/thành</option>
-                  {provinces.map((province) => (
-                    <option key={province.code} value={province.code}>
-                      {province.fullName}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-
-              <FormField label="Phường / Xã">
-                <select
-                  className={selectClassName}
-                  value={draft.wardCode}
-                  disabled={!canManage || !draft.provinceCode || loadingWards}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      wardCode: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">
-                    {loadingWards ? "Đang tải..." : "Chọn phường/xã"}
-                  </option>
-                  {wards.map((ward) => (
-                    <option key={ward.code} value={ward.code}>
-                      {ward.fullName}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-
-              <div className="md:col-span-2">
-                <FormField label="Địa chỉ chi tiết">
-                  <Input
-                    value={draft.addressLine}
-                    disabled={!canManage}
-                    maxLength={500}
-                    placeholder="Số nhà, tên đường..."
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        addressLine: event.target.value,
-                      }))
-                    }
-                  />
-                </FormField>
               </div>
             </div>
 
-            <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 md:grid-cols-[14rem_minmax(0,1fr)]">
-              <label className="flex cursor-pointer items-center gap-2 text-xs font-black">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={draft.publicVisible}
-                  disabled={!canManage}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      publicVisible: event.target.checked,
-                    }))
-                  }
-                />
-                Cho phép hiển thị công khai
-              </label>
-              <FormField
-                label="Tên hiển thị công khai"
-                hint="Để trống thì hệ thống dùng tên điểm ở trên."
-              >
-                <Input
-                  value={draft.publicName}
-                  disabled={!canManage || !draft.publicVisible}
-                  maxLength={200}
-                  placeholder="Thủ Đức"
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      publicName: event.target.value,
-                    }))
-                  }
-                />
-              </FormField>
-            </div>
-
-            {canManage ? (
-              <div className="flex flex-wrap gap-2 border-t pt-4">
-                <Button type="submit" disabled={saving}>
-                  {saving ? (
-                    <LoaderCircleIcon className="size-4 animate-spin" />
-                  ) : (
-                    <SaveIcon className="size-4" />
-                  )}
-                  {selected ? "Lưu thay đổi" : "Tạo điểm"}
-                </Button>
-                {selected ? (
-                  <Button
-                    type="button"
-                    variant={selected.status === "ACTIVE" ? "destructive" : "outline"}
-                    disabled={saving}
-                    onClick={() => setPendingStatus(selected)}
-                  >
-                    {selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
-                  </Button>
-                ) : null}
+            {loading && !hubs.length ? (
+              <div className="grid min-h-48 place-items-center">
+                <LoaderCircleIcon className="size-5 animate-spin text-brand" />
               </div>
-            ) : null}
+            ) : visibleHubs.length ? (
+              <div className="max-h-[30rem] overflow-y-auto p-2 xl:max-h-[calc(100vh-19rem)]">
+                {visibleHubs.map((hub) => {
+                  const active = selected?.id === hub.id && !creating;
+                  return (
+                    <button
+                      key={hub.id}
+                      type="button"
+                      onClick={() => edit(hub)}
+                      className={cn(
+                        "mb-2 w-full rounded-xl border p-3 text-left transition",
+                        active
+                          ? "border-brand/25 bg-brand/[0.06] shadow-sm"
+                          : "bg-card hover:border-brand/20 hover:bg-muted/20",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black">{hub.name}</p>
+                          <p className="mt-1 text-[0.65rem] font-bold text-brand">
+                            {hubTypeLabel(hub.type)}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "mt-1 size-2 shrink-0 rounded-full",
+                            hub.status === "ACTIVE" ? "bg-emerald-500" : "bg-slate-400",
+                          )}
+                        />
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-[0.65rem] leading-5 text-muted-foreground">
+                        {hub.addressLine}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-[0.6rem] font-bold text-muted-foreground">
+                        <span className="rounded-full bg-muted px-2 py-1">
+                          {hub.publicVisible ? "Hiển thị công khai" : "Chỉ dùng nội bộ"}
+                        </span>
+                        {hub.parentHubId ? (
+                          <span className="rounded-full bg-muted px-2 py-1">
+                            Thuộc {hubNames.get(hub.parentHubId) ?? "điểm cha"}
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState
+                title="Chưa có điểm phù hợp"
+                description={
+                  provinceHubs.length
+                    ? "Thử bỏ bớt bộ lọc để xem các điểm trong khu vực này."
+                    : "Khu vực này chưa có điểm trung chuyển."
+                }
+              />
+            )}
+          </section>
 
-            {selected ? (
-              <ActionPolicyNote>
-                Điểm trung chuyển không có API xóa cứng. Hãy ngừng hoạt động nếu không còn sử dụng. Backend sẽ chặn thao tác nếu điểm vẫn là điểm chính của vùng phục vụ hoặc còn tuyến vận chuyển đang hoạt động.
-              </ActionPolicyNote>
-            ) : null}
-          </form>
-        </CardContent>
+          <section className="min-w-0 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto">
+            {!selected && !creating ? (
+              <div className="grid min-h-[28rem] place-items-center p-6 text-center">
+                <div className="max-w-sm">
+                  <span className="mx-auto grid size-12 place-items-center rounded-2xl border bg-muted/30 text-brand">
+                    <Building2Icon className="size-5" />
+                  </span>
+                  <p className="mt-4 text-sm font-black">Chọn một điểm trung chuyển</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Chọn khu vực ở cột trái, sau đó chọn một điểm để xem chi tiết. Không cần tải toàn bộ dữ liệu lên màn hình cùng lúc.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <CardHeader className="border-b bg-muted/[0.08]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-black">
+                        {selected ? selected.name : "Tạo điểm trung chuyển"}
+                      </p>
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <MapPinIcon className="size-3.5" />
+                        <span>
+                          {selected
+                            ? provinceNames.get(selected.provinceCode) ?? selected.provinceCode
+                            : provinceNames.get(draft.provinceCode) ?? "Chọn tỉnh / thành phố"}
+                        </span>
+                      </div>
+                    </div>
+                    {selected ? <StatusBadge active={selected.status === "ACTIVE"} /> : null}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-4 sm:p-5">
+                  <form className="grid gap-5" onSubmit={submit}>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField label="Tên điểm">
+                        <Input
+                          value={draft.name}
+                          disabled={!canManage}
+                          maxLength={200}
+                          placeholder="Trung tâm Thủ Đức"
+                          onChange={(event) =>
+                            setDraft((current) => ({ ...current, name: event.target.value }))
+                          }
+                        />
+                      </FormField>
+
+                      <FormField label="Loại điểm">
+                        <select
+                          className={selectClassName}
+                          value={draft.type}
+                          disabled={!canManage}
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              type: event.target.value as HubType,
+                            }))
+                          }
+                        >
+                          {hubTypes.map((item) => (
+                            <option key={item} value={item}>
+                              {hubTypeLabel(item)}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField label="Tỉnh / Thành phố">
+                        <select
+                          className={selectClassName}
+                          value={draft.provinceCode}
+                          disabled={!canManage}
+                          onChange={(event) => {
+                            const nextProvinceCode = event.target.value;
+                            setWards([]);
+                            setLoadingWards(Boolean(nextProvinceCode));
+                            setDraft((current) => ({
+                              ...current,
+                              provinceCode: nextProvinceCode,
+                              wardCode: "",
+                            }));
+                          }}
+                        >
+                          <option value="">Chọn tỉnh / thành phố</option>
+                          {provinces.map((province) => (
+                            <option key={province.code} value={province.code}>
+                              {province.fullName}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+
+                      <FormField label="Phường / Xã">
+                        <select
+                          className={selectClassName}
+                          value={draft.wardCode}
+                          disabled={!canManage || !draft.provinceCode || loadingWards}
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              wardCode: event.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">
+                            {loadingWards ? "Đang tải..." : "Chọn phường / xã"}
+                          </option>
+                          {wards.map((ward) => (
+                            <option key={ward.code} value={ward.code}>
+                              {ward.fullName}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                    </div>
+
+                    <FormField label="Địa chỉ chi tiết">
+                      <Input
+                        value={draft.addressLine}
+                        disabled={!canManage}
+                        maxLength={500}
+                        placeholder="Số nhà, tên đường..."
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            addressLine: event.target.value,
+                          }))
+                        }
+                      />
+                    </FormField>
+
+                    <FormField
+                      label="Điểm quản lý cấp trên"
+                      hint="Chỉ dùng để tổ chức quản trị, không quyết định đường vận chuyển."
+                    >
+                      <select
+                        className={selectClassName}
+                        value={draft.parentHubId}
+                        disabled={!canManage}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            parentHubId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Không có điểm cấp trên</option>
+                        {hubs
+                          .filter((hub) => hub.id !== selected?.id)
+                          .map((hub) => (
+                            <option key={hub.id} value={hub.id}>
+                              {hub.name} · {provinceNames.get(hub.provinceCode) ?? hub.provinceCode}
+                            </option>
+                          ))}
+                      </select>
+                    </FormField>
+
+                    <div className="grid gap-4 rounded-xl border bg-muted/20 p-4 md:grid-cols-[13rem_minmax(0,1fr)]">
+                      <label className="flex cursor-pointer items-center gap-2 text-xs font-black">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-primary"
+                          checked={draft.publicVisible}
+                          disabled={!canManage}
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              publicVisible: event.target.checked,
+                            }))
+                          }
+                        />
+                        Hiển thị công khai
+                      </label>
+                      <FormField
+                        label="Tên hiển thị cho khách hàng"
+                        hint="Để trống thì dùng tên điểm ở trên."
+                      >
+                        <Input
+                          value={draft.publicName}
+                          disabled={!canManage || !draft.publicVisible}
+                          maxLength={200}
+                          placeholder="Thủ Đức"
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              publicName: event.target.value,
+                            }))
+                          }
+                        />
+                      </FormField>
+                    </div>
+
+                    <details className="rounded-lg border bg-muted/15 p-3">
+                      <summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary>
+                      <div className="mt-3 max-w-sm">
+                        <FormField
+                          label="Mã kỹ thuật"
+                          hint="Chỉ dùng nội bộ và không thay đổi sau khi tạo."
+                        >
+                          <Input
+                            value={draft.code}
+                            disabled={Boolean(selected) || !canManage}
+                            maxLength={50}
+                            placeholder="HCM-THUDUC"
+                            className="font-mono uppercase"
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                code: event.target.value,
+                              }))
+                            }
+                          />
+                        </FormField>
+                      </div>
+                    </details>
+
+                    {canManage ? (
+                      <div className="flex flex-wrap gap-2 border-t pt-4">
+                        <Button type="submit" disabled={saving}>
+                          {saving ? (
+                            <LoaderCircleIcon className="size-4 animate-spin" />
+                          ) : (
+                            <SaveIcon className="size-4" />
+                          )}
+                          {selected ? "Lưu thay đổi" : "Tạo điểm"}
+                        </Button>
+                        {selected ? (
+                          <Button
+                            type="button"
+                            variant={selected.status === "ACTIVE" ? "destructive" : "outline"}
+                            disabled={saving}
+                            onClick={() => setPendingStatus(selected)}
+                          >
+                            {selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {selected ? (
+                      <ActionPolicyNote>
+                        Điểm trung chuyển không xóa cứng. Nếu không còn sử dụng, hãy ngừng hoạt động. Hệ thống sẽ chặn nếu điểm vẫn là điểm chính của vùng phục vụ hoặc còn tuyến đang hoạt động.
+                      </ActionPolicyNote>
+                    ) : null}
+                  </form>
+                </CardContent>
+              </>
+            )}
+          </section>
+        </div>
       </Card>
 
       <ConfirmActionDialog
@@ -628,7 +785,7 @@ export function NetworkHubs() {
         title={pendingStatus?.status === "ACTIVE" ? "Ngừng điểm trung chuyển?" : "Kích hoạt điểm trung chuyển?"}
         description={
           pendingStatus?.status === "ACTIVE"
-            ? `Điểm ${pendingStatus?.name ?? "này"} sẽ ngừng phục vụ. Backend sẽ từ chối nếu điểm vẫn đang được vùng phục vụ hoặc tuyến vận chuyển sử dụng.`
+            ? `Điểm ${pendingStatus?.name ?? "này"} sẽ ngừng phục vụ. Hệ thống sẽ từ chối nếu điểm vẫn đang được vùng phục vụ hoặc tuyến vận chuyển sử dụng.`
             : `Điểm ${pendingStatus?.name ?? "này"} sẽ được đưa trở lại trạng thái hoạt động.`
         }
         confirmLabel={pendingStatus?.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
@@ -636,7 +793,7 @@ export function NetworkHubs() {
         loading={saving}
         reason
         onCancel={() => setPendingStatus(null)}
-        onConfirm={(reason) => pendingStatus ? applyStatus(pendingStatus, reason) : undefined}
+        onConfirm={(reason) => (pendingStatus ? applyStatus(pendingStatus, reason) : undefined)}
       />
     </div>
   );

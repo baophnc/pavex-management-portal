@@ -67,6 +67,27 @@ export async function getHubs(params: URLSearchParams) {
   return apiRequest<PageResponse<Hub>>(`admin/network/hubs?${params.toString()}`);
 }
 
+export async function getAllHubs() {
+  const first = await getHubs(
+    new URLSearchParams({ page: "1", pageSize: "100" }),
+  );
+
+  if (first.totalPages <= 1) return first.items;
+
+  const remaining = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, index) =>
+      getHubs(
+        new URLSearchParams({
+          page: String(index + 2),
+          pageSize: "100",
+        }),
+      ),
+    ),
+  );
+
+  return [first, ...remaining].flatMap((page) => page.items);
+}
+
 export async function createHub(payload: CreateHubPayload) {
   return apiRequest<Hub>("admin/network/hubs", {
     method: "POST",

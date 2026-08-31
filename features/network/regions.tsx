@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  Layers3Icon,
   LoaderCircleIcon,
+  PlusIcon,
   RefreshCwIcon,
   SaveIcon,
   ShieldAlertIcon,
@@ -14,8 +16,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import { createRegion, getRegions, updateRegion, updateRegionStatus } from "@/features/network/api";
-import { networkErrorMessage } from "@/features/network/errors";
 import type { NetworkRegion } from "@/features/network/contracts";
+import { networkErrorMessage } from "@/features/network/errors";
 import {
   ActionPolicyNote,
   ConfirmActionDialog,
@@ -45,10 +47,10 @@ export function NetworkRegions() {
       const result = await getRegions();
       setRegions(result);
       setSelected((current) =>
-        current ? result.find((item) => item.id === current.id) ?? null : null,
+        current ? result.find((item) => item.id === current.id) ?? current : null,
       );
     } catch (reason) {
-      setError(networkErrorMessage(reason, "Không thể tải danh sách vùng."));
+      setError(networkErrorMessage(reason, "Không thể tải danh sách vùng mạng lưới."));
     } finally {
       setLoading(false);
     }
@@ -78,12 +80,12 @@ export function NetworkRegions() {
         ? await updateRegion(selected.id, { name })
         : await createRegion({ code, name });
 
-      toast.success(selected ? "Đã cập nhật vùng." : "Đã tạo vùng.");
+      toast.success(selected ? "Đã cập nhật vùng mạng lưới." : "Đã tạo vùng mạng lưới.");
       setCreating(false);
-      await load();
       setSelected(updated);
+      await load();
     } catch (reason) {
-      toast.error(networkErrorMessage(reason, "Không thể lưu vùng."));
+      toast.error(networkErrorMessage(reason, "Không thể lưu vùng mạng lưới."));
     } finally {
       setSaving(false);
     }
@@ -95,9 +97,13 @@ export function NetworkRegions() {
 
     setSaving(true);
     try {
-      await updateRegionStatus(region.id, { active, reason: reason || null });
+      const updated = await updateRegionStatus(region.id, {
+        active,
+        reason: reason || null,
+      });
       toast.success(active ? "Đã kích hoạt vùng." : "Đã ngừng hoạt động vùng.");
       setPendingStatus(null);
+      setSelected(updated);
       await load();
     } catch (reasonValue) {
       toast.error(networkErrorMessage(reasonValue, "Không thể đổi trạng thái vùng."));
@@ -106,15 +112,28 @@ export function NetworkRegions() {
     }
   }
 
+  function createNew() {
+    setSelected(null);
+    setCreating(true);
+  }
+
   const editorKey = selected?.id ?? (creating ? "new" : "none");
+  const activeCount = regions.filter((region) => region.status === "ACTIVE").length;
 
   return (
     <div className="space-y-4">
       <NetworkPageHeader
-        eyebrow="Nền tảng mạng lưới"
-        title="Vùng"
-        description="Vùng dùng để nhóm các khu vực vận hành lớn như miền Bắc, miền Trung và miền Nam."
-        help={{ description: "Trang này quản lý các vùng logic của mạng lưới.", bullets: ["Vùng được dùng để nhóm các vùng phục vụ.", "Có thể tạo thêm vùng mới mà không cần sửa backend.", "Ngừng hoạt động một vùng có thể bị chặn nếu vẫn còn vùng phục vụ đang hoạt động."] }}
+        eyebrow="Mạng lưới vận hành"
+        title="Vùng mạng lưới"
+        description="Tổ chức mạng lưới theo các vùng lớn để quản lý vùng phục vụ, điểm trung chuyển và luồng vận chuyển dễ hơn."
+        help={{
+          description: "Vùng mạng lưới là lớp tổ chức cấp cao, ví dụ Miền Bắc, Miền Trung và Miền Nam.",
+          bullets: [
+            "Chọn một vùng ở cột bên trái để xem hoặc chỉnh sửa.",
+            "Vùng phục vụ sẽ được gắn vào một vùng mạng lưới ở bước cấu hình riêng.",
+            "Nếu không còn sử dụng, hãy ngừng hoạt động thay vì xóa để giữ lịch sử.",
+          ],
+        }}
         actions={
           <>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
@@ -122,12 +141,8 @@ export function NetworkRegions() {
               Tải lại
             </Button>
             {canManage ? (
-              <Button
-                onClick={() => {
-                  setSelected(null);
-                  setCreating(true);
-                }}
-              >
+              <Button onClick={createNew}>
+                <PlusIcon className="size-4" />
                 Tạo vùng
               </Button>
             ) : null}
@@ -137,151 +152,170 @@ export function NetworkRegions() {
 
       {error ? <NetworkError message={error} onRetry={() => void load()} /> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <Card className="h-fit overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <p className="text-sm font-black">Danh sách vùng</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {regions.length} vùng vận hành
-              </p>
+      <Card className="overflow-hidden">
+        <div className="grid min-h-[32rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <aside className="border-b bg-muted/[0.14] lg:border-r lg:border-b-0">
+            <div className="border-b p-4">
+              <div className="flex items-center gap-2">
+                <span className="grid size-8 place-items-center rounded-lg border bg-background text-brand">
+                  <Layers3Icon className="size-4" />
+                </span>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.12em]">Vùng mạng lưới</p>
+                  <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
+                    {activeCount}/{regions.length} vùng đang hoạt động
+                  </p>
+                </div>
+              </div>
             </div>
-          </CardHeader>
 
-          {loading && !regions.length ? (
-            <div className="grid min-h-52 place-items-center">
-              <LoaderCircleIcon className="size-5 animate-spin text-brand" />
-            </div>
-          ) : regions.length ? (
-            <div className="divide-y">
-              {regions.map((region) => (
-                <button
-                  key={region.id}
-                  type="button"
-                  onClick={() => {
-                    setSelected(region);
-                    setCreating(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-start justify-between gap-4 p-4 text-left transition hover:bg-muted/45",
-                    selected?.id === region.id && "bg-brand/[0.055]",
-                  )}
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-black">{region.name}</p><StatusBadge active={region.status === "ACTIVE"} /></div>
-                    <p className="mt-1 text-[0.65rem] text-muted-foreground">
-                      Cập nhật {formatDateTime(region.updatedAt)}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="Chưa có vùng"
-              description="Tạo vùng trước khi cấu hình Service Area."
-            />
-          )}
-        </Card>
-
-        <Card className="h-fit xl:sticky xl:top-32">
-          <CardHeader>
-            <p className="text-sm font-black">
-              {selected ? selected.name : creating ? "Tạo vùng" : "Chi tiết vùng"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {canManage
-                ? "Mã kỹ thuật được giữ cố định sau khi tạo; thao tác hằng ngày chỉ cần dùng tên vùng."
-                : "Bạn đang có quyền xem; cần quyền quản lý mạng lưới để thay đổi."}
-            </p>
-          </CardHeader>
-
-          {!selected && !creating ? (
-            <EmptyState
-              title="Chọn một vùng"
-              description="Chọn vùng ở danh sách bên trái hoặc tạo mới."
-            />
-          ) : (
-            <CardContent>
-              <form key={editorKey} className="grid gap-4" onSubmit={submit}>
-                <details className="rounded-lg border bg-muted/15 p-3">
-                  <summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary>
-                  <div className="mt-3">
-                    <FormField label="Mã kỹ thuật" hint="Chỉ dùng nội bộ; không cần nhập mã này khi tìm kiếm.">
-                      <Input name="code" defaultValue={selected?.code ?? ""} disabled={Boolean(selected) || !canManage} maxLength={50} placeholder="SOUTH" className="font-mono uppercase" />
-                    </FormField>
-                  </div>
-                </details>
-
-                <FormField label="Tên vùng">
-                  <Input
-                    name="name"
-                    defaultValue={selected?.name ?? ""}
-                    disabled={!canManage}
-                    maxLength={160}
-                    placeholder="Miền Nam"
-                  />
-                </FormField>
-
-                {selected ? (
-                  <div className="rounded-lg border bg-muted/20 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-black">Trạng thái</p>
-                        <p className="mt-1 text-[0.65rem] text-muted-foreground">
-                          Ngừng hoạt động có thể bị chặn nếu vùng vẫn đang được sử dụng.
-                        </p>
-                      </div>
-                      <StatusBadge active={selected.status === "ACTIVE"} />
+            {loading && !regions.length ? (
+              <div className="grid min-h-44 place-items-center">
+                <LoaderCircleIcon className="size-5 animate-spin text-brand" />
+              </div>
+            ) : regions.length ? (
+              <nav className="max-h-[28rem] overflow-y-auto p-2 lg:max-h-[calc(100vh-16rem)]">
+                {regions.map((region) => (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => {
+                      setSelected(region);
+                      setCreating(false);
+                    }}
+                    className={cn(
+                      "mb-1 flex w-full items-center justify-between gap-3 rounded-lg px-3 py-3 text-left transition",
+                      selected?.id === region.id && !creating
+                        ? "bg-brand/10 text-foreground ring-1 ring-brand/15"
+                        : "hover:bg-background/80",
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black">{region.name}</p>
+                      <p className="mt-1 text-[0.62rem] text-muted-foreground">
+                        Cập nhật {formatDateTime(region.updatedAt)}
+                      </p>
                     </div>
-                  </div>
-                ) : null}
-
-                {canManage ? (
-                  <div className="flex flex-wrap gap-2 border-t pt-4">
-                    <Button type="submit" disabled={saving}>
-                      {saving ? (
-                        <LoaderCircleIcon className="size-4 animate-spin" />
-                      ) : (
-                        <SaveIcon className="size-4" />
+                    <span
+                      className={cn(
+                        "size-2 shrink-0 rounded-full",
+                        region.status === "ACTIVE" ? "bg-emerald-500" : "bg-slate-400",
                       )}
-                      {selected ? "Lưu thay đổi" : "Tạo vùng"}
-                    </Button>
-                    {selected ? (
-                      <Button
-                        type="button"
-                        variant={selected.status === "ACTIVE" ? "destructive" : "outline"}
-                        disabled={saving}
-                        onClick={() => setPendingStatus(selected)}
-                      >
-                        {selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-200">
-                    <ShieldAlertIcon className="mt-0.5 size-4 shrink-0" />
-                    Chỉ đọc. Cần quyền quản lý mạng lưới để thay đổi.
-                  </div>
-                )}
+                      aria-label={region.status === "ACTIVE" ? "Đang hoạt động" : "Ngừng hoạt động"}
+                    />
+                  </button>
+                ))}
+              </nav>
+            ) : (
+              <EmptyState
+                title="Chưa có vùng mạng lưới"
+                description="Tạo vùng đầu tiên trước khi cấu hình vùng phục vụ."
+              />
+            )}
+          </aside>
 
-                {selected ? (
-                  <ActionPolicyNote>
-                    Vùng không có thao tác xóa cứng trên backend. Nếu không còn sử dụng, hãy ngừng hoạt động để giữ nguyên lịch sử và các liên kết đã phát sinh.
-                  </ActionPolicyNote>
-                ) : null}
-              </form>
-            </CardContent>
-          )}
-        </Card>
-      </div>
+          <section className="min-w-0">
+            {!selected && !creating ? (
+              <EmptyState
+                title="Chọn một vùng"
+                description="Chọn vùng ở cột bên trái để xem thông tin chi tiết."
+              />
+            ) : (
+              <>
+                <CardHeader className="border-b bg-muted/[0.08]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-black">
+                        {selected ? selected.name : "Tạo vùng mạng lưới"}
+                      </p>
+                      <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+                        {selected
+                          ? "Thông tin của vùng đang chọn. Mã kỹ thuật được giữ cố định sau khi tạo."
+                          : "Tạo một vùng lớn để nhóm các vùng phục vụ theo cơ cấu vận hành của Pavex."}
+                      </p>
+                    </div>
+                    {selected ? <StatusBadge active={selected.status === "ACTIVE"} /> : null}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="max-w-3xl p-4 sm:p-6">
+                  <form key={editorKey} className="grid gap-5" onSubmit={submit}>
+                    <FormField label="Tên vùng">
+                      <Input
+                        name="name"
+                        defaultValue={selected?.name ?? ""}
+                        disabled={!canManage}
+                        maxLength={160}
+                        placeholder="Miền Nam"
+                      />
+                    </FormField>
+
+                    <details className="rounded-lg border bg-muted/15 p-3">
+                      <summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary>
+                      <div className="mt-3 max-w-sm">
+                        <FormField
+                          label="Mã kỹ thuật"
+                          hint="Chỉ dùng nội bộ và không thay đổi sau khi tạo."
+                        >
+                          <Input
+                            name="code"
+                            defaultValue={selected?.code ?? ""}
+                            disabled={Boolean(selected) || !canManage}
+                            maxLength={50}
+                            placeholder="SOUTH"
+                            className="font-mono uppercase"
+                          />
+                        </FormField>
+                      </div>
+                    </details>
+
+                    {canManage ? (
+                      <div className="flex flex-wrap gap-2 border-t pt-4">
+                        <Button type="submit" disabled={saving}>
+                          {saving ? (
+                            <LoaderCircleIcon className="size-4 animate-spin" />
+                          ) : (
+                            <SaveIcon className="size-4" />
+                          )}
+                          {selected ? "Lưu thay đổi" : "Tạo vùng"}
+                        </Button>
+                        {selected ? (
+                          <Button
+                            type="button"
+                            variant={selected.status === "ACTIVE" ? "destructive" : "outline"}
+                            disabled={saving}
+                            onClick={() => setPendingStatus(selected)}
+                          >
+                            {selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-200">
+                        <ShieldAlertIcon className="mt-0.5 size-4 shrink-0" />
+                        Bạn đang ở chế độ chỉ xem. Cần quyền quản lý mạng lưới để thay đổi.
+                      </div>
+                    )}
+
+                    {selected ? (
+                      <ActionPolicyNote>
+                        Vùng mạng lưới không có thao tác xóa cứng. Khi không còn sử dụng, hãy ngừng hoạt động để giữ nguyên lịch sử và các liên kết đã phát sinh.
+                      </ActionPolicyNote>
+                    ) : null}
+                  </form>
+                </CardContent>
+              </>
+            )}
+          </section>
+        </div>
+      </Card>
 
       <ConfirmActionDialog
         open={Boolean(pendingStatus)}
         title={pendingStatus?.status === "ACTIVE" ? "Ngừng hoạt động vùng?" : "Kích hoạt vùng?"}
         description={
           pendingStatus?.status === "ACTIVE"
-            ? `Vùng ${pendingStatus?.name ?? "này"} sẽ không còn được dùng cho cấu hình hoạt động mới. Backend sẽ từ chối nếu vẫn còn vùng phục vụ đang hoạt động.`
+            ? `Vùng ${pendingStatus?.name ?? "này"} sẽ không còn được dùng cho cấu hình hoạt động mới. Hệ thống sẽ từ chối nếu vẫn còn vùng phục vụ đang hoạt động.`
             : `Vùng ${pendingStatus?.name ?? "này"} sẽ được đưa trở lại trạng thái hoạt động.`
         }
         confirmLabel={pendingStatus?.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt"}
@@ -289,7 +323,7 @@ export function NetworkRegions() {
         loading={saving}
         reason
         onCancel={() => setPendingStatus(null)}
-        onConfirm={(reason) => pendingStatus ? applyStatus(pendingStatus, reason) : undefined}
+        onConfirm={(reason) => (pendingStatus ? applyStatus(pendingStatus, reason) : undefined)}
       />
     </div>
   );
