@@ -115,6 +115,27 @@ export async function getServiceAreas(params: URLSearchParams) {
   );
 }
 
+export async function getAllServiceAreas() {
+  const first = await getServiceAreas(
+    new URLSearchParams({ page: "1", pageSize: "100" }),
+  );
+
+  if (first.totalPages <= 1) return first.items;
+
+  const remaining = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, index) =>
+      getServiceAreas(
+        new URLSearchParams({
+          page: String(index + 2),
+          pageSize: "100",
+        }),
+      ),
+    ),
+  );
+
+  return [first, ...remaining].flatMap((page) => page.items);
+}
+
 export async function createServiceArea(payload: CreateServiceAreaPayload) {
   return apiRequest<ServiceArea>("admin/network/service-areas", {
     method: "POST",
@@ -140,6 +161,32 @@ export async function getCoverages(params: URLSearchParams) {
   return apiRequest<PageResponse<ServiceAreaCoverage>>(
     `admin/network/coverages?${params.toString()}`,
   );
+}
+
+export async function getAllCoveragesForServiceArea(serviceAreaId: string) {
+  const first = await getCoverages(
+    new URLSearchParams({
+      serviceAreaId,
+      page: "1",
+      pageSize: "100",
+    }),
+  );
+
+  if (first.totalPages <= 1) return first.items;
+
+  const remaining = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, index) =>
+      getCoverages(
+        new URLSearchParams({
+          serviceAreaId,
+          page: String(index + 2),
+          pageSize: "100",
+        }),
+      ),
+    ),
+  );
+
+  return [first, ...remaining].flatMap((page) => page.items);
 }
 
 export async function createCoverage(payload: CoveragePayload) {

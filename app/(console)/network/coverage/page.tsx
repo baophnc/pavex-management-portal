@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
-import { NetworkCoverage } from "@/features/network/coverages";
+import { NetworkServiceAreas } from "@/features/network/service-areas";
 
-export const metadata: Metadata = { title: "Network Coverage" };
+export const metadata: Metadata = { title: "Vùng phục vụ" };
 
 export default function NetworkCoveragePage() {
-  return <NetworkCoverage />;
+  return <NetworkServiceAreas />;
 }

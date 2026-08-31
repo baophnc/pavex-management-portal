@@ -67,7 +67,7 @@ export function NetworkOverview() {
         eyebrow="Điều hành mạng lưới"
         title="Tổng quan mạng lưới"
         description="Theo dõi cấu hình vùng, điểm trung chuyển, tuyến vận chuyển, lịch chạy và sức chứa trên một màn hình."
-        help={{ description: "Đây là trang tổng quan để kiểm tra nhanh mạng lưới đã được cấu hình đến đâu trước khi vận hành Shipment.", bullets: ["Xem số lượng vùng, điểm trung chuyển, vùng phục vụ và phạm vi phục vụ.", "Đi nhanh đến tuyến vận chuyển, tuyến mẫu, tìm tuyến và sức chứa.", "Nếu một chỉ số bằng 0, hãy cấu hình tầng đó trước khi test routing."] }}
+        help={{ description: "Đây là trang tổng quan để kiểm tra nhanh mạng lưới đã được cấu hình đến đâu trước khi vận hành vận đơn.", bullets: ["Xem số lượng vùng mạng lưới, điểm trung chuyển, vùng phục vụ và địa bàn đã phủ.", "Đi nhanh đến tuyến vận chuyển, tuyến mẫu, tìm tuyến và sức chứa.", "Nếu một chỉ số bằng 0, hãy cấu hình tầng đó trước khi kiểm tra tìm tuyến."] }}
         actions={
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCwIcon className={loading ? "size-4 animate-spin" : "size-4"} />
@@ -81,24 +81,24 @@ export function NetworkOverview() {
       <Card className="overflow-hidden">
         <div className="grid grid-cols-2 divide-x divide-y sm:grid-cols-4 sm:divide-y-0">
           <Metric
-            label="Region"
+            label="Vùng mạng lưới"
             value={loading && !snapshot ? "…" : snapshot?.regions.length ?? 0}
             note={`${activeRegions} đang hoạt động`}
           />
           <Metric
-            label="Hub"
+            label="Điểm trung chuyển"
             value={loading && !snapshot ? "…" : snapshot?.hubs.totalItems ?? 0}
             note="Điểm vật lý trong mạng"
           />
           <Metric
-            label="Service area"
+            label="Vùng phục vụ"
             value={loading && !snapshot ? "…" : snapshot?.areas.totalItems ?? 0}
             note="Vùng phục vụ logic"
           />
           <Metric
-            label="Phạm vi phục vụ"
+            label="Địa bàn đã phủ"
             value={loading && !snapshot ? "…" : snapshot?.coverages.totalItems ?? 0}
-            note="Province / Ward mapping"
+            note="Tỉnh/thành và phường/xã"
           />
         </div>
       </Card>
@@ -112,26 +112,21 @@ export function NetworkOverview() {
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <QuickLink
           href="/network/regions"
-          title="Vùng"
-          description="Tổ chức vùng vận hành động thay vì hard-code province → miền."
+          title="Vùng mạng lưới"
+          description="Tổ chức các miền/vùng vận hành dùng chung cho toàn mạng lưới."
         />
         <QuickLink
           href="/network/hubs"
           title="Điểm trung chuyển"
-          description="Tạo Gateway, Hub tỉnh và Hub địa phương; hierarchy chỉ phục vụ quản trị."
+          description="Quản lý trung tâm vùng, điểm tỉnh/thành và điểm địa phương theo khu vực."
         />
         <QuickLink
           href="/network/service-areas"
           title="Vùng phục vụ"
-          description="Gắn một vùng phục vụ với Region và Primary Hub đang vận hành."
-        />
-        <QuickLink
-          href="/network/coverage"
-          title="Phạm vi phục vụ"
-          description="Map Province/Ward vào Service Area với tier Standard, Remote hoặc Island."
+          description="Chọn điểm trung chuyển chính và quản lý phường/xã, mức phục vụ ngay trong từng vùng."
         />
       </div>
 
@@ -148,12 +143,11 @@ export function NetworkOverview() {
           <p className="text-sm font-black">Thứ tự cấu hình nên dùng</p>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-3">
             {[
-              ["01", "Region", "Xác định miền/vùng vận hành."],
-              ["02", "Hub", "Tạo các điểm vật lý trong mạng."],
-              ["03", "Service Area", "Chọn Primary Hub cho vùng phục vụ."],
-              ["04", "Phạm vi phục vụ", "Gắn xã/phường vào vùng phục vụ."],
+              ["01", "Vùng mạng lưới", "Xác định miền/vùng vận hành."],
+              ["02", "Điểm trung chuyển", "Tạo các điểm vật lý trong mạng."],
+              ["03", "Vùng phục vụ", "Chọn điểm chính rồi gắn tỉnh/thành, phường/xã và mức phục vụ."],
             ].map(([step, title, description]) => (
               <div key={step} className="rounded-lg border bg-muted/20 p-3.5">
                 <p className="font-mono text-[0.62rem] font-black text-brand">{step}</p>

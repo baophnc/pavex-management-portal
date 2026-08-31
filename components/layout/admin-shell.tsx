@@ -144,12 +144,6 @@ const navigationSections: NavigationSection[] = [
         permissionsAny: ["network.read", "network.manage"],
       },
       {
-        href: "/network/coverage",
-        label: "Phạm vi phục vụ",
-        icon: CircleGaugeIcon,
-        permissionsAny: ["network.read", "network.manage"],
-      },
-      {
         href: "/network/lanes",
         label: "Tuyến & lịch chạy",
         icon: CircleGaugeIcon,
@@ -243,11 +237,17 @@ function permitted(item: NavigationItem, user: CurrentUser | null) {
   return true;
 }
 
+function normalizedNavigationPath(pathname: string) {
+  return pathname === "/network/coverage" ? "/network/service-areas" : pathname;
+}
+
 function currentNavigation(pathname: string) {
+  const navigationPath = normalizedNavigationPath(pathname);
   return [...navigation]
     .sort((left, right) => right.href.length - left.href.length)
     .find(
-      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+      (item) =>
+        navigationPath === item.href || navigationPath.startsWith(`${item.href}/`),
     );
 }
 
@@ -403,6 +403,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const initials = initialsOf(user);
 
   function renderNavigation(collapsed: boolean, mobile = false) {
+    const navigationPath = normalizedNavigationPath(pathname);
     return (
       <nav className="space-y-5 p-3" aria-label="Điều hướng chính">
         {visibleSections.map((group) => (
@@ -415,7 +416,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <div className="space-y-1">
               {group.items.map((item) => {
                 const active =
-                  pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  navigationPath === item.href ||
+                  navigationPath.startsWith(`${item.href}/`);
                 const Icon = item.icon;
 
                 return (
