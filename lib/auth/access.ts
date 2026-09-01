@@ -123,10 +123,13 @@ export function canAccessManagementPath(
     return hasPermission(user, "shipments.cases.manage");
   }
   if (pathname.startsWith("/control-tower")) {
-    return hasAnyPermission(user, [
-      "shipments.control-tower.read",
-      "operations.hub.manage",
-    ]);
+    return (
+      hasPermission(user, "shipments.control-tower.read") &&
+      hasAnyPermission(user, [
+        "operations.assignments.manage",
+        "operations.hub.manage",
+      ])
+    );
   }
   if (pathname.startsWith("/shipments")) {
     return hasPermission(user, "shipments.admin.read");

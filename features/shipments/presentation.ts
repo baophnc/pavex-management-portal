@@ -211,3 +211,30 @@ export function shipmentCaseEventLabel(code: string) {
   };
   return labels[code] ?? code;
 }
+
+export function shipmentControlAlertTypeLabel(
+  type: import("@/features/shipments/contracts").ShipmentControlAlertType,
+) {
+  switch (type) {
+    case "SENT_BUT_NOT_ARRIVED": return "Đã gửi nhưng chưa đến";
+    case "MISSING_ARRIVAL_SCAN": return "Thiếu scan đến";
+    case "ARRIVED_NOT_OUT_FOR_DELIVERY": return "Đến hub nhưng chưa phát giao";
+    case "ROUTE_DEVIATION": return "Sai lệch tuyến";
+    case "SHIPMENT_STUCK": return "Vận đơn đứng yên";
+    case "ESTIMATED_DELIVERY_OVERDUE": return "Quá ETA giao hàng";
+    case "CASE_OVERDUE": return "Case quá SLA";
+    case "EXCEPTION_OVERDUE": return "Exception quá SLA";
+    case "SIGNATURE_WITHOUT_DELIVERY": return "Có chữ ký nhưng chưa Delivered";
+    case "DELIVERED_WITHOUT_SIGNATURE": return "Delivered thiếu chữ ký";
+  }
+}
+
+export function shipmentControlAlertSeverityLabel(
+  severity: import("@/features/shipments/contracts").ShipmentControlAlertSeverity,
+) {
+  switch (severity) {
+    case "INFO": return "Thông tin";
+    case "WARNING": return "Cảnh báo";
+    case "CRITICAL": return "Khẩn cấp";
+  }
+}

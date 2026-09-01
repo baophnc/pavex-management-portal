@@ -273,7 +273,7 @@ function actorText(event: AdminShipmentEvent, context: ShipmentDetailContext) {
 }
 
 export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string }) {
-  const { hasPermission, hasRole } = useAccess();
+  const { hasPermission, hasAnyPermission, hasRole } = useAccess();
   const [data, setData] = useState<AdminShipmentDetail | null>(null);
   const [context, setContext] = useState<ShipmentDetailContext>(
     emptyShipmentDetailContext,
@@ -367,6 +367,9 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
   const canManageExceptions = hasPermission("shipments.exceptions.manage");
   const canAdjustWeight = hasPermission("shipments.weight.adjust");
   const canManageCases = hasPermission("shipments.cases.manage");
+  const canViewControlTower =
+    hasPermission("shipments.control-tower.read") &&
+    hasAnyPermission(["operations.assignments.manage", "operations.hub.manage"]);
   const originHubName =
     context.network.originHub?.publicName ||
     context.network.originHub?.name ||
@@ -427,6 +430,14 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
                 className="inline-flex h-10 items-center rounded-md border bg-background px-4 text-sm font-bold hover:bg-muted"
               >
                 Hồ sơ sự cố
+              </Link>
+            ) : null}
+            {canViewControlTower ? (
+              <Link
+                href={`/control-tower?search=${encodeURIComponent(shipment.trackingCode)}`}
+                className="inline-flex h-10 items-center rounded-md border bg-background px-4 text-sm font-bold hover:bg-muted"
+              >
+                Control Tower
               </Link>
             ) : null}
             <Button

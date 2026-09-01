@@ -232,6 +232,16 @@ const navigationSections: NavigationSection[] = [
         icon: ShieldAlertIcon,
         permission: "shipments.cases.manage",
       },
+      {
+        href: "/control-tower",
+        label: "Control Tower",
+        icon: CircleGaugeIcon,
+        permission: "shipments.control-tower.read",
+        permissionsAny: [
+          "operations.assignments.manage",
+          "operations.hub.manage",
+        ],
+      },
     ],
   },
   {

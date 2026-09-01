@@ -411,3 +411,74 @@ export type CreateUnidentifiedParcelCaseInput = {
 export const SHIPMENT_CASE_TYPES: ShipmentCaseType[] = ["PROBLEM_PARCEL", "UNIDENTIFIED_PARCEL"];
 export const SHIPMENT_CASE_STATUSES: ShipmentCaseStatus[] = ["OPEN", "ASSIGNED", "INVESTIGATING", "RESOLVED", "CLOSED"];
 export const SHIPMENT_CASE_SEVERITIES: ShipmentCaseSeverity[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+
+export type ShipmentControlAlertType =
+  | "SENT_BUT_NOT_ARRIVED"
+  | "MISSING_ARRIVAL_SCAN"
+  | "ARRIVED_NOT_OUT_FOR_DELIVERY"
+  | "ROUTE_DEVIATION"
+  | "SHIPMENT_STUCK"
+  | "ESTIMATED_DELIVERY_OVERDUE"
+  | "CASE_OVERDUE"
+  | "EXCEPTION_OVERDUE"
+  | "SIGNATURE_WITHOUT_DELIVERY"
+  | "DELIVERED_WITHOUT_SIGNATURE";
+
+export type ShipmentControlAlertSeverity = "INFO" | "WARNING" | "CRITICAL";
+
+export type ShipmentControlTowerAlert = {
+  key: string;
+  type: ShipmentControlAlertType;
+  severity: ShipmentControlAlertSeverity;
+  shipmentId: string | null;
+  trackingCode: string | null;
+  parcelId: string | null;
+  parcelCode: string | null;
+  hubId: string;
+  routeLegId: string | null;
+  caseId: string | null;
+  caseNumber: string | null;
+  title: string;
+  description: string;
+  detectedAt: string;
+  dueAt: string | null;
+  overdueMinutes: number | null;
+  lastActivityAt: string | null;
+  shipmentPath: string | null;
+  casePath: string | null;
+};
+
+export type ShipmentControlTowerPage = {
+  items: ShipmentControlTowerAlert[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type ShipmentControlTowerSummary = {
+  total: number;
+  critical: number;
+  warning: number;
+  info: number;
+  byType: Record<ShipmentControlAlertType, number>;
+};
+
+export const SHIPMENT_CONTROL_ALERT_TYPES: ShipmentControlAlertType[] = [
+  "SENT_BUT_NOT_ARRIVED",
+  "MISSING_ARRIVAL_SCAN",
+  "ARRIVED_NOT_OUT_FOR_DELIVERY",
+  "ROUTE_DEVIATION",
+  "SHIPMENT_STUCK",
+  "ESTIMATED_DELIVERY_OVERDUE",
+  "CASE_OVERDUE",
+  "EXCEPTION_OVERDUE",
+  "SIGNATURE_WITHOUT_DELIVERY",
+  "DELIVERED_WITHOUT_SIGNATURE",
+];
+
+export const SHIPMENT_CONTROL_ALERT_SEVERITIES: ShipmentControlAlertSeverity[] = [
+  "INFO",
+  "WARNING",
+  "CRITICAL",
+];

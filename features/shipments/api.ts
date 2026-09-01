@@ -203,3 +203,18 @@ function shipmentCasePost(caseId: string, path: string, body: unknown) {
     { method: "POST", body: JSON.stringify(body) },
   );
 }
+
+export function getShipmentControlTowerAlerts(params: URLSearchParams) {
+  const query = params.toString();
+  return apiRequest<import("@/features/shipments/contracts").ShipmentControlTowerPage>(
+    `admin/shipments/control-tower/alerts${query ? `?${query}` : ""}`,
+  );
+}
+
+export function getShipmentControlTowerSummary(hubId: string | null = null) {
+  const query = new URLSearchParams();
+  if (hubId?.trim()) query.set("hubId", hubId.trim());
+  return apiRequest<import("@/features/shipments/contracts").ShipmentControlTowerSummary>(
+    `admin/shipments/control-tower/summary${query.size ? `?${query}` : ""}`,
+  );
+}
