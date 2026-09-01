@@ -81,6 +81,7 @@ export type ShipmentRouting = {
 };
 
 export type ShipmentParcel = {
+  id?: string;
   code: string;
   sequence: number;
   description: string;
@@ -239,3 +240,174 @@ export const SHIPMENT_LIFECYCLE_STATUSES: ShipmentLifecycleStatus[] = [
   "COMPLETED",
   "CANCELLED",
 ];
+
+export type ShipmentExceptionRequestKind = "RETURN" | "FORWARD" | "CANCELLATION";
+export type ShipmentExceptionRequestStatus =
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "REJECTED"
+  | "PROCESSING"
+  | "COMPLETED";
+
+export type ForwardRecipient = {
+  contactName: string;
+  contactPhone: string;
+  addressLine: string;
+  provinceCode: string;
+  wardCode: string;
+};
+
+export type ShipmentExceptionRequest = {
+  requestId: string;
+  kind: ShipmentExceptionRequestKind;
+  status: ShipmentExceptionRequestStatus;
+  reason: string;
+  requestedByUserId: string;
+  requestedAt: string;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  routingRequired: boolean;
+  forwardRecipient: ForwardRecipient | null;
+  completedByUserId: string | null;
+  completedAt: string | null;
+  version: number;
+};
+
+export type ShipmentWeightAdjustment = {
+  adjustmentId: string;
+  parcelId: string;
+  oldActualWeightKg: number;
+  newActualWeightKg: number;
+  oldChargeableWeightKg: number;
+  newChargeableWeightKg: number;
+  reason: string;
+  actorUserId: string;
+  hubId: string | null;
+  adjustedAt: string;
+  reviewCompleted: boolean;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+};
+
+export type ShipmentExceptionState = {
+  shipmentId: string;
+  trackingCode: string;
+  isOnHold: boolean;
+  holdReason: string | null;
+  holdActorUserId: string | null;
+  holdHubId: string | null;
+  heldAt: string | null;
+  hasPendingWeightReview: boolean;
+  returnRequest: ShipmentExceptionRequest | null;
+  forwardRequest: ShipmentExceptionRequest | null;
+  cancellationRequest: ShipmentExceptionRequest | null;
+  weightAdjustments: ShipmentWeightAdjustment[];
+};
+
+export type ShipmentHoldInput = {
+  reason: string;
+  hubId: string | null;
+};
+
+export type ShipmentExceptionReviewInput = {
+  approve: boolean;
+  note: string | null;
+};
+
+export type ShipmentExceptionCompleteInput = {
+  note: string | null;
+};
+
+export type ShipmentForwardInput = {
+  reason: string;
+  recipient: ForwardRecipient;
+};
+
+export type ShipmentWeightAdjustmentInput = {
+  parcelId: string;
+  actualWeightKg: number;
+  reason: string;
+  hubId: string | null;
+};
+
+
+export type ShipmentCaseType = "PROBLEM_PARCEL" | "UNIDENTIFIED_PARCEL";
+export type ShipmentCaseStatus = "OPEN" | "ASSIGNED" | "INVESTIGATING" | "RESOLVED" | "CLOSED";
+export type ShipmentCaseSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export type ShipmentCaseEvent = {
+  id: string;
+  code: string;
+  description: string;
+  actorUserId: string;
+  occurredAt: string;
+  dataJson: string | null;
+};
+
+export type ShipmentCaseSummary = {
+  id: string;
+  caseNumber: string;
+  type: ShipmentCaseType;
+  status: ShipmentCaseStatus;
+  severity: ShipmentCaseSeverity;
+  hubId: string;
+  shipmentId: string | null;
+  parcelId: string | null;
+  externalBarcode: string | null;
+  title: string;
+  assignedToUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ShipmentCase = ShipmentCaseSummary & {
+  description: string;
+  reportedByUserId: string;
+  resolution: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  version: number;
+  events: ShipmentCaseEvent[];
+};
+
+export type ShipmentCasePage = {
+  items: ShipmentCaseSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type ShipmentCaseMonitoringSummary = {
+  totalActive: number;
+  open: number;
+  assigned: number;
+  investigating: number;
+  problemParcels: number;
+  unidentifiedParcels: number;
+  highOrCritical: number;
+  resolvedToday: number;
+};
+
+export type CreateProblemParcelCaseInput = {
+  shipmentId: string;
+  parcelId: string | null;
+  hubId: string;
+  severity: ShipmentCaseSeverity;
+  title: string;
+  description: string;
+};
+
+export type CreateUnidentifiedParcelCaseInput = {
+  hubId: string;
+  severity: ShipmentCaseSeverity;
+  title: string;
+  description: string;
+  externalBarcode: string | null;
+};
+
+export const SHIPMENT_CASE_TYPES: ShipmentCaseType[] = ["PROBLEM_PARCEL", "UNIDENTIFIED_PARCEL"];
+export const SHIPMENT_CASE_STATUSES: ShipmentCaseStatus[] = ["OPEN", "ASSIGNED", "INVESTIGATING", "RESOLVED", "CLOSED"];
+export const SHIPMENT_CASE_SEVERITIES: ShipmentCaseSeverity[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];

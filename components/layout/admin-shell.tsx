@@ -226,6 +226,12 @@ const navigationSections: NavigationSection[] = [
         icon: TruckIcon,
         permission: "shipments.admin.read",
       },
+      {
+        href: "/shipments/cases",
+        label: "Hồ sơ sự cố",
+        icon: ShieldAlertIcon,
+        permission: "shipments.cases.manage",
+      },
     ],
   },
   {

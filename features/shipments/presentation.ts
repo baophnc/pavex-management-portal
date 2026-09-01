@@ -55,6 +55,20 @@ export function shipmentEventLabel(code: string, status: ShipmentStatus) {
     "parcel.at-destination-hub": "Kiện hàng đến điểm trung chuyển đích",
     "parcel.delivered": "Giao kiện hàng thành công",
     "parcel.delivery-failed": "Giao kiện hàng không thành công",
+    "shipment.hold.placed": "Đặt hold vận đơn",
+    "shipment.hold.released": "Release hold vận đơn",
+    "shipment.return.requested": "Yêu cầu hoàn hàng",
+    "shipment.return.processing": "Đang xử lý hoàn hàng",
+    "shipment.return.completed": "Hoàn tất hoàn hàng",
+    "shipment.forward.requested": "Yêu cầu chuyển tiếp",
+    "shipment.forward.approved": "Duyệt chuyển tiếp",
+    "shipment.forward.completed": "Hoàn tất chuyển tiếp",
+    "shipment.cancellation.requested": "Yêu cầu hủy vận đơn",
+    "shipment.cancellation.approved": "Duyệt hủy vận đơn",
+    "shipment.cancellation.processing": "Đang thu hồi để hủy",
+    "shipment.cancellation.completed": "Hoàn tất hủy vận đơn",
+    "shipment.weight-adjusted": "Điều chỉnh khối lượng",
+    "shipment.weight-review.completed": "Hoàn tất review khối lượng",
   };
   return labels[code] ?? shipmentStatusLabel(status);
 }
@@ -157,4 +171,43 @@ export function shipmentErrorMessage(reason: unknown, fallback: string) {
   }
   if (reason.status === 403) return "Tài khoản không có quyền xem vận đơn toàn hệ thống.";
   return reason.message || fallback;
+}
+
+
+export function shipmentCaseTypeLabel(type: import("@/features/shipments/contracts").ShipmentCaseType) {
+  return type === "PROBLEM_PARCEL" ? "Kiện hàng có vấn đề" : "Kiện chưa xác định";
+}
+
+export function shipmentCaseStatusLabel(status: import("@/features/shipments/contracts").ShipmentCaseStatus) {
+  const labels: Record<import("@/features/shipments/contracts").ShipmentCaseStatus, string> = {
+    OPEN: "Mới mở",
+    ASSIGNED: "Đã phân công",
+    INVESTIGATING: "Đang điều tra",
+    RESOLVED: "Đã xử lý",
+    CLOSED: "Đã đóng",
+  };
+  return labels[status];
+}
+
+export function shipmentCaseSeverityLabel(severity: import("@/features/shipments/contracts").ShipmentCaseSeverity) {
+  const labels: Record<import("@/features/shipments/contracts").ShipmentCaseSeverity, string> = {
+    LOW: "Thấp",
+    MEDIUM: "Trung bình",
+    HIGH: "Cao",
+    CRITICAL: "Khẩn cấp",
+  };
+  return labels[severity];
+}
+
+export function shipmentCaseEventLabel(code: string) {
+  const labels: Record<string, string> = {
+    "case.created": "Tạo case",
+    "case.assigned": "Phân công",
+    "case.investigating": "Bắt đầu điều tra",
+    "case.note-added": "Thêm ghi chú",
+    "case.shipment-linked": "Liên kết vận đơn",
+    "case.resolved": "Xử lý xong",
+    "case.closed": "Đóng case",
+  };
+  return labels[code] ?? code;
 }

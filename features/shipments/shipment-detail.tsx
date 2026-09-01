@@ -30,6 +30,7 @@ import {
   type ShipmentDetailContext,
 } from "@/features/shipments/detail-context";
 import { getAdminShipment } from "@/features/shipments/api";
+import { ShipmentExceptionsPanel } from "@/features/shipments/exceptions-panel";
 import type {
   AdminShipmentDetail,
   AdminShipmentEvent,
@@ -363,6 +364,9 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
   const pricing = shipment.pricing;
   const creator = context.users[data.createdByUserId];
   const canViewTechnical = hasRole("ADMIN");
+  const canManageExceptions = hasPermission("shipments.exceptions.manage");
+  const canAdjustWeight = hasPermission("shipments.weight.adjust");
+  const canManageCases = hasPermission("shipments.cases.manage");
   const originHubName =
     context.network.originHub?.publicName ||
     context.network.originHub?.name ||
@@ -416,6 +420,14 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
               >
                 <Code2Icon className="size-4" />
               </Button>
+            ) : null}
+            {canManageCases ? (
+              <Link
+                href={`/shipments/cases?shipmentId=${encodeURIComponent(data.id)}`}
+                className="inline-flex h-10 items-center rounded-md border bg-background px-4 text-sm font-bold hover:bg-muted"
+              >
+                Hồ sơ sự cố
+              </Link>
             ) : null}
             <Button
               variant="outline"
@@ -602,6 +614,22 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
           </table>
         </div>
       </Card>
+
+      {canManageExceptions ? (
+        <ShipmentExceptionsPanel
+          shipmentId={data.id}
+          trackingCode={shipment.trackingCode}
+          lifecycleStatus={shipment.lifecycleStatus}
+          parcels={shipment.parcels}
+          originHubId={data.originHubId}
+          originHubName={originHubName}
+          destinationHubId={data.destinationHubId}
+          destinationHubName={destinationHubName}
+          canManage={canManageExceptions}
+          canAdjustWeight={canAdjustWeight}
+          onShipmentChanged={() => void load()}
+        />
+      ) : null}
 
       <div className="grid gap-4 2xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="overflow-hidden">

@@ -120,10 +120,7 @@ export function canAccessManagementPath(
   }
 
   if (pathname.startsWith("/shipments/cases")) {
-    return hasAnyPermission(user, [
-      "shipments.cases.manage",
-      "operations.hub.manage",
-    ]);
+    return hasPermission(user, "shipments.cases.manage");
   }
   if (pathname.startsWith("/control-tower")) {
     return hasAnyPermission(user, [
