@@ -147,11 +147,13 @@ export function ShipmentControlTower() {
   const canOpenCases = hasPermission("shipments.cases.manage");
 
   useEffect(() => {
-    setSearchDraft(search);
+    const task = window.setTimeout(() => setSearchDraft(search), 0);
+    return () => window.clearTimeout(task);
   }, [search]);
 
   useEffect(() => {
-    setHubDraft(hubId);
+    const task = window.setTimeout(() => setHubDraft(hubId), 0);
+    return () => window.clearTimeout(task);
   }, [hubId]);
 
   useEffect(() => {
@@ -198,7 +200,8 @@ export function ShipmentControlTower() {
   }, [alertQuery, hubId]);
 
   useEffect(() => {
-    void load();
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
   }, [load]);
 
   const update = (values: Record<string, string | number>) => {
@@ -437,7 +440,7 @@ export function ShipmentControlTower() {
 
       <div className="flex gap-2 rounded-lg border border-sky-500/20 bg-sky-500/5 p-3 text-xs leading-5 text-sky-800 dark:text-sky-200">
         <ShieldAlertIcon className="mt-0.5 size-4 shrink-0" />
-        Control Tower Patch 09 backend đang derive alert theo live state. Vì chưa có persisted alert lifecycle nên Management không hiển thị acknowledge/owner/escalation giả.
+        Backend Control Tower derive alert trực tiếp từ live state. Vì chưa có persisted alert lifecycle nên Management không hiển thị acknowledge/owner/escalation giả.
       </div>
     </div>
   );

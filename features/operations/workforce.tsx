@@ -92,12 +92,14 @@ function CreateWorkforceDialog({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open) {
+    if (open) return;
+    const task = window.setTimeout(() => {
       setKind("COURIER");
       setUserId("");
       setSearch("");
       setResults([]);
-    }
+    }, 0);
+    return () => window.clearTimeout(task);
   }, [open]);
 
   const runSearch = async () => {
@@ -274,7 +276,10 @@ export function OperationsWorkforce() {
   const [createOpen, setCreateOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState(search);
 
-  useEffect(() => setSearchDraft(search), [search]);
+  useEffect(() => {
+    const task = window.setTimeout(() => setSearchDraft(search), 0);
+    return () => window.clearTimeout(task);
+  }, [search]);
 
   const query = useMemo(() => {
     const value = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
@@ -298,7 +303,8 @@ export function OperationsWorkforce() {
   }, [query]);
 
   useEffect(() => {
-    void load();
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
   }, [load]);
 
   const updateQuery = (changes: Record<string, string | number | null>) => {

@@ -58,6 +58,48 @@ export function hasAnyRole(
   return roles.some((role) => hasRole(user, role));
 }
 
+const OPERATIONS_SCOPE_PERMISSIONS = [
+  "operations.assignments.manage",
+  "operations.hub.manage",
+] as const;
+
+export function canAccessOperations(user: CurrentUser | null | undefined) {
+  return hasAnyPermission(user, [
+    "operations.workforce.manage",
+    ...OPERATIONS_SCOPE_PERMISSIONS,
+  ]);
+}
+
+export function canAccessOperationsWorkforce(
+  user: CurrentUser | null | undefined,
+) {
+  return hasAnyPermission(user, [
+    "operations.workforce.manage",
+    "operations.hub.manage",
+  ]);
+}
+
+export function canAccessOperationsAssignments(
+  user: CurrentUser | null | undefined,
+) {
+  return hasAnyPermission(user, OPERATIONS_SCOPE_PERMISSIONS);
+}
+
+export function canAccessShipmentCases(
+  user: CurrentUser | null | undefined,
+) {
+  return hasPermission(user, "shipments.cases.manage");
+}
+
+export function canAccessControlTower(
+  user: CurrentUser | null | undefined,
+) {
+  return (
+    hasPermission(user, "shipments.control-tower.read") &&
+    hasAnyPermission(user, OPERATIONS_SCOPE_PERMISSIONS)
+  );
+}
+
 export function canAccessManagement(user: CurrentUser | null | undefined) {
   return hasAnyPermission(user, MANAGEMENT_PERMISSIONS);
 }
@@ -91,45 +133,26 @@ export function canAccessManagementPath(
   }
 
   if (pathname.startsWith("/operations/dispatch")) {
-    return hasAnyPermission(user, [
-      "operations.assignments.manage",
-      "operations.hub.manage",
-    ]);
+    return canAccessOperationsAssignments(user);
   }
   if (pathname.startsWith("/operations/assignments")) {
-    return hasAnyPermission(user, [
-      "operations.assignments.manage",
-      "operations.hub.manage",
-    ]);
+    return canAccessOperationsAssignments(user);
   }
   if (
     pathname.startsWith("/operations/workforce") ||
     pathname.startsWith("/operations/shifts")
   ) {
-    return hasAnyPermission(user, [
-      "operations.workforce.manage",
-      "operations.hub.manage",
-    ]);
+    return canAccessOperationsWorkforce(user);
   }
   if (pathname.startsWith("/operations")) {
-    return hasAnyPermission(user, [
-      "operations.workforce.manage",
-      "operations.assignments.manage",
-      "operations.hub.manage",
-    ]);
+    return canAccessOperations(user);
   }
 
   if (pathname.startsWith("/shipments/cases")) {
-    return hasPermission(user, "shipments.cases.manage");
+    return canAccessShipmentCases(user);
   }
   if (pathname.startsWith("/control-tower")) {
-    return (
-      hasPermission(user, "shipments.control-tower.read") &&
-      hasAnyPermission(user, [
-        "operations.assignments.manage",
-        "operations.hub.manage",
-      ])
-    );
+    return canAccessControlTower(user);
   }
   if (pathname.startsWith("/shipments")) {
     return hasPermission(user, "shipments.admin.read");

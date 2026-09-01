@@ -36,8 +36,8 @@ function CreateCasePanel({ onCreated, defaults }: { onCreated: (id: string) => v
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => setShipmentId(defaults.shipmentId), [defaults.shipmentId]);
-  useEffect(() => setHubId(defaults.hubId), [defaults.hubId]);
+  useEffect(() => { const task = window.setTimeout(() => setShipmentId(defaults.shipmentId), 0); return () => window.clearTimeout(task); }, [defaults.shipmentId]);
+  useEffect(() => { const task = window.setTimeout(() => setHubId(defaults.hubId), 0); return () => window.clearTimeout(task); }, [defaults.hubId]);
 
   async function submit() {
     if (!hubId.trim() || !title.trim() || !description.trim()) return toast.error("Hub, tiêu đề và mô tả là bắt buộc.");
@@ -83,7 +83,7 @@ export function ShipmentCases() {
   const [searchDraft, setSearchDraft] = useState(search); const [hubDraft, setHubDraft] = useState(hubId); const [shipmentDraft, setShipmentDraft] = useState(shipmentId);
   const query = useMemo(() => { const q = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) }); if (type) q.set("type", type); if (status) q.set("status", status); if (severity) q.set("severity", severity); if (hubId) q.set("hubId", hubId); if (shipmentId) q.set("shipmentId", shipmentId); if (search) q.set("search", search); return q; }, [page,type,status,severity,hubId,shipmentId,search]);
   const load = useCallback(async () => { setLoading(true); setError(null); try { const [p,s] = await Promise.all([getShipmentCases(query), getShipmentCaseSummary()]); setData(p); setSummary(s); } catch (e) { const m=message(e,"Không thể tải shipment cases."); setError(m); toast.error(m); } finally { setLoading(false); } }, [query]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { const task = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(task); }, [load]);
   const update = (values: Record<string,string|number>) => { const q=new URLSearchParams(searchParams.toString()); Object.entries(values).forEach(([k,v]) => { const s=String(v); if (s) q.set(k,s); else q.delete(k); }); if (!("page" in values)) q.set("page","1"); router.push(`${pathname}?${q}`); };
   const cards = summary ? [["Đang hoạt động",summary.totalActive],["Mới mở",summary.open],["Đang điều tra",summary.investigating],["Cao / khẩn",summary.highOrCritical],["Đã xử lý hôm nay",summary.resolvedToday]] : [];
   return <div className="space-y-4">

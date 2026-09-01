@@ -79,8 +79,14 @@ export function OperationsDispatch() {
   const [mutating, setMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setAssignmentDraft(assignmentId), [assignmentId]);
-  useEffect(() => setShipmentDraft(shipmentId), [shipmentId]);
+  useEffect(() => {
+    const task = window.setTimeout(() => setAssignmentDraft(assignmentId), 0);
+    return () => window.clearTimeout(task);
+  }, [assignmentId]);
+  useEffect(() => {
+    const task = window.setTimeout(() => setShipmentDraft(shipmentId), 0);
+    return () => window.clearTimeout(task);
+  }, [shipmentId]);
 
   const loadEvents = useCallback(async () => {
     setLoadingEvents(true);
@@ -118,11 +124,13 @@ export function OperationsDispatch() {
   }, [canManageOutbox, deadPage]);
 
   useEffect(() => {
-    void loadEvents();
+    const task = window.setTimeout(() => void loadEvents(), 0);
+    return () => window.clearTimeout(task);
   }, [loadEvents]);
 
   useEffect(() => {
-    void loadOutbox();
+    const task = window.setTimeout(() => void loadOutbox(), 0);
+    return () => window.clearTimeout(task);
   }, [loadOutbox]);
 
   const updateFilters = (next: Record<string, string>) => {

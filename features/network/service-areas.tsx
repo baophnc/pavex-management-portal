@@ -238,7 +238,9 @@ export function NetworkServiceAreas() {
 
   useEffect(() => {
     if (!selectedArea?.id) return;
-    void loadCoverage(selectedArea.id);
+    const serviceAreaId = selectedArea.id;
+    const task = window.setTimeout(() => void loadCoverage(serviceAreaId), 0);
+    return () => window.clearTimeout(task);
   }, [loadCoverage, selectedArea?.id]);
 
   useEffect(() => {

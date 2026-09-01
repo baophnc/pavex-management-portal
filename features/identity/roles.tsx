@@ -456,9 +456,12 @@ function RoleDetail({
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    setName(role.name);
-    setDescription(role.description ?? "");
-    setSelectedPermissions(new Set(role.permissions.map((permission) => permission.code)));
+    const task = window.setTimeout(() => {
+      setName(role.name);
+      setDescription(role.description ?? "");
+      setSelectedPermissions(new Set(role.permissions.map((permission) => permission.code)));
+    }, 0);
+    return () => window.clearTimeout(task);
   }, [role]);
 
   const permissionEditorGroups = useMemo(() => {

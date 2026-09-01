@@ -15,7 +15,7 @@ import {
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -79,9 +79,12 @@ function EditShiftDialog({ detail, open, onClose, onSaved }: { detail: WorkShift
 
   useEffect(() => {
     if (!open) return;
-    setName(detail.shift.name);
-    setStartsAt(localInputValue(detail.shift.startsAt));
-    setEndsAt(localInputValue(detail.shift.endsAt));
+    const task = window.setTimeout(() => {
+      setName(detail.shift.name);
+      setStartsAt(localInputValue(detail.shift.startsAt));
+      setEndsAt(localInputValue(detail.shift.endsAt));
+    }, 0);
+    return () => window.clearTimeout(task);
   }, [detail, open]);
 
   if (!open) return null;
@@ -125,13 +128,16 @@ function AddMemberDialog({ detail, open, onClose, onSaved }: { detail: WorkShift
 
   useEffect(() => {
     if (!open) return;
-    setMemberId("");
-    setLoading(true);
-    const params = new URLSearchParams({ page: "1", pageSize: "100", hubId: detail.shift.hubId, status: "ACTIVE" });
-    void getWorkforce(params)
-      .then((page) => setCandidates(page.items.filter((member) => !detail.roster.some((entry) => entry.workforceMemberId === member.id && entry.status !== "CANCELLED"))))
-      .catch((error) => toast.error(apiMessage(error, "Không thể tải workforce của hub.")))
-      .finally(() => setLoading(false));
+    const task = window.setTimeout(() => {
+      setMemberId("");
+      setLoading(true);
+      const params = new URLSearchParams({ page: "1", pageSize: "100", hubId: detail.shift.hubId, status: "ACTIVE" });
+      void getWorkforce(params)
+        .then((page) => setCandidates(page.items.filter((member) => !detail.roster.some((entry) => entry.workforceMemberId === member.id && entry.status !== "CANCELLED"))))
+        .catch((error) => toast.error(apiMessage(error, "Không thể tải workforce của hub.")))
+        .finally(() => setLoading(false));
+    }, 0);
+    return () => window.clearTimeout(task);
   }, [detail, open]);
 
   if (!open) return null;
@@ -171,18 +177,26 @@ export function OperationsShiftDetail({ shiftId }: { shiftId: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [loadedAt, setLoadedAt] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try { setDetail(await getWorkShift(shiftId)); }
+    try {
+      const next = await getWorkShift(shiftId);
+      setDetail(next);
+      setLoadedAt(Date.now());
+    }
     catch (reason) { setError(apiMessage(reason, "Không thể tải chi tiết ca.")); }
     finally { setLoading(false); }
   }, [shiftId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
+  }, [load]);
 
-  const canEdit = useMemo(() => Boolean(detail && detail.shift.status === "SCHEDULED" && new Date(detail.shift.startsAt).getTime() > Date.now()), [detail]);
+  const canEdit = Boolean(detail && loadedAt > 0 && detail.shift.status === "SCHEDULED" && new Date(detail.shift.startsAt).getTime() > loadedAt);
 
   const cancel = async () => {
     if (!detail) return;

@@ -70,13 +70,12 @@ truth; hiding a menu or button is only a UX guard, never the security boundary.
 
 - Identity (users plus custom-role management)
 - Partners / Merchant administration
-- Network
-- Pricing
-- Shipment administration
-- Operations access foundation
+- Network administration and route/capacity tooling
+- Pricing administration and quote inspection
+- Operations workforce, shifts, assignments, dispatch events and outbox reliability
+- Shipment administration, exceptions/weight review, case management and Control Tower
 
-Shipment administration uses the dedicated admin query contract and never reuses
-merchant-owned shipment endpoints.
+Shipment administration uses dedicated admin query contracts and never reuses merchant-owned shipment endpoints. Operations and Shipment hub scope remains backend-owned; Management only mirrors capability checks for navigation and UX.
 
 ## Identity role management
 
@@ -108,6 +107,12 @@ and an exact `totalCount` for dashboard metrics. The detail workspace exposes th
 customer snapshot together with internal ownership/routing identifiers, the complete
 event stream, and delivery-attempt/POD records for support and operations.
 
-Shipment detail remains read-only in this frontend checkpoint. The backend now exposes
-explicit exception, case and Control Tower contracts; later Management patches wire those
-operator actions without changing the BFF authorization model.
+Shipment detail also wires the advanced exception workflow: hold/release, return, forward, cancellation and weight adjustment/review. Shipment Cases provide list/summary/detail plus assign/investigate/note/link/resolve/close actions. Control Tower consumes the backend-computed SLA, route-deviation, stuck-shipment, exception/case and delivery-proof alerts as a read-only operational view.
+
+## Operations operator tools
+
+Operations screens wire the Kotlin admin contracts for workforce, hub membership, shifts/attendance, assignment queues and assignment event history. Hub-scoped managers only see the scope authorized by Operations. Global assignment managers additionally receive outbox summary, dead-letter detail, retry and discard tooling.
+
+## Dashboard and final integration
+
+The dashboard loads only metrics the current JWT is allowed to query. Priority signals are ordered from Control Tower critical alerts and outbox dead-letters through shipment delivery failures, assignment backlog, high-risk cases and Merchant verification. Route guards, sidebar visibility and dashboard capability cards share the same Operations/Shipment access helpers so frontend navigation cannot drift from its own route rules. Backend authorization remains authoritative.

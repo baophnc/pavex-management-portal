@@ -94,7 +94,8 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
   }, [assignmentId, shipmentIdHint]);
 
   useEffect(() => {
-    void load();
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
   }, [load]);
 
   const eligibleWorkers = useMemo(

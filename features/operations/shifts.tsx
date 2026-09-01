@@ -70,15 +70,18 @@ function CreateShiftDialog({
 
   useEffect(() => {
     if (!open) return;
-    const start = new Date();
-    start.setMinutes(0, 0, 0);
-    start.setHours(start.getHours() + 1);
-    const end = new Date(start);
-    end.setHours(end.getHours() + 8);
-    setHubId(hubs.find((hub) => hub.status === "ACTIVE")?.id ?? "");
-    setName("");
-    setStartsAt(localInputValue(start));
-    setEndsAt(localInputValue(end));
+    const task = window.setTimeout(() => {
+      const start = new Date();
+      start.setMinutes(0, 0, 0);
+      start.setHours(start.getHours() + 1);
+      const end = new Date(start);
+      end.setHours(end.getHours() + 8);
+      setHubId(hubs.find((hub) => hub.status === "ACTIVE")?.id ?? "");
+      setName("");
+      setStartsAt(localInputValue(start));
+      setEndsAt(localInputValue(end));
+    }, 0);
+    return () => window.clearTimeout(task);
   }, [hubs, open]);
 
   if (!open) return null;
@@ -185,7 +188,10 @@ export function OperationsShifts() {
     }
   }, [query]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
+  }, [load]);
   useEffect(() => {
     const loadHubs = async () => {
       try {

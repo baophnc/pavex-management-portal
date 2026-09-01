@@ -38,7 +38,12 @@ import { Button } from "@/components/ui/button";
 import { AccessProvider } from "@/features/auth/access-context";
 import { roleLabel } from "@/features/identity/presentation";
 import {
+  canAccessControlTower,
   canAccessManagementPath,
+  canAccessOperations,
+  canAccessOperationsAssignments,
+  canAccessOperationsWorkforce,
+  canAccessShipmentCases,
   hasAnyPermission,
   hasPermission,
 } from "@/lib/auth/access";
@@ -51,6 +56,7 @@ type NavigationItem = {
   icon: typeof CircleGaugeIcon;
   permission?: string;
   permissionsAny?: string[];
+  access?: (user: CurrentUser | null) => boolean;
 };
 
 type NavigationSection = {
@@ -178,47 +184,31 @@ const navigationSections: NavigationSection[] = [
         href: "/operations",
         label: "Điều phối vận hành",
         icon: CircleGaugeIcon,
-        permissionsAny: [
-          "operations.workforce.manage",
-          "operations.assignments.manage",
-          "operations.hub.manage",
-        ],
+        access: canAccessOperations,
       },
       {
         href: "/operations/workforce",
         label: "Nhân sự vận hành",
         icon: UsersRoundIcon,
-        permissionsAny: [
-          "operations.workforce.manage",
-          "operations.hub.manage",
-        ],
+        access: canAccessOperationsWorkforce,
       },
       {
         href: "/operations/shifts",
         label: "Ca làm việc",
         icon: CalendarClockIcon,
-        permissionsAny: [
-          "operations.workforce.manage",
-          "operations.hub.manage",
-        ],
+        access: canAccessOperationsWorkforce,
       },
       {
         href: "/operations/assignments",
         label: "Phân công",
         icon: ClipboardListIcon,
-        permissionsAny: [
-          "operations.assignments.manage",
-          "operations.hub.manage",
-        ],
+        access: canAccessOperationsAssignments,
       },
       {
         href: "/operations/dispatch",
         label: "Dispatch & outbox",
         icon: ShieldAlertIcon,
-        permissionsAny: [
-          "operations.assignments.manage",
-          "operations.hub.manage",
-        ],
+        access: canAccessOperationsAssignments,
       },
       {
         href: "/shipments",
@@ -230,17 +220,13 @@ const navigationSections: NavigationSection[] = [
         href: "/shipments/cases",
         label: "Hồ sơ sự cố",
         icon: ShieldAlertIcon,
-        permission: "shipments.cases.manage",
+        access: canAccessShipmentCases,
       },
       {
         href: "/control-tower",
         label: "Control Tower",
         icon: CircleGaugeIcon,
-        permission: "shipments.control-tower.read",
-        permissionsAny: [
-          "operations.assignments.manage",
-          "operations.hub.manage",
-        ],
+        access: canAccessControlTower,
       },
     ],
   },
@@ -288,6 +274,7 @@ const navigationSections: NavigationSection[] = [
 const navigation = navigationSections.flatMap((section) => section.items);
 
 function permitted(item: NavigationItem, user: CurrentUser | null) {
+  if (item.access && !item.access(user)) return false;
   if (item.permission && !hasPermission(user, item.permission)) return false;
   if (item.permissionsAny?.length && !hasAnyPermission(user, item.permissionsAny)) {
     return false;

@@ -131,7 +131,10 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
     }
   }, [workforceId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
+  }, [load]);
 
   useEffect(() => {
     if (!canReadNetwork) return;

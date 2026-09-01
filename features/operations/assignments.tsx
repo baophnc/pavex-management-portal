@@ -70,8 +70,14 @@ export function OperationsAssignments() {
   const [shipmentDraft, setShipmentDraft] = useState(shipmentId);
   const [hubDraft, setHubDraft] = useState(hubId);
 
-  useEffect(() => setShipmentDraft(shipmentId), [shipmentId]);
-  useEffect(() => setHubDraft(hubId), [hubId]);
+  useEffect(() => {
+    const task = window.setTimeout(() => setShipmentDraft(shipmentId), 0);
+    return () => window.clearTimeout(task);
+  }, [shipmentId]);
+  useEffect(() => {
+    const task = window.setTimeout(() => setHubDraft(hubId), 0);
+    return () => window.clearTimeout(task);
+  }, [hubId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,7 +105,8 @@ export function OperationsAssignments() {
   }, [hubId, shipmentId, status]);
 
   useEffect(() => {
-    void load();
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
   }, [load]);
 
   const updateFilters = (next: Record<string, string>) => {
