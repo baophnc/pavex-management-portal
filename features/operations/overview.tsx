@@ -3,6 +3,7 @@
 import {
   CalendarClockIcon,
   ClipboardListIcon,
+  ShieldAlertIcon,
   ShieldCheckIcon,
   UsersRoundIcon,
 } from "lucide-react";
@@ -31,7 +32,14 @@ const capabilities = [
     title: "Điều phối assignment",
     description: "Theo dõi hàng đợi, phân công, sự kiện dispatch và reliability tooling.",
     icon: ClipboardListIcon,
-    href: null,
+    href: "/operations/assignments",
+  },
+  {
+    permissionsAny: ["operations.assignments.manage", "operations.hub.manage"],
+    title: "Dispatch & reliability",
+    description: "Theo dõi event feed; global manager có thêm outbox summary và dead-letter tooling.",
+    icon: ShieldAlertIcon,
+    href: "/operations/dispatch",
   },
 ] as const;
 
@@ -57,7 +65,7 @@ export function OperationsOverview() {
                 Điều phối vận hành
               </h1>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Workforce và Shifts đã nối API thật. Phạm vi global hoặc theo hub
+                Workforce, Shifts và Assignments đã nối API thật. Phạm vi global hoặc theo hub
                 luôn do backend xác thực, Management không suy diễn quyền từ role.
               </p>
             </div>
@@ -65,7 +73,7 @@ export function OperationsOverview() {
         </div>
       </section>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {capabilities.map((item) => {
           const Icon = item.icon;
           const allowedItem = enabled(item);
@@ -107,7 +115,7 @@ export function OperationsOverview() {
             {allowed.length
               ? `Backend đang cấp quyền truy cập ${allowed.length}/${capabilities.length} workspace Operations cho tài khoản này.`
               : "Tài khoản hiện tại chưa có capability Operations."}
-            {" "}Workforce và Shifts đã hoạt động; Assignments/Dispatch sẽ được nối ở patch kế tiếp.
+            {" "}Workforce, Shifts, Assignments và Dispatch/outbox đã hoạt động theo đúng phạm vi backend cấp.
           </p>
         </CardContent>
       </Card>

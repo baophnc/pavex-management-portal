@@ -3,6 +3,7 @@
 import {
   Building2Icon,
   CalendarClockIcon,
+  ClipboardListIcon,
   ChevronRightIcon,
   CircleDollarSignIcon,
   CircleGaugeIcon,
@@ -198,6 +199,24 @@ const navigationSections: NavigationSection[] = [
         icon: CalendarClockIcon,
         permissionsAny: [
           "operations.workforce.manage",
+          "operations.hub.manage",
+        ],
+      },
+      {
+        href: "/operations/assignments",
+        label: "Phân công",
+        icon: ClipboardListIcon,
+        permissionsAny: [
+          "operations.assignments.manage",
+          "operations.hub.manage",
+        ],
+      },
+      {
+        href: "/operations/dispatch",
+        label: "Dispatch & outbox",
+        icon: ShieldAlertIcon,
+        permissionsAny: [
+          "operations.assignments.manage",
           "operations.hub.manage",
         ],
       },

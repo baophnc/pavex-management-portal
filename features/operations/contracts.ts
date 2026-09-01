@@ -194,3 +194,124 @@ export type UpdateWorkShiftInput = {
   startsAt: string;
   endsAt: string;
 };
+
+export type OperationalAssignmentType =
+  | "PICKUP"
+  | "ORIGIN_HUB_HANDLING"
+  | "LINE_HAUL"
+  | "DESTINATION_HUB_HANDLING"
+  | "LAST_MILE_DELIVERY";
+
+export type OperationalAssignmentStatus =
+  | "PENDING"
+  | "ASSIGNED"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export type OperationalAssignment = {
+  id: string;
+  code: string;
+  shipmentId: string;
+  sequence: number;
+  routeLegId: string | null;
+  type: OperationalAssignmentType;
+  requiredKind: WorkforceMemberKind;
+  hubId: string;
+  assigneeWorkforceMemberId: string | null;
+  status: OperationalAssignmentStatus;
+  priority: number;
+  assignedByUserId: string | null;
+  assignedAt: string | null;
+  acceptedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  resolutionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OperationalAssignmentEventType =
+  | "PLANNED"
+  | "ASSIGNED"
+  | "REASSIGNED"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "STARTED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REQUEUED";
+
+export type OperationalAssignmentEvent = {
+  eventId: string;
+  assignmentId: string;
+  shipmentId: string;
+  eventType: OperationalAssignmentEventType;
+  previousStatus: OperationalAssignmentStatus | null;
+  newStatus: OperationalAssignmentStatus;
+  workforceMemberId: string | null;
+  actorUserId: string | null;
+  reason: string | null;
+  occurredAt: string;
+};
+
+export type OperationalAssignmentEventPage = {
+  items: OperationalAssignmentEvent[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export type OperationsOutboxSummary = {
+  pendingCount: number;
+  deadLetteredCount: number;
+  discardedCount: number;
+  oldestPendingOccurredAt: string | null;
+  oldestPendingAgeSeconds: number | null;
+};
+
+export type OperationsOutboxDeadLetter = {
+  messageId: string;
+  eventType: string;
+  aggregateType: string;
+  aggregateId: string;
+  payload: string;
+  occurredAt: string;
+  deadLetteredAt: string;
+  attemptCount: number;
+  lastError: string | null;
+};
+
+export type OperationsOutboxDeadLetterPage = {
+  items: OperationsOutboxDeadLetter[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export const operationalAssignmentStatuses: OperationalAssignmentStatus[] = [
+  "PENDING",
+  "ASSIGNED",
+  "ACCEPTED",
+  "REJECTED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+];
+
+export const operationalAssignmentEventTypes: OperationalAssignmentEventType[] = [
+  "PLANNED",
+  "ASSIGNED",
+  "REASSIGNED",
+  "ACCEPTED",
+  "REJECTED",
+  "STARTED",
+  "COMPLETED",
+  "CANCELLED",
+  "REQUEUED",
+];

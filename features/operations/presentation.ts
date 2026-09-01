@@ -94,3 +94,66 @@ export function workforceShiftStatusLabel(
       return "Đã gỡ khỏi ca";
   }
 }
+
+export function operationalAssignmentTypeLabel(
+  type: import("@/features/operations/contracts").OperationalAssignmentType,
+) {
+  switch (type) {
+    case "PICKUP":
+      return "Lấy hàng";
+    case "ORIGIN_HUB_HANDLING":
+      return "Xử lý hub gửi";
+    case "LINE_HAUL":
+      return "Trung chuyển liên hub";
+    case "DESTINATION_HUB_HANDLING":
+      return "Xử lý hub nhận";
+    case "LAST_MILE_DELIVERY":
+      return "Giao chặng cuối";
+  }
+}
+
+export function operationalAssignmentStatusLabel(
+  status: import("@/features/operations/contracts").OperationalAssignmentStatus,
+) {
+  switch (status) {
+    case "PENDING":
+      return "Chờ phân công";
+    case "ASSIGNED":
+      return "Đã phân công";
+    case "ACCEPTED":
+      return "Đã nhận việc";
+    case "REJECTED":
+      return "Bị từ chối";
+    case "IN_PROGRESS":
+      return "Đang thực hiện";
+    case "COMPLETED":
+      return "Hoàn tất";
+    case "CANCELLED":
+      return "Đã hủy";
+  }
+}
+
+export function operationalAssignmentEventLabel(
+  type: import("@/features/operations/contracts").OperationalAssignmentEventType,
+) {
+  switch (type) {
+    case "PLANNED":
+      return "Đã lập kế hoạch";
+    case "ASSIGNED":
+      return "Đã phân công";
+    case "REASSIGNED":
+      return "Đã phân công lại";
+    case "ACCEPTED":
+      return "Worker nhận việc";
+    case "REJECTED":
+      return "Worker từ chối";
+    case "STARTED":
+      return "Bắt đầu thực hiện";
+    case "COMPLETED":
+      return "Hoàn tất";
+    case "CANCELLED":
+      return "Đã hủy";
+    case "REQUEUED":
+      return "Đưa lại hàng đợi";
+  }
+}

@@ -91,7 +91,10 @@ export function canAccessManagementPath(
   }
 
   if (pathname.startsWith("/operations/dispatch")) {
-    return hasPermission(user, "operations.assignments.manage");
+    return hasAnyPermission(user, [
+      "operations.assignments.manage",
+      "operations.hub.manage",
+    ]);
   }
   if (pathname.startsWith("/operations/assignments")) {
     return hasAnyPermission(user, [

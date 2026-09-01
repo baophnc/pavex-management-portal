@@ -137,3 +137,71 @@ export function markWorkShiftMemberAbsent(id: string, memberId: string, note?: s
     { method: "POST", body: jsonBody({ note: note?.trim() || null }) },
   );
 }
+
+export function getOperationalAssignments(params: URLSearchParams) {
+  const query = params.toString();
+  return apiRequest<import("@/features/operations/contracts").OperationalAssignment[]>(
+    `admin/operations/assignments${query ? `?${query}` : ""}`,
+  );
+}
+
+export function assignOperationalAssignment(id: string, workforceMemberId: string) {
+  return apiRequest<import("@/features/operations/contracts").OperationalAssignment>(
+    `admin/operations/assignments/${encodeURIComponent(id)}/assign`,
+    { method: "POST", body: jsonBody({ workforceMemberId }) },
+  );
+}
+
+export function cancelOperationalAssignment(id: string, reason: string) {
+  return apiRequest<import("@/features/operations/contracts").OperationalAssignment>(
+    `admin/operations/assignments/${encodeURIComponent(id)}/cancel`,
+    { method: "POST", body: jsonBody({ reason }) },
+  );
+}
+
+export function getOperationalAssignmentEvents(id: string, page = 1, pageSize = 100) {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return apiRequest<import("@/features/operations/contracts").OperationalAssignmentEventPage>(
+    `admin/operations/assignments/${encodeURIComponent(id)}/events?${query}`,
+  );
+}
+
+export function getOperationsDispatchEvents(params: URLSearchParams) {
+  const query = params.toString();
+  return apiRequest<import("@/features/operations/contracts").OperationalAssignmentEventPage>(
+    `admin/operations/dispatch-events${query ? `?${query}` : ""}`,
+  );
+}
+
+export function getOperationsOutboxSummary() {
+  return apiRequest<import("@/features/operations/contracts").OperationsOutboxSummary>(
+    "admin/operations/outbox/summary",
+  );
+}
+
+export function getOperationsDeadLetters(page = 1, pageSize = 50) {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return apiRequest<import("@/features/operations/contracts").OperationsOutboxDeadLetterPage>(
+    `admin/operations/outbox/dead-letters?${query}`,
+  );
+}
+
+export function getOperationsDeadLetter(id: string) {
+  return apiRequest<import("@/features/operations/contracts").OperationsOutboxDeadLetter>(
+    `admin/operations/outbox/dead-letters/${encodeURIComponent(id)}`,
+  );
+}
+
+export function retryOperationsDeadLetter(id: string) {
+  return apiRequest<null>(
+    `admin/operations/outbox/dead-letters/${encodeURIComponent(id)}/retry`,
+    { method: "POST" },
+  );
+}
+
+export function discardOperationsDeadLetter(id: string, reason: string) {
+  return apiRequest<null>(
+    `admin/operations/outbox/dead-letters/${encodeURIComponent(id)}/discard`,
+    { method: "POST", body: jsonBody({ reason }) },
+  );
+}
