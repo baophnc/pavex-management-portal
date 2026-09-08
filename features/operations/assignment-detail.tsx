@@ -9,13 +9,14 @@ import {
   UserRoundCheckIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getAllHubs } from "@/features/network/api";
+import type { Hub } from "@/features/network/contracts";
 import {
   assignOperationalAssignment,
   cancelOperationalAssignment,
@@ -47,11 +48,10 @@ function shortId(value: string | null) {
 }
 
 export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: string }) {
-  const searchParams = useSearchParams();
-  const shipmentIdHint = searchParams.get("shipmentId") ?? "";
   const [assignment, setAssignment] = useState<OperationalAssignment | null>(null);
   const [events, setEvents] = useState<OperationalAssignmentEvent[]>([]);
   const [workforce, setWorkforce] = useState<WorkforceMember[]>([]);
+  const [hubs, setHubs] = useState<Hub[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,13 +62,11 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
     setLoading(true);
     setError(null);
     try {
-      const assignmentParams = new URLSearchParams();
-      if (shipmentIdHint) assignmentParams.set("shipmentId", shipmentIdHint);
-      const candidates = await getOperationalAssignments(assignmentParams);
+      const candidates = await getOperationalAssignments(new URLSearchParams());
       const found = candidates.find((item) => item.id === assignmentId) ?? null;
       if (!found) throw new Error("Assignment không nằm trong phạm vi truy cập hiện tại.");
 
-      const [eventPage, workforcePage] = await Promise.all([
+      const [eventPage, workforcePage, visibleHubs] = await Promise.all([
         getOperationalAssignmentEvents(assignmentId, 1, 100),
         getWorkforce(
           new URLSearchParams({
@@ -79,11 +77,13 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
             status: "ACTIVE",
           }),
         ),
+        getAllHubs().catch(() => []),
       ]);
 
       setAssignment(found);
       setEvents(eventPage.items);
       setWorkforce(workforcePage.items);
+      setHubs(visibleHubs);
       setSelectedWorker(found.assigneeWorkforceMemberId ?? "");
     } catch (cause) {
       const message = apiMessage(cause, cause instanceof Error ? cause.message : "Không thể tải assignment.");
@@ -91,7 +91,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
     } finally {
       setLoading(false);
     }
-  }, [assignmentId, shipmentIdHint]);
+  }, [assignmentId]);
 
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
@@ -115,7 +115,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
   );
 
   const selectedMember = workforce.find((item) => item.id === selectedWorker) ?? null;
-  const canAssign = assignment && ["PENDING", "ASSIGNED", "REJECTED"].includes(assignment.status);
+  const canAssign = assignment && ["READY", "PENDING", "ASSIGNED", "REJECTED"].includes(assignment.status);
   const canCancel = assignment && assignment.status !== "COMPLETED" && assignment.status !== "CANCELLED";
 
   const assign = async () => {
@@ -166,6 +166,10 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
     );
   }
 
+  const hub = hubs.find((item) => item.id === assignment.hubId);
+  const assignedMember = workforce.find((item) => item.id === assignment.assigneeWorkforceMemberId);
+  const assigningUser = workforce.find((item) => item.userId === assignment.assignedByUserId);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -195,12 +199,12 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
         <Card>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Info label="Shipment" value={assignment.shipmentId} href={`/shipments/${assignment.shipmentId}`} />
-              <Info label="Hub" value={assignment.hubId} />
-              <Info label="Route leg" value={assignment.routeLegId ?? "—"} />
-              <Info label="Sequence" value={String(assignment.sequence)} />
-              <Info label="Assignee workforce" value={assignment.assigneeWorkforceMemberId ?? "Chưa phân công"} />
-              <Info label="Assigned by" value={assignment.assignedByUserId ?? "—"} />
+              <Info label="Mã nội bộ vận đơn" value={shortId(assignment.shipmentId)} />
+              <Info label="Bưu cục" value={hub ? `${hub.code} · ${hub.name}` : "Bưu cục trong phạm vi"} />
+              <Info label="Chặng tuyến nội bộ" value={shortId(assignment.routeLegId)} />
+              <Info label="Thứ tự thực thi" value={String(assignment.sequence)} />
+              <Info label="Nhân sự được phân công" value={assignedMember ? `${assignedMember.employeeCode} · ${workforceIdentityName(assignedMember.identity ?? {})}` : "Chưa phân công"} />
+              <Info label="Người phân công" value={assigningUser ? workforceIdentityName(assigningUser.identity ?? {}) : assignment.assignedByUserId ? "Người điều phối được phân quyền" : "—"} />
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Time label="Assigned" value={assignment.assignedAt} />
@@ -310,12 +314,12 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
   );
 }
 
-function Info({ label, value, href }: { label: string; value: string; href?: string }) {
+function Info({ label, value }: { label: string; value: string }) {
   const body = <p className="mt-1 break-all font-mono text-xs">{value}</p>;
   return (
     <div className="rounded-lg border bg-muted/15 p-3">
       <p className="text-[0.62rem] font-black uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-      {href ? <Link href={href} className="text-brand hover:underline">{body}</Link> : body}
+      {body}
     </div>
   );
 }

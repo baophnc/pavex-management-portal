@@ -15,7 +15,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getOperationalAssignments } from "@/features/operations/api";
+import { getAllHubs } from "@/features/network/api";
+import type { Hub } from "@/features/network/contracts";
+import { useAccess } from "@/features/auth/access-context";
+import { getOperationalAssignments, getWorkforce } from "@/features/operations/api";
 import {
   operationalAssignmentStatuses,
   type OperationalAssignment,
@@ -24,8 +27,10 @@ import {
 import {
   operationalAssignmentStatusLabel,
   operationalAssignmentTypeLabel,
+  workforceIdentityName,
   workforceKindLabel,
 } from "@/features/operations/presentation";
+import { getAdminShipment, getAdminShipments } from "@/features/shipments/api";
 import { ApiError } from "@/lib/api/client";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -35,6 +40,10 @@ function apiMessage(error: unknown, fallback: string) {
 
 function statusClass(status: OperationalAssignmentStatus) {
   switch (status) {
+    case "BLOCKED":
+      return "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-slate-300";
+    case "READY":
+      return "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300";
     case "PENDING":
       return "border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300";
     case "ASSIGNED":
@@ -57,39 +66,106 @@ function shortId(value: string | null) {
 }
 
 export function OperationsAssignments() {
+  const { hasPermission } = useAccess();
+  const canReadGlobalShipments = hasPermission("shipments.admin.read");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const shipmentId = searchParams.get("shipmentId") ?? "";
-  const hubId = searchParams.get("hubId") ?? "";
+  const assignmentCode = searchParams.get("assignmentCode") ?? "";
+  const trackingCode = searchParams.get("trackingCode") ?? "";
+  const hubCode = searchParams.get("hubCode") ?? "";
   const status = (searchParams.get("status") ?? "") as OperationalAssignmentStatus | "";
 
   const [items, setItems] = useState<OperationalAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [shipmentDraft, setShipmentDraft] = useState(shipmentId);
-  const [hubDraft, setHubDraft] = useState(hubId);
+  const [assignmentDraft, setAssignmentDraft] = useState(assignmentCode);
+  const [shipmentDraft, setShipmentDraft] = useState(trackingCode);
+  const [hubDraft, setHubDraft] = useState(hubCode);
+  const [hubs, setHubs] = useState<Hub[]>([]);
+  const [shipmentLabels, setShipmentLabels] = useState<Record<string, string>>({});
+  const [hubLabels, setHubLabels] = useState<Record<string, string>>({});
+  const [workerLabels, setWorkerLabels] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const task = window.setTimeout(() => setShipmentDraft(shipmentId), 0);
+    const task = window.setTimeout(() => setAssignmentDraft(assignmentCode), 0);
     return () => window.clearTimeout(task);
-  }, [shipmentId]);
+  }, [assignmentCode]);
   useEffect(() => {
-    const task = window.setTimeout(() => setHubDraft(hubId), 0);
+    const task = window.setTimeout(() => setShipmentDraft(trackingCode), 0);
     return () => window.clearTimeout(task);
-  }, [hubId]);
+  }, [trackingCode]);
+  useEffect(() => {
+    const task = window.setTimeout(() => setHubDraft(hubCode), 0);
+    return () => window.clearTimeout(task);
+  }, [hubCode]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const [networkHubs, workforcePage, shipmentPage] = await Promise.all([
+        getAllHubs().catch(() => []),
+        getWorkforce(new URLSearchParams({ page: "1", pageSize: "100" })).catch(() => null),
+        canReadGlobalShipments
+          ? getAdminShipments(new URLSearchParams({ limit: "100" })).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      const fallbackHubs = new Map<string, Hub>();
+      workforcePage?.items.forEach((member) => member.hubMemberships.forEach((membership) => {
+        if (!membership.isActive) return;
+        fallbackHubs.set(membership.hubId, {
+          id: membership.hubId,
+          code: membership.hubCode || membership.hubId.slice(0, 8),
+          name: membership.hubName || "Bưu cục được phân quyền",
+          type: (membership.hubType as Hub["type"]) || "LOCAL",
+          status: (membership.hubStatus as Hub["status"]) || "ACTIVE",
+          addressLine: membership.addressLine || "",
+          provinceCode: membership.provinceCode || "",
+          wardCode: membership.wardCode || "",
+          parentHubId: membership.parentHubId,
+          publicVisible: false,
+          publicName: null,
+          createdAt: membership.assignedAt,
+          updatedAt: membership.updatedAt,
+        });
+      }));
+      const visibleHubs = networkHubs.length ? networkHubs : [...fallbackHubs.values()];
+      setHubs(visibleHubs.filter((hub) => hub.status === "ACTIVE"));
+      setHubLabels(Object.fromEntries(visibleHubs.map((hub) => [hub.id, `${hub.code} · ${hub.name}`])));
+      setWorkerLabels(Object.fromEntries((workforcePage?.items ?? []).map((member) => [
+        member.id,
+        `${workforceIdentityName(member.identity ?? {})} · ${member.employeeCode}`,
+      ])));
+
       const params = new URLSearchParams();
-      if (shipmentId) params.set("shipmentId", shipmentId);
-      if (hubId) params.set("hubId", hubId);
+      const nextShipmentLabels = Object.fromEntries(
+        (shipmentPage?.items ?? []).map((shipment) => [shipment.id, shipment.trackingCode]),
+      );
+      if (trackingCode && canReadGlobalShipments) {
+        const normalizedTrackingCode = trackingCode.trim().toUpperCase();
+        const knownShipment = shipmentPage?.items.find(
+          (shipment) => shipment.trackingCode === normalizedTrackingCode,
+        );
+        const shipment = knownShipment ?? await getAdminShipment(normalizedTrackingCode);
+        params.set("shipmentId", shipment.id);
+        nextShipmentLabels[shipment.id] = "shipment" in shipment
+          ? shipment.shipment.trackingCode
+          : shipment.trackingCode;
+      }
+      if (hubCode) {
+        const hub = visibleHubs.find((item) => item.code === hubCode);
+        if (!hub) throw new Error("Bưu cục không còn nằm trong phạm vi truy cập.");
+        params.set("hubId", hub.id);
+      }
       if (status) params.set("status", status);
       const response = await getOperationalAssignments(params);
+      setShipmentLabels(nextShipmentLabels);
+      const visibleAssignments = assignmentCode
+        ? response.filter((item) => item.code === assignmentCode.trim().toUpperCase())
+        : response;
       setItems(
-        [...response].sort(
+        [...visibleAssignments].sort(
           (left, right) =>
             right.priority - left.priority ||
             new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
@@ -102,7 +178,7 @@ export function OperationsAssignments() {
     } finally {
       setLoading(false);
     }
-  }, [hubId, shipmentId, status]);
+  }, [assignmentCode, canReadGlobalShipments, hubCode, status, trackingCode]);
 
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
@@ -120,7 +196,7 @@ export function OperationsAssignments() {
   };
 
   const counts = useMemo(() => {
-    const pending = items.filter((item) => item.status === "PENDING" || item.status === "REJECTED").length;
+    const pending = items.filter((item) => ["BLOCKED", "READY", "PENDING", "REJECTED"].includes(item.status)).length;
     const active = items.filter((item) => ["ASSIGNED", "ACCEPTED", "IN_PROGRESS"].includes(item.status)).length;
     const completed = items.filter((item) => item.status === "COMPLETED").length;
     return { pending, active, completed };
@@ -161,19 +237,32 @@ export function OperationsAssignments() {
 
       <Card>
         <CardContent className="space-y-3">
-          <div className="grid gap-2 lg:grid-cols-[1fr_1fr_220px_auto]">
+          <div className={cn(
+            "grid gap-2",
+            canReadGlobalShipments
+              ? "lg:grid-cols-[1fr_1fr_1fr_220px_auto]"
+              : "lg:grid-cols-[1fr_1fr_220px_auto]",
+          )}>
             <Input
+              value={assignmentDraft}
+              onChange={(event) => setAssignmentDraft(event.target.value)}
+              placeholder="Mã assignment, ví dụ OA-..."
+              className="font-mono text-xs uppercase"
+            />
+            {canReadGlobalShipments ? <Input
               value={shipmentDraft}
               onChange={(event) => setShipmentDraft(event.target.value)}
-              placeholder="Shipment UUID"
-              className="font-mono text-xs"
-            />
-            <Input
+              placeholder="Mã vận đơn, ví dụ PAVEX..."
+              className="font-mono text-xs uppercase"
+            /> : null}
+            <select
               value={hubDraft}
               onChange={(event) => setHubDraft(event.target.value)}
-              placeholder="Hub UUID"
-              className="font-mono text-xs"
-            />
+              className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
+            >
+              <option value="">Tất cả bưu cục trong phạm vi</option>
+              {hubs.map((hub) => <option key={hub.id} value={hub.code}>{hub.code} · {hub.name}</option>)}
+            </select>
             <select
               value={status}
               onChange={(event) => updateFilters({ status: event.target.value })}
@@ -186,18 +275,23 @@ export function OperationsAssignments() {
             </select>
             <Button
               type="button"
-              onClick={() => updateFilters({ shipmentId: shipmentDraft, hubId: hubDraft })}
+              onClick={() => updateFilters({
+                assignmentCode: assignmentDraft.toUpperCase(),
+                trackingCode: canReadGlobalShipments ? shipmentDraft.toUpperCase() : "",
+                hubCode: hubDraft,
+              })}
             >
               <SearchIcon className="size-4" />
               Lọc
             </Button>
           </div>
-          {(shipmentId || hubId || status) ? (
+          {(assignmentCode || trackingCode || hubCode || status) ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => {
+                setAssignmentDraft("");
                 setShipmentDraft("");
                 setHubDraft("");
                 router.push(pathname);
@@ -231,7 +325,7 @@ export function OperationsAssignments() {
               {items.map((item) => (
                 <Link
                   key={item.id}
-                  href={`/operations/assignments/${item.id}?shipmentId=${encodeURIComponent(item.shipmentId)}`}
+                  href={`/operations/assignments/${item.id}`}
                   className="grid gap-3 px-4 py-3 transition hover:bg-muted/35 lg:grid-cols-[1.1fr_1.1fr_1fr_0.9fr_auto] lg:items-center"
                 >
                   <div className="min-w-0">
@@ -242,12 +336,12 @@ export function OperationsAssignments() {
                     <p className="mt-1 text-[0.68rem] text-muted-foreground">{operationalAssignmentTypeLabel(item.type)}</p>
                   </div>
                   <div className="min-w-0 text-[0.68rem]">
-                    <p className="font-bold">Shipment {shortId(item.shipmentId)}</p>
-                    <p className="mt-1 font-mono text-muted-foreground">Hub {shortId(item.hubId)}</p>
+                    <p className="font-bold">{shipmentLabels[item.shipmentId] || `Vận đơn ${shortId(item.shipmentId)}`}</p>
+                    <p className="mt-1 text-muted-foreground">{hubLabels[item.hubId] || "Bưu cục trong phạm vi"}</p>
                   </div>
                   <div className="text-[0.68rem]">
                     <p className="font-bold">{workforceKindLabel(item.requiredKind)}</p>
-                    <p className="mt-1 font-mono text-muted-foreground">Worker {shortId(item.assigneeWorkforceMemberId)}</p>
+                    <p className="mt-1 text-muted-foreground">{item.assigneeWorkforceMemberId ? workerLabels[item.assigneeWorkforceMemberId] || "Nhân sự đã phân công" : "Chưa phân công"}</p>
                   </div>
                   <div className="text-[0.68rem]">
                     <span className={cn("inline-flex rounded-full border px-2 py-1 font-black", statusClass(item.status))}>

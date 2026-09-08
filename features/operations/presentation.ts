@@ -43,7 +43,7 @@ export function availabilityLabel(status: WorkforceAvailabilityStatus) {
 export function workforceAuditLabel(action: WorkforceAuditAction) {
   switch (action) {
     case "MEMBER_CREATED":
-      return "Tạo workforce";
+      return "Tạo hồ sơ nhân sự";
     case "STATUS_CHANGED":
       return "Đổi trạng thái";
     case "HUB_ASSIGNED":
@@ -102,11 +102,13 @@ export function operationalAssignmentTypeLabel(
     case "PICKUP":
       return "Lấy hàng";
     case "ORIGIN_HUB_HANDLING":
-      return "Xử lý hub gửi";
+      return "Xử lý tại bưu cục gửi";
     case "LINE_HAUL":
-      return "Trung chuyển liên hub";
+      return "Vận chuyển giữa các bưu cục";
+    case "TRANSIT_HUB_HANDLING":
+      return "Xử lý tại bưu cục trung chuyển";
     case "DESTINATION_HUB_HANDLING":
-      return "Xử lý hub nhận";
+      return "Xử lý tại bưu cục phát";
     case "LAST_MILE_DELIVERY":
       return "Giao chặng cuối";
   }
@@ -116,6 +118,10 @@ export function operationalAssignmentStatusLabel(
   status: import("@/features/operations/contracts").OperationalAssignmentStatus,
 ) {
   switch (status) {
+    case "BLOCKED":
+      return "Chờ chặng trước";
+    case "READY":
+      return "Sẵn sàng phân công";
     case "PENDING":
       return "Chờ phân công";
     case "ASSIGNED":
@@ -144,9 +150,9 @@ export function operationalAssignmentEventLabel(
     case "REASSIGNED":
       return "Đã phân công lại";
     case "ACCEPTED":
-      return "Worker nhận việc";
+      return "Nhân viên nhận việc";
     case "REJECTED":
-      return "Worker từ chối";
+      return "Nhân viên từ chối";
     case "STARTED":
       return "Bắt đầu thực hiện";
     case "COMPLETED":

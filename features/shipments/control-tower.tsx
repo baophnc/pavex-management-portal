@@ -335,7 +335,7 @@ export function ShipmentControlTower() {
                 {hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}
               </select>
             ) : (
-              <Input value={hubDraft} onChange={(event) => setHubDraft(event.target.value)} placeholder="Hub UUID (nếu cần)" className="font-mono text-xs" />
+              <div className="flex h-10 items-center rounded-md border bg-muted/20 px-3 text-xs text-muted-foreground">Hub scope đang do backend giới hạn tự động.</div>
             )}
             <Button variant="outline" onClick={() => update({ search: searchDraft, hubId: hubDraft })}>
               <SearchIcon className="size-4" /> Lọc

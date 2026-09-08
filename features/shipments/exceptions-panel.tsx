@@ -13,12 +13,13 @@ import {
   ScaleIcon,
   ShieldAlertIcon,
   ShieldCheckIcon,
-  XCircleIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useAccess } from "@/features/auth/access-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,7 +51,6 @@ import type {
 import { shipmentErrorMessage } from "@/features/shipments/presentation";
 import { cn, formatDateTime } from "@/lib/utils";
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIVE_REQUEST_STATUSES: ShipmentExceptionRequestStatus[] = [
   "PENDING_APPROVAL",
   "APPROVED",
@@ -189,35 +189,17 @@ function ExistingRequestCard({
 
       <RequestTimeline request={request} />
 
-      {canReview || canComplete ? (
+      {canReview ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <div><p className="text-xs font-black">Đang chờ cấp duyệt độc lập</p><p className="mt-1 text-[0.66rem] text-muted-foreground">Người tạo yêu cầu không được tự duyệt. Operations Manager/Admin khác xử lý trong hàng chờ duyệt.</p></div>
+          <Link href="/shipments/exceptions?status=PENDING_APPROVAL" className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-xs font-black hover:bg-muted">Mở hàng chờ duyệt →</Link>
+        </div>
+      ) : canComplete ? (
         <div className="mt-4 border-t pt-4">
-          <label className="grid gap-2 text-xs font-bold">
-            Ghi chú {canReview ? "duyệt" : "hoàn tất"}
-            <textarea
-              className={textAreaClass()}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              maxLength={500}
-              placeholder={canReview ? "Lý do duyệt/từ chối (không bắt buộc)..." : "Ghi chú khi hoàn tất workflow..."}
-              disabled={pending}
-            />
-          </label>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {canReview ? (
-              <>
-                <Button type="button" size="sm" onClick={() => void actions.review(true, note.trim() || null)} disabled={pending}>
-                  {pending ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : <CheckCircle2Icon className="size-3.5" />} Duyệt
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => void actions.review(false, note.trim() || null)} disabled={pending}>
-                  <XCircleIcon className="size-3.5" /> Từ chối
-                </Button>
-              </>
-            ) : (
-              <Button type="button" size="sm" onClick={() => void actions.complete(note.trim() || null)} disabled={pending}>
-                {pending ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : <PackageCheckIcon className="size-3.5" />} Hoàn tất workflow
-              </Button>
-            )}
-          </div>
+          <label className="grid gap-2 text-xs font-bold">Ghi chú hoàn tất<textarea className={textAreaClass()} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ghi chú khi hoàn tất recovery/routing workflow..." disabled={pending} /></label>
+          <Button className="mt-3" type="button" size="sm" onClick={() => void actions.complete(note.trim() || null)} disabled={pending}>
+            {pending ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : <PackageCheckIcon className="size-3.5" />} Hoàn tất workflow
+          </Button>
         </div>
       ) : null}
     </div>
@@ -390,38 +372,44 @@ function HoldPanel({
 
 function WeightAdjustmentRow({
   adjustment,
+  parcelCode,
   pending,
   canReview,
   mutate,
   shipmentId,
+  currentUserId,
 }: {
   adjustment: ShipmentWeightAdjustment;
+  parcelCode: string | null;
   pending: boolean;
   canReview: boolean;
   mutate: (label: string, action: () => Promise<ShipmentExceptionState>) => Promise<void>;
   shipmentId: string;
+  currentUserId: string | null;
 }) {
   const [note, setNote] = useState("");
+  const selfReview = Boolean(currentUserId && currentUserId === adjustment.actorUserId);
   return (
     <div className="rounded-xl border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-[0.68rem] font-black">Parcel {adjustment.parcelId}</p>
+          <p className="text-xs font-black">Kiện {parcelCode ?? "không còn trong snapshot"}</p>
           <p className="mt-1 text-xs font-bold">{adjustment.oldActualWeightKg} kg → {adjustment.newActualWeightKg} kg thực tế</p>
           <p className="mt-1 text-[0.64rem] text-muted-foreground">Chargeable {adjustment.oldChargeableWeightKg} kg → {adjustment.newChargeableWeightKg} kg</p>
         </div>
         <span className={cn("rounded-full border px-2.5 py-1 text-[0.62rem] font-black", adjustment.reviewCompleted ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300")}>{adjustment.reviewCompleted ? "ĐÃ REVIEW" : "CHỜ REVIEW"}</span>
       </div>
       <p className="mt-3 text-xs"><strong>Lý do:</strong> {adjustment.reason}</p>
-      <p className="mt-1 text-[0.64rem] text-muted-foreground">Điều chỉnh {formatDateTime(adjustment.adjustedAt)}{adjustment.hubId ? ` · Hub ${adjustment.hubId}` : ""}</p>
+      <p className="mt-1 text-[0.64rem] text-muted-foreground">Điều chỉnh {formatDateTime(adjustment.adjustedAt)}</p>
       {adjustment.reviewNote ? <p className="mt-2 rounded-lg border bg-muted/15 p-2.5 text-xs"><strong>Review:</strong> {adjustment.reviewNote}</p> : null}
       {!adjustment.reviewCompleted && canReview ? (
         <div className="mt-3 border-t pt-3">
+          {selfReview ? <p className="mb-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-[0.68rem] font-bold text-amber-800 dark:text-amber-200">Bạn là người ghi nhận cân lại. Một Operations Manager/Admin khác phải review.</p> : null}
           <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ghi chú review capacity/routing..." disabled={pending} />
           <Button className="mt-2" type="button" size="sm" onClick={() => {
             if (!note.trim()) return toast.error("Backend yêu cầu ghi chú weight review.");
             void mutate("Đã hoàn tất weight review.", () => reviewShipmentWeight(shipmentId, adjustment.adjustmentId, note.trim()));
-          }} disabled={pending}>
+          }} disabled={pending || selfReview}>
             <CheckCircle2Icon className="size-3.5" /> Hoàn tất review
           </Button>
         </div>
@@ -439,6 +427,7 @@ function WeightPanel({
   canAdjust,
   canReview,
   mutate,
+  currentUserId,
 }: {
   shipmentId: string;
   state: ShipmentExceptionState;
@@ -448,15 +437,15 @@ function WeightPanel({
   canAdjust: boolean;
   canReview: boolean;
   mutate: (label: string, action: () => Promise<ShipmentExceptionState>) => Promise<void>;
+  currentUserId: string | null;
 }) {
   const [parcelId, setParcelId] = useState("");
   const [weight, setWeight] = useState("");
   const [reason, setReason] = useState("");
   const [hubId, setHubId] = useState("");
-  const parcelIdsAvailable = parcels.some((parcel) => Boolean(parcel.id));
 
   const submit = async () => {
-    if (!UUID_PATTERN.test(parcelId.trim())) return toast.error("Parcel ID phải là UUID hợp lệ.");
+    if (!parcelId) return toast.error("Chọn kiện cần cân lại.");
     const actualWeightKg = Number(weight);
     if (!Number.isFinite(actualWeightKg) || actualWeightKg <= 0) return toast.error("Khối lượng thực tế phải lớn hơn 0.");
     if (!reason.trim()) return toast.error("Nhập lý do điều chỉnh khối lượng.");
@@ -482,22 +471,12 @@ function WeightPanel({
               <p className="mt-1 text-xs leading-5 text-muted-foreground">Backend tự đặt shipment vào hold và yêu cầu review capacity/routing sau khi khối lượng thay đổi.</p>
             </div>
           </div>
-          {!parcelIdsAvailable ? (
-            <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-[0.66rem] leading-5">
-              <p className="font-black text-amber-700 dark:text-amber-300">Backend contract hiện chưa trả Parcel UUID trong AdminShipmentDetail</p>
-              <p className="mt-1 text-muted-foreground">Danh sách chi tiết chỉ có parcel code ({parcels.map((item) => item.code).join(", ") || "không có"}). Vì endpoint weight-adjustment bắt UUID, form tạm nhận Parcel UUID kỹ thuật. Khi backend bổ sung `id` vào ParcelResponse, UI này tự chuyển sang dropdown chọn kiện.</p>
-            </div>
-          ) : null}
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1.5 text-xs font-bold">Parcel
-              {parcelIdsAvailable ? (
-                <select value={parcelId} onChange={(event) => setParcelId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" disabled={pending || state.hasPendingWeightReview}>
-                  <option value="">Chọn kiện hàng</option>
-                  {parcels.filter((parcel) => parcel.id).map((parcel) => <option key={parcel.id} value={parcel.id}>{parcel.code} · {parcel.actualWeightKg} kg</option>)}
-                </select>
-              ) : (
-                <Input value={parcelId} onChange={(event) => setParcelId(event.target.value)} placeholder="Parcel UUID" disabled={pending || state.hasPendingWeightReview} />
-              )}
+            <label className="grid gap-1.5 text-xs font-bold">Kiện hàng
+              <select value={parcelId} onChange={(event) => setParcelId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" disabled={pending || state.hasPendingWeightReview}>
+                <option value="">Chọn kiện hàng</option>
+                {parcels.map((parcel) => <option key={parcel.id} value={parcel.id}>{parcel.code} · {parcel.actualWeightKg} kg</option>)}
+              </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold">Khối lượng thực tế mới (kg)<Input type="number" min="0.001" step="0.001" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="1.250" disabled={pending || state.hasPendingWeightReview} /></label>
             <label className="grid gap-1.5 text-xs font-bold">Hub context
@@ -517,7 +496,7 @@ function WeightPanel({
 
       {state.weightAdjustments.length ? (
         <div className="grid gap-3 xl:grid-cols-2">
-          {state.weightAdjustments.map((adjustment) => <WeightAdjustmentRow key={adjustment.adjustmentId} adjustment={adjustment} pending={pending} canReview={canReview} mutate={mutate} shipmentId={shipmentId} />)}
+          {state.weightAdjustments.map((adjustment) => <WeightAdjustmentRow key={adjustment.adjustmentId} adjustment={adjustment} parcelCode={parcels.find((parcel) => parcel.id === adjustment.parcelId)?.code ?? null} pending={pending} canReview={canReview} mutate={mutate} shipmentId={shipmentId} currentUserId={currentUserId} />)}
         </div>
       ) : (
         <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Chưa có weight adjustment.</div>
@@ -551,6 +530,7 @@ export function ShipmentExceptionsPanel({
   canAdjustWeight: boolean;
   onShipmentChanged?: () => void;
 }) {
+  const { user } = useAccess();
   const [state, setState] = useState<ShipmentExceptionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -640,7 +620,7 @@ export function ShipmentExceptionsPanel({
           <div className="flex items-center gap-2"><ShieldAlertIcon className="size-4 text-brand" /><p className="text-sm font-black">Shipment Exceptions & Weight Review</p></div>
           <p className="mt-1 text-[0.66rem] text-muted-foreground">{trackingCode} · hold, return, forward, cancellation và cân lại kiện hàng theo workflow backend.</p>
         </div>
-        <Button type="button" size="sm" variant="outline" onClick={() => void load()} disabled={pending}><RefreshCwIcon className={cn("size-3.5", pending && "animate-spin")} /> Làm mới state</Button>
+        <div className="flex gap-2"><Link href="/shipments/exceptions" className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-xs font-black hover:bg-muted">Hàng chờ duyệt</Link><Button type="button" size="sm" variant="outline" onClick={() => void load()} disabled={pending}><RefreshCwIcon className={cn("size-3.5", pending && "animate-spin")} /> Làm mới</Button></div>
       </div>
 
       <div className="space-y-5 p-4">
@@ -664,7 +644,7 @@ export function ShipmentExceptionsPanel({
         {canAdjustWeight || (canManage && state.weightAdjustments.length > 0) ? (
           <section className="space-y-3 border-t pt-5">
             <div><p className="text-xs font-black uppercase tracking-[0.08em] text-muted-foreground">Weight adjustment</p><p className="mt-1 text-xs text-muted-foreground">`shipments.weight.adjust` ghi cân lại; `shipments.exceptions.manage` hoàn tất review và sau đó mới có thể release hold.</p></div>
-            <WeightPanel shipmentId={shipmentId} state={state} parcels={parcels} hubOptions={hubOptions} pending={pending} canAdjust={canAdjustWeight} canReview={canManage} mutate={mutate} />
+            <WeightPanel shipmentId={shipmentId} state={state} parcels={parcels} hubOptions={hubOptions} pending={pending} canAdjust={canAdjustWeight} canReview={canManage} mutate={mutate} currentUserId={user?.userId ?? null} />
           </section>
         ) : null}
       </div>

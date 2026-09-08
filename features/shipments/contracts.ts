@@ -35,7 +35,7 @@ export type GoodsCategory =
   | "HOUSEHOLD"
   | "FRAGILE_GOODS"
   | "OTHER";
-export type ParcelStatus = Exclude<ShipmentStatus, "PARTIALLY_DELIVERED">;
+export type ParcelStatus = Exclude<ShipmentStatus, "PARTIALLY_DELIVERED"> | "AT_TRANSIT_HUB";
 
 export type ShipmentAddress = {
   contactName: string;
@@ -81,7 +81,7 @@ export type ShipmentRouting = {
 };
 
 export type ShipmentParcel = {
-  id?: string;
+  id: string;
   code: string;
   sequence: number;
   description: string;
@@ -332,6 +332,76 @@ export type ShipmentWeightAdjustmentInput = {
   hubId: string | null;
 };
 
+export type ShipmentExceptionQueueKind =
+  | "RETURN"
+  | "FORWARD"
+  | "CANCELLATION"
+  | "WEIGHT_REVIEW";
+
+export type ShipmentExceptionQueueStatus =
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "PROCESSING"
+  | "PENDING_REVIEW"
+  | "REJECTED"
+  | "COMPLETED";
+
+export type ShipmentExceptionQueueItem = {
+  id: string;
+  shipmentId: string;
+  trackingCode: string;
+  kind: ShipmentExceptionQueueKind;
+  status: ShipmentExceptionQueueStatus;
+  reason: string;
+  requestedAt: string;
+  requestedByUserId: string;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  parcelId: string | null;
+  parcelCode: string | null;
+  hubId: string | null;
+  shipmentStatus: ShipmentStatus;
+  lifecycleStatus: ShipmentLifecycleStatus;
+  originHubCode: string;
+  originHubName: string;
+  destinationHubCode: string;
+  destinationHubName: string;
+  isOnHold: boolean;
+  holdReason: string | null;
+};
+
+export type ShipmentExceptionQueuePage = {
+  items: ShipmentExceptionQueueItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type ShipmentExceptionQueueSummary = {
+  pendingApproval: number;
+  approvedOrProcessing: number;
+  pendingWeightReview: number;
+  cancellationPending: number;
+  returnPending: number;
+  forwardPending: number;
+};
+
+export const SHIPMENT_EXCEPTION_QUEUE_KINDS: ShipmentExceptionQueueKind[] = [
+  "RETURN",
+  "FORWARD",
+  "CANCELLATION",
+  "WEIGHT_REVIEW",
+];
+
+export const SHIPMENT_EXCEPTION_QUEUE_STATUSES: ShipmentExceptionQueueStatus[] = [
+  "PENDING_APPROVAL",
+  "PENDING_REVIEW",
+  "APPROVED",
+  "PROCESSING",
+  "REJECTED",
+  "COMPLETED",
+];
 
 export type ShipmentCaseType = "PROBLEM_PARCEL" | "UNIDENTIFIED_PARCEL";
 export type ShipmentCaseStatus = "OPEN" | "ASSIGNED" | "INVESTIGATING" | "RESOLVED" | "CLOSED";
@@ -354,7 +424,9 @@ export type ShipmentCaseSummary = {
   severity: ShipmentCaseSeverity;
   hubId: string;
   shipmentId: string | null;
+  trackingCode: string | null;
   parcelId: string | null;
+  parcelCode: string | null;
   externalBarcode: string | null;
   title: string;
   assignedToUserId: string | null;

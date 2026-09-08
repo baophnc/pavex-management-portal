@@ -16,13 +16,20 @@ export const MANAGEMENT_PERMISSIONS = [
   "pricing.read",
   "pricing.manage",
   "shipments.admin.read",
+  "shipments.read-hub",
   "shipments.admin.manage",
+  "shipments.exceptions.read",
   "shipments.exceptions.manage",
   "shipments.weight.adjust",
+  "shipments.cases.read",
   "shipments.cases.manage",
   "shipments.control-tower.read",
   "operations.workforce.manage",
+  "operations.workforce.read",
   "operations.assignments.manage",
+  "operations.assignments.read",
+  "operations.dispatch.manage",
+  "operations.hub.read",
   "operations.hub.manage",
 ] as const;
 
@@ -59,13 +66,18 @@ export function hasAnyRole(
 }
 
 const OPERATIONS_SCOPE_PERMISSIONS = [
+  "operations.assignments.read",
   "operations.assignments.manage",
+  "operations.dispatch.manage",
   "operations.hub.manage",
 ] as const;
 
 export function canAccessOperations(user: CurrentUser | null | undefined) {
   return hasAnyPermission(user, [
+    "operations.workforce.read",
     "operations.workforce.manage",
+    "operations.dispatch.manage",
+    "operations.hub.read",
     ...OPERATIONS_SCOPE_PERMISSIONS,
   ]);
 }
@@ -74,6 +86,7 @@ export function canAccessOperationsWorkforce(
   user: CurrentUser | null | undefined,
 ) {
   return hasAnyPermission(user, [
+    "operations.workforce.read",
     "operations.workforce.manage",
     "operations.hub.manage",
   ]);
@@ -88,7 +101,16 @@ export function canAccessOperationsAssignments(
 export function canAccessShipmentCases(
   user: CurrentUser | null | undefined,
 ) {
-  return hasPermission(user, "shipments.cases.manage");
+  return hasAnyPermission(user, ["shipments.cases.read", "shipments.cases.manage"]);
+}
+
+export function canAccessShipmentExceptionQueue(
+  user: CurrentUser | null | undefined,
+) {
+  return hasAnyPermission(user, [
+    "shipments.exceptions.read",
+    "shipments.exceptions.manage",
+  ]);
 }
 
 export function canAccessControlTower(
@@ -148,6 +170,9 @@ export function canAccessManagementPath(
     return canAccessOperations(user);
   }
 
+  if (pathname.startsWith("/shipments/exceptions")) {
+    return canAccessShipmentExceptionQueue(user);
+  }
   if (pathname.startsWith("/shipments/cases")) {
     return canAccessShipmentCases(user);
   }

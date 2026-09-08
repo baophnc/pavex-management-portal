@@ -179,7 +179,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
 
   const assignHub = () => {
     if (!hubId.trim()) {
-      toast.error("Chọn hoặc nhập Hub ID.");
+      toast.error("Chọn bưu cục cần gán.");
       return;
     }
     void mutate("assign-hub", () => assignWorkforceHub(workforceId, { hubId: hubId.trim(), isPrimary: globalManager && hubPrimary, reason: hubReason.trim() || null }), "Đã gán hub cho workforce.").then(() => {
@@ -262,7 +262,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                       {hubs.filter((hub) => hub.status === "ACTIVE").map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}
                     </select>
                   ) : (
-                    <Input value={hubId} onChange={(event) => setHubId(event.target.value)} placeholder="Hub UUID" className="font-mono text-xs" />
+                    <div className="flex h-10 items-center rounded-md border bg-muted/20 px-3 text-xs text-muted-foreground">Cần quyền đọc Network để chọn bưu cục.</div>
                   )}
                 </div>
                 <Button type="button" onClick={assignHub} disabled={saving === "assign-hub" || !hubId.trim()}>

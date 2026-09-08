@@ -18,21 +18,23 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useAccess } from "@/features/auth/access-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useAccess } from "@/features/auth/access-context";
-import { searchUsers } from "@/features/identity/api";
-import type { UserListItem } from "@/features/identity/contracts";
+import { getAllHubs } from "@/features/network/api";
+import type { Hub } from "@/features/network/contracts";
 import {
-  createWorkforceMember,
   getWorkforce,
+  onboardWorkforceMember,
 } from "@/features/operations/api";
 import {
   workforceKinds,
   workforceStatuses,
+  type DispatcherAccessLevel,
   type WorkforceMember,
   type WorkforceMemberKind,
   type WorkforceMemberStatus,
+  type WorkforceOnboardingGender,
   type WorkforcePage,
 } from "@/features/operations/contracts";
 import {
@@ -61,196 +63,192 @@ function statusClass(status: WorkforceMemberStatus) {
   }
 }
 
-function identityRoleHint(kind: WorkforceMemberKind) {
+function onboardingRoleLabel(kind: WorkforceMemberKind, dispatcherAccess: DispatcherAccessLevel) {
   switch (kind) {
     case "COURIER":
     case "LINE_HAUL_DRIVER":
-      return "Identity user cần role DRIVER.";
+      return "Tài khoản sẽ được cấp vai trò Tài xế (DRIVER).";
     case "WAREHOUSE_OPERATOR":
-      return "Identity user cần role WAREHOUSE_STAFF.";
+      return "Tài khoản sẽ được cấp vai trò Nhân viên kho (WAREHOUSE_STAFF).";
     case "DISPATCHER":
-      return "Identity user cần role OPERATIONS_MANAGER hoặc HUB_MANAGER.";
+      return dispatcherAccess === "GLOBAL"
+        ? "Tài khoản sẽ được cấp vai trò Quản lý vận hành toàn hệ thống (OPERATIONS_MANAGER)."
+        : "Tài khoản sẽ được cấp vai trò Quản lý bưu cục (HUB_MANAGER).";
+  }
+}
+
+function defaultCapacity(kind: WorkforceMemberKind) {
+  switch (kind) {
+    case "COURIER": return 8;
+    case "WAREHOUSE_OPERATOR": return 30;
+    case "DISPATCHER": return 10;
+    case "LINE_HAUL_DRIVER": return 2;
   }
 }
 
 function CreateWorkforceDialog({
-  open,
   onClose,
   onCreated,
 }: {
-  open: boolean;
   onClose: () => void;
   onCreated: (member: WorkforceMember) => void;
 }) {
-  const { hasPermission } = useAccess();
-  const canSearchIdentity = hasPermission("identity.users.read");
   const [kind, setKind] = useState<WorkforceMemberKind>("COURIER");
-  const [userId, setUserId] = useState("");
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState<UserListItem[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [dispatcherAccess, setDispatcherAccess] = useState<DispatcherAccessLevel>("HUB");
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [gender, setGender] = useState<WorkforceOnboardingGender | "">("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [hubId, setHubId] = useState("");
+  const [capacity, setCapacity] = useState(String(defaultCapacity("COURIER")));
+  const [hubs, setHubs] = useState<Hub[]>([]);
+  const [loadingHubs, setLoadingHubs] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) return;
     const task = window.setTimeout(() => {
-      setKind("COURIER");
-      setUserId("");
-      setSearch("");
-      setResults([]);
+      void getAllHubs()
+        .then((items) => setHubs(items.filter((hub) => hub.status === "ACTIVE")))
+        .catch((error) => toast.error(apiMessage(error, "Không thể tải danh sách bưu cục.")))
+        .finally(() => setLoadingHubs(false));
     }, 0);
     return () => window.clearTimeout(task);
-  }, [open]);
+  }, []);
 
-  const runSearch = async () => {
-    const q = search.trim();
-    if (!q) return;
-    setSearching(true);
-    try {
-      const page = await searchUsers({ page: 1, pageSize: 10, search: q });
-      setResults(page.items);
-    } catch (error) {
-      toast.error(apiMessage(error, "Không thể tìm tài khoản Identity."));
-    } finally {
-      setSearching(false);
-    }
+  const globalDispatcher = kind === "DISPATCHER" && dispatcherAccess === "GLOBAL";
+  const requiresHub = !globalDispatcher;
+  const roleDescription = onboardingRoleLabel(kind, dispatcherAccess);
+
+  const changeKind = (next: WorkforceMemberKind) => {
+    setKind(next);
+    setCapacity(String(defaultCapacity(next)));
+    if (next !== "DISPATCHER") setDispatcherAccess("HUB");
   };
 
   const submit = async () => {
-    if (!userId.trim()) {
-      toast.error("Chọn hoặc nhập Identity user ID.");
-      return;
+    const normalizedEmail = email.trim().toLowerCase();
+    const capacityValue = Number(capacity);
+    if (!normalizedEmail || !normalizedEmail.includes("@")) return toast.error("Nhập email nhân sự hợp lệ.");
+    if (!firstName.trim() || !lastName.trim()) return toast.error("Họ và tên là bắt buộc.");
+    if (!gender) return toast.error("Chọn giới tính để hoàn tất hồ sơ nhân sự.");
+    if (!dateOfBirth) return toast.error("Ngày sinh là bắt buộc để hoàn tất hồ sơ.");
+    if (requiresHub && !hubId) return toast.error("Chọn bưu cục chính cho nhân sự.");
+    if (!Number.isInteger(capacityValue) || capacityValue < 1 || capacityValue > 100) {
+      return toast.error("Sức chứa công việc phải là số nguyên từ 1 đến 100.");
     }
+
     setSaving(true);
     try {
-      const member = await createWorkforceMember({
-        userId: userId.trim(),
+      const member = await onboardWorkforceMember({
+        email: normalizedEmail,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        displayName: displayName.trim() || null,
+        gender,
+        dateOfBirth,
+        avatarUrl: null,
         kind,
+        dispatcherAccessLevel: kind === "DISPATCHER" ? dispatcherAccess : null,
+        hubId: requiresHub ? hubId : null,
+        maxConcurrentAssignments: capacityValue,
       });
-      toast.success("Đã tạo workforce member.");
+      toast.success("Đã tạo tài khoản và hồ sơ nhân viên. Nhân viên dùng Quên mật khẩu tại trang đăng nhập để tự đặt mật khẩu bằng email vừa cấp.");
       onCreated(member);
       onClose();
     } catch (error) {
-      toast.error(apiMessage(error, "Không thể tạo workforce member."));
+      toast.error(apiMessage(error, "Không thể tạo nhân sự vận hành."));
     } finally {
       setSaving(false);
     }
   };
 
-  if (!open) return null;
-
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-4 backdrop-blur-[2px]">
-      <section className="max-h-[92vh] w-full max-w-2xl overflow-auto rounded-xl border bg-card shadow-2xl">
+      <section className="max-h-[94vh] w-full max-w-3xl overflow-auto rounded-xl border bg-card shadow-2xl">
         <header className="flex items-start justify-between gap-4 border-b p-4 sm:p-5">
           <div>
-            <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">
-              Workforce onboarding
-            </p>
-            <h2 className="mt-1 text-lg font-black">Thêm nhân sự vận hành</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Operations chỉ lưu workforce projection. Tài khoản và role vẫn do Identity sở hữu.
+            <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">Onboarding nhân sự</p>
+            <h2 className="mt-1 text-lg font-black">Tạo nhân sự vận hành mới</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+              Tạo luôn tài khoản Identity, hồ sơ cá nhân, vai trò nghiệp vụ và workforce. Không cần tạo user trước hoặc sao chép UUID.
             </p>
           </div>
-          <Button type="button" size="icon" variant="ghost" onClick={onClose} disabled={saving}>
-            <XIcon className="size-4" />
-          </Button>
+          <Button type="button" size="icon" variant="ghost" onClick={onClose} disabled={saving}><XIcon className="size-4" /></Button>
         </header>
 
         <div className="space-y-5 p-4 sm:p-5">
-          <label className="grid gap-2 text-xs font-bold">
-            Loại nhân sự
-            <select
-              value={kind}
-              onChange={(event) => setKind(event.target.value as WorkforceMemberKind)}
-              className="h-10 rounded-md border bg-background px-3 text-sm"
-            >
-              {workforceKinds.map((item) => (
-                <option key={item} value={item}>
-                  {workforceKindLabel(item)}
-                </option>
-              ))}
-            </select>
-            <span className="text-[0.68rem] font-medium text-muted-foreground">
-              {identityRoleHint(kind)} Backend sẽ xác thực lại trước khi tạo.
-            </span>
-          </label>
+          <div className="rounded-xl border border-brand/20 bg-brand/[0.04] p-3.5 text-xs leading-5">
+            <p className="font-black">Quyền nhân sự được cấp có kiểm soát</p>
+            <p className="mt-1 text-muted-foreground">
+              Đăng ký công khai chỉ tạo tài khoản khách hàng. Vai trò DRIVER, WAREHOUSE_STAFF, HUB_MANAGER và OPERATIONS_MANAGER chỉ được provision từ luồng nội bộ này bởi người có quyền quản lý workforce.
+            </p>
+          </div>
 
-          {canSearchIdentity ? (
-            <div className="space-y-2">
-              <p className="text-xs font-bold">Tìm tài khoản Identity</p>
-              <div className="flex gap-2">
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void runSearch();
-                    }
-                  }}
-                  placeholder="Email, tên hoặc mã người dùng..."
-                />
-                <Button type="button" variant="outline" onClick={() => void runSearch()} disabled={searching || !search.trim()}>
-                  {searching ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SearchIcon className="size-4" />}
-                  Tìm
-                </Button>
+          <section className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-xs font-bold">
+              Loại nhân sự
+              <select value={kind} onChange={(event) => changeKind(event.target.value as WorkforceMemberKind)} className="h-10 rounded-md border bg-background px-3 text-sm">
+                {workforceKinds.map((item) => <option key={item} value={item}>{workforceKindLabel(item)}</option>)}
+              </select>
+            </label>
+            {kind === "DISPATCHER" ? (
+              <label className="grid gap-2 text-xs font-bold">
+                Phạm vi điều phối
+                <select value={dispatcherAccess} onChange={(event) => setDispatcherAccess(event.target.value as DispatcherAccessLevel)} className="h-10 rounded-md border bg-background px-3 text-sm">
+                  <option value="HUB">Quản lý một / nhiều bưu cục</option>
+                  <option value="GLOBAL">Quản lý vận hành toàn hệ thống</option>
+                </select>
+              </label>
+            ) : (
+              <div className="rounded-lg border bg-muted/15 p-3 text-xs leading-5">
+                <p className="font-black">Vai trò hệ thống</p><p className="mt-1 text-muted-foreground">{roleDescription}</p>
               </div>
+            )}
+          </section>
+          {kind === "DISPATCHER" ? <p className="-mt-2 text-[0.68rem] text-muted-foreground">{roleDescription}</p> : null}
 
-              {results.length > 0 ? (
-                <div className="max-h-56 overflow-auto rounded-lg border">
-                  {results.map((user) => {
-                    const selected = userId === user.userId;
-                    return (
-                      <button
-                        key={user.userId}
-                        type="button"
-                        onClick={() => setUserId(user.userId)}
-                        className={cn(
-                          "flex w-full items-start justify-between gap-3 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/40",
-                          selected && "bg-brand/5",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-black">
-                            {workforceIdentityName(user)}
-                          </p>
-                          <p className="mt-0.5 truncate text-[0.68rem] text-muted-foreground">{user.email}</p>
-                          <p className="mt-1 font-mono text-[0.58rem] text-muted-foreground">{user.userId}</p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="text-[0.62rem] font-bold">{user.status}</p>
-                          <p className="mt-1 text-[0.58rem] text-muted-foreground">{user.roles.join(", ") || "Không role"}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
+          <section>
+            <p className="text-sm font-black">Hồ sơ nhân sự</p>
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-xs font-bold">Họ<Input value={lastName} onChange={(event) => setLastName(event.target.value)} autoComplete="family-name" placeholder="Nguyễn" /></label>
+              <label className="grid gap-2 text-xs font-bold">Tên<Input value={firstName} onChange={(event) => setFirstName(event.target.value)} autoComplete="given-name" placeholder="Minh Anh" /></label>
+              <label className="grid gap-2 text-xs font-bold md:col-span-2">Tên hiển thị <span className="font-medium text-muted-foreground">(không bắt buộc)</span><Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Anh Nguyễn" /></label>
+              <label className="grid gap-2 text-xs font-bold">Email công việc<Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="nhansu@pavex.com" /></label>
+              <label className="grid gap-2 text-xs font-bold">Ngày sinh<Input type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} /></label>
+              <label className="grid gap-2 text-xs font-bold">Giới tính<select value={gender} onChange={(event) => setGender(event.target.value as WorkforceOnboardingGender | "")} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="">Chọn giới tính</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option><option value="OTHER">Khác</option></select></label>
+              <div className="rounded-lg border bg-muted/15 p-3 text-xs leading-5 text-muted-foreground">Ảnh đại diện có thể bổ sung sau trong hồ sơ tài khoản; onboarding không yêu cầu nhập URL kỹ thuật.</div>
             </div>
-          ) : (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
-              Tài khoản hiện tại không có <code>identity.users.read</code>, vì vậy Management không thể tìm user. Bạn vẫn có thể nhập UUID trực tiếp; Operations sẽ xác minh với Identity.
-            </div>
-          )}
+          </section>
 
-          <label className="grid gap-2 text-xs font-bold">
-            Identity user ID
-            <Input
-              value={userId}
-              onChange={(event) => setUserId(event.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              className="font-mono text-xs"
-            />
-          </label>
+          <section>
+            <p className="text-sm font-black">Thiết lập vận hành</p>
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              {requiresHub ? (
+                <label className="grid gap-2 text-xs font-bold">
+                  Bưu cục chính
+                  <select value={hubId} onChange={(event) => setHubId(event.target.value)} disabled={loadingHubs} className="h-10 rounded-md border bg-background px-3 text-sm">
+                    <option value="">{loadingHubs ? "Đang tải bưu cục..." : "Chọn bưu cục"}</option>
+                    {hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}
+                  </select>
+                </label>
+              ) : (
+                <div className="rounded-lg border bg-muted/15 p-3 text-xs leading-5"><p className="font-black">Phạm vi toàn hệ thống</p><p className="mt-1 text-muted-foreground">Operations Manager không bắt buộc gắn một primary hub khi onboarding.</p></div>
+              )}
+              <label className="grid gap-2 text-xs font-bold">Sức chứa assignment đồng thời<Input type="number" min={1} max={100} step={1} value={capacity} onChange={(event) => setCapacity(event.target.value)} /></label>
+            </div>
+          </section>
         </div>
 
-        <footer className="flex justify-end gap-2 border-t p-4 sm:p-5">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>Hủy</Button>
-          <Button type="button" onClick={() => void submit()} disabled={saving || !userId.trim()}>
-            {saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <PlusIcon className="size-4" />}
-            Tạo workforce
-          </Button>
+        <footer className="flex flex-col-reverse gap-2 border-t p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <p className="text-[0.68rem] text-muted-foreground">Sau khi tạo, tài khoản đã có đủ hồ sơ và vai trò nghiệp vụ. Lời mời kích hoạt có thể được gửi từ Identity; role nhân sự không thể tự chọn ở đăng ký công khai.</p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>Hủy</Button>
+            <Button type="button" onClick={() => void submit()} disabled={saving || loadingHubs || (requiresHub && hubs.length === 0)}>
+              {saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <PlusIcon className="size-4" />} Tạo nhân sự
+            </Button>
+          </div>
         </footer>
       </section>
     </div>
@@ -274,12 +272,22 @@ export function OperationsWorkforce() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [filterHubs, setFilterHubs] = useState<Hub[]>([]);
   const [searchDraft, setSearchDraft] = useState(search);
 
   useEffect(() => {
     const task = window.setTimeout(() => setSearchDraft(search), 0);
     return () => window.clearTimeout(task);
   }, [search]);
+
+  useEffect(() => {
+    const task = window.setTimeout(() => {
+      void getAllHubs()
+        .then((items) => setFilterHubs(items.filter((hub) => hub.status === "ACTIVE")))
+        .catch(() => setFilterHubs([]));
+    }, 0);
+    return () => window.clearTimeout(task);
+  }, []);
 
   const query = useMemo(() => {
     const value = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
@@ -331,7 +339,7 @@ export function OperationsWorkforce() {
               <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Operations / Workforce</p>
               <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">Nhân sự vận hành</h1>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Quản lý workforce projection, tải công việc, trạng thái và phạm vi hub. Identity và Network vẫn là source of truth cho user/role và hub.
+                Tạo và quản lý nhân sự vận hành, hồ sơ, vai trò, tải công việc và phạm vi bưu cục. Quyền staff chỉ được cấp qua luồng quản trị nội bộ.
               </p>
             </div>
           </div>
@@ -382,12 +390,14 @@ export function OperationsWorkforce() {
             {workforceKinds.map((item) => <option key={item} value={item}>{workforceKindLabel(item)}</option>)}
           </select>
 
-          <Input
+          <select
             value={hubId}
             onChange={(event) => updateQuery({ hubId: event.target.value, page: 1 })}
-            placeholder="Lọc theo Hub UUID"
-            className="font-mono text-xs"
-          />
+            className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
+          >
+            <option value="">Mọi bưu cục trong phạm vi</option>
+            {filterHubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}
+          </select>
 
           {hasFilters ? (
             <Button type="button" variant="ghost" onClick={() => {
@@ -500,11 +510,12 @@ export function OperationsWorkforce() {
         </div>
       ) : null}
 
-      <CreateWorkforceDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={() => void load()}
-      />
+      {createOpen ? (
+        <CreateWorkforceDialog
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => void load()}
+        />
+      ) : null}
     </div>
   );
 }

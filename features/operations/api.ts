@@ -2,6 +2,7 @@ import { apiRequest } from "@/lib/api/client";
 import type {
   AssignWorkforceHubInput,
   CreateWorkforceMemberInput,
+  OnboardWorkforceMemberInput,
   SetWorkforceCapacityInput,
   SetWorkforceStatusInput,
   WorkforceAudit,
@@ -28,6 +29,13 @@ export function getWorkforceMember(id: string) {
 
 export function createWorkforceMember(input: CreateWorkforceMemberInput) {
   return apiRequest<WorkforceMember>("admin/operations/workforce", {
+    method: "POST",
+    body: jsonBody(input),
+  });
+}
+
+export function onboardWorkforceMember(input: OnboardWorkforceMemberInput) {
+  return apiRequest<WorkforceMember>("admin/operations/workforce/onboard", {
     method: "POST",
     body: jsonBody(input),
   });

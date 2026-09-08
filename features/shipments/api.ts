@@ -158,6 +158,12 @@ export function getShipmentCase(caseId: string) {
   );
 }
 
+export function getShipmentForCase(trackingCode: string) {
+  return apiRequest<AdminShipmentDetail>(
+    `admin/shipment-cases/shipment-lookup/${encodeURIComponent(trackingCode.trim())}`,
+  );
+}
+
 export function createProblemParcelCase(input: import("@/features/shipments/contracts").CreateProblemParcelCaseInput) {
   return shipmentCaseCreate("problem-parcels", input);
 }
@@ -207,7 +213,7 @@ function shipmentCasePost(caseId: string, path: string, body: unknown) {
 export function getShipmentControlTowerAlerts(params: URLSearchParams) {
   const query = params.toString();
   return apiRequest<import("@/features/shipments/contracts").ShipmentControlTowerPage>(
-    `admin/shipments/control-tower/alerts${query ? `?${query}` : ""}`,
+    `admin/control-tower/alerts${query ? `?${query}` : ""}`,
   );
 }
 
@@ -215,6 +221,20 @@ export function getShipmentControlTowerSummary(hubId: string | null = null) {
   const query = new URLSearchParams();
   if (hubId?.trim()) query.set("hubId", hubId.trim());
   return apiRequest<import("@/features/shipments/contracts").ShipmentControlTowerSummary>(
-    `admin/shipments/control-tower/summary${query.size ? `?${query}` : ""}`,
+    `admin/control-tower/summary${query.size ? `?${query}` : ""}`,
+  );
+}
+
+
+export function getShipmentExceptionQueue(params: URLSearchParams) {
+  const query = params.toString();
+  return apiRequest<import("@/features/shipments/contracts").ShipmentExceptionQueuePage>(
+    `admin/shipment-exceptions${query ? `?${query}` : ""}`,
+  );
+}
+
+export function getShipmentExceptionQueueSummary() {
+  return apiRequest<import("@/features/shipments/contracts").ShipmentExceptionQueueSummary>(
+    "admin/shipment-exceptions/summary",
   );
 }

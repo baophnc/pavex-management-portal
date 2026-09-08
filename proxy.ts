@@ -5,6 +5,10 @@ import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth/session";
 export function proxy(request: NextRequest) {
   const signedIn = Boolean(request.cookies.get(ACCESS_COOKIE)?.value || request.cookies.get(REFRESH_COOKIE)?.value);
   const isLogin = request.nextUrl.pathname === "/login";
+  const isRecovery = ["/forgot-password", "/reset-password"].includes(request.nextUrl.pathname);
+
+  // Recovery must remain accessible without a session (also with stale cookies).
+  if (isRecovery) return NextResponse.next();
 
   if (!signedIn && !isLogin) {
     const url = new URL("/login", request.url);

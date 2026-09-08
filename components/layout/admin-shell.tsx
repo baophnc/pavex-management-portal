@@ -44,6 +44,7 @@ import {
   canAccessOperationsAssignments,
   canAccessOperationsWorkforce,
   canAccessShipmentCases,
+  canAccessShipmentExceptionQueue,
   hasAnyPermission,
   hasPermission,
 } from "@/lib/auth/access";
@@ -215,6 +216,12 @@ const navigationSections: NavigationSection[] = [
         label: "Vận đơn",
         icon: TruckIcon,
         permission: "shipments.admin.read",
+      },
+      {
+        href: "/shipments/exceptions",
+        label: "Duyệt ngoại lệ",
+        icon: ShieldCheckIcon,
+        access: canAccessShipmentExceptionQueue,
       },
       {
         href: "/shipments/cases",

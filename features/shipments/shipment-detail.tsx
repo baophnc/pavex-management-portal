@@ -48,6 +48,7 @@ import {
   shipmentErrorMessage,
   shipmentEventDescription,
   shipmentEventLabel,
+  parcelStatusLabel,
   shipmentStatusLabel,
   shippingFeePayerLabel,
 } from "@/features/shipments/presentation";
@@ -426,7 +427,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
             ) : null}
             {canManageCases ? (
               <Link
-                href={`/shipments/cases?shipmentId=${encodeURIComponent(data.id)}`}
+                href={`/shipments/cases?trackingCode=${encodeURIComponent(shipment.trackingCode)}`}
                 className="inline-flex h-10 items-center rounded-md border bg-background px-4 text-sm font-bold hover:bg-muted"
               >
                 Hồ sơ sự cố
@@ -565,7 +566,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
           {routing.routeRevision > 0 ? (
             <div className="border-t p-4">
               <Link
-                href={`/network/capacity?shipmentId=${encodeURIComponent(data.id)}&routeRevision=${routing.routeRevision}`}
+                href={`/network/capacity?trackingCode=${encodeURIComponent(shipment.trackingCode)}&routeRevision=${routing.routeRevision}`}
                 className="text-xs font-black text-brand hover:underline"
               >
                 Xem tình trạng giữ tải →
@@ -601,7 +602,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
                     </p>
                   </td>
                   <td className="px-4 py-3 font-bold">
-                    {shipmentStatusLabel(parcel.status)}
+                    {parcelStatusLabel(parcel.status)}
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-bold">{goodsCategoryLabel(parcel.category)}</p>

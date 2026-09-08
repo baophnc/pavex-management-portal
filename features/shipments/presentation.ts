@@ -2,6 +2,7 @@ import type {
   DeliveryFailureReason,
   DeliveryProofMethod,
   GoodsCategory,
+  ParcelStatus,
   ShipmentCoverageTier,
   ShipmentLifecycleStatus,
   ShipmentPricingZone,
@@ -16,9 +17,9 @@ export function shipmentStatusLabel(status: ShipmentStatus) {
   const labels: Record<ShipmentStatus, string> = {
     AWAITING_PICKUP: "Chờ lấy hàng",
     PICKED_UP: "Đã lấy hàng",
-    AT_ORIGIN_HUB: "Tại hub gửi",
+    AT_ORIGIN_HUB: "Đã đến bưu cục gửi",
     IN_TRANSIT: "Đang trung chuyển",
-    AT_DESTINATION_HUB: "Tại hub nhận",
+    AT_DESTINATION_HUB: "Đã đến bưu cục phát",
     OUT_FOR_DELIVERY: "Đang giao",
     DELIVERY_FAILED: "Giao thất bại",
     PARTIALLY_DELIVERED: "Giao một phần",
@@ -28,6 +29,10 @@ export function shipmentStatusLabel(status: ShipmentStatus) {
     CANCELLED: "Đã hủy",
   };
   return labels[status];
+}
+
+export function parcelStatusLabel(status: ParcelStatus) {
+  return status === "AT_TRANSIT_HUB" ? "Đã đến bưu cục trung chuyển" : shipmentStatusLabel(status);
 }
 
 export function lifecycleLabel(status: ShipmentLifecycleStatus) {
@@ -55,8 +60,8 @@ export function shipmentEventLabel(code: string, status: ShipmentStatus) {
     "parcel.at-destination-hub": "Kiện hàng đến điểm trung chuyển đích",
     "parcel.delivered": "Giao kiện hàng thành công",
     "parcel.delivery-failed": "Giao kiện hàng không thành công",
-    "shipment.hold.placed": "Đặt hold vận đơn",
-    "shipment.hold.released": "Release hold vận đơn",
+    "shipment.hold.placed": "Tạm giữ vận đơn",
+    "shipment.hold.released": "Gỡ tạm giữ vận đơn",
     "shipment.return.requested": "Yêu cầu hoàn hàng",
     "shipment.return.processing": "Đang xử lý hoàn hàng",
     "shipment.return.completed": "Hoàn tất hoàn hàng",
@@ -68,7 +73,7 @@ export function shipmentEventLabel(code: string, status: ShipmentStatus) {
     "shipment.cancellation.processing": "Đang thu hồi để hủy",
     "shipment.cancellation.completed": "Hoàn tất hủy vận đơn",
     "shipment.weight-adjusted": "Điều chỉnh khối lượng",
-    "shipment.weight-review.completed": "Hoàn tất review khối lượng",
+    "shipment.weight-review.completed": "Hoàn tất kiểm tra khối lượng",
   };
   return labels[code] ?? shipmentStatusLabel(status);
 }
@@ -218,7 +223,7 @@ export function shipmentControlAlertTypeLabel(
   switch (type) {
     case "SENT_BUT_NOT_ARRIVED": return "Đã gửi nhưng chưa đến";
     case "MISSING_ARRIVAL_SCAN": return "Thiếu scan đến";
-    case "ARRIVED_NOT_OUT_FOR_DELIVERY": return "Đến hub nhưng chưa phát giao";
+    case "ARRIVED_NOT_OUT_FOR_DELIVERY": return "Đến bưu cục nhưng chưa phát giao";
     case "ROUTE_DEVIATION": return "Sai lệch tuyến";
     case "SHIPMENT_STUCK": return "Vận đơn đứng yên";
     case "ESTIMATED_DELIVERY_OVERDUE": return "Quá ETA giao hàng";

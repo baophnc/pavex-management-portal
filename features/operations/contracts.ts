@@ -95,6 +95,23 @@ export type CreateWorkforceMemberInput = {
   kind: WorkforceMemberKind;
 };
 
+export type WorkforceOnboardingGender = "MALE" | "FEMALE" | "OTHER";
+export type DispatcherAccessLevel = "HUB" | "GLOBAL";
+
+export type OnboardWorkforceMemberInput = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  displayName?: string | null;
+  gender: WorkforceOnboardingGender;
+  dateOfBirth: string;
+  avatarUrl?: string | null;
+  kind: WorkforceMemberKind;
+  dispatcherAccessLevel?: DispatcherAccessLevel | null;
+  hubId?: string | null;
+  maxConcurrentAssignments?: number | null;
+};
+
 export type SetWorkforceStatusInput = {
   status: WorkforceMemberStatus;
   reason?: string | null;
@@ -199,10 +216,13 @@ export type OperationalAssignmentType =
   | "PICKUP"
   | "ORIGIN_HUB_HANDLING"
   | "LINE_HAUL"
+  | "TRANSIT_HUB_HANDLING"
   | "DESTINATION_HUB_HANDLING"
   | "LAST_MILE_DELIVERY";
 
 export type OperationalAssignmentStatus =
+  | "BLOCKED"
+  | "READY"
   | "PENDING"
   | "ASSIGNED"
   | "ACCEPTED"
@@ -295,6 +315,8 @@ export type OperationsOutboxDeadLetterPage = {
 };
 
 export const operationalAssignmentStatuses: OperationalAssignmentStatus[] = [
+  "BLOCKED",
+  "READY",
   "PENDING",
   "ASSIGNED",
   "ACCEPTED",

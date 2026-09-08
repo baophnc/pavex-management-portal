@@ -9,7 +9,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { getAuditLogs } from "@/features/network/api";
 import { networkErrorMessage } from "@/features/network/errors";
 import type {
@@ -40,8 +39,6 @@ export function NetworkAudit() {
   const [result, setResult] = useState<PageResponse<NetworkAuditLog>>({ items: [], page: 1, pageSize: 50, totalItems: 0, totalPages: 0 });
   const [selected, setSelected] = useState<NetworkAuditLog | null>(null);
   const [entityType, setEntityType] = useState("");
-  const [entityId, setEntityId] = useState("");
-  const [actorUserId, setActorUserId] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +49,6 @@ export function NetworkAudit() {
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: "50" });
       if (entityType) params.set("entityType", entityType);
-      if (entityId.trim()) params.set("entityId", entityId.trim());
-      if (actorUserId.trim()) params.set("actorUserId", actorUserId.trim());
       const next = await getAuditLogs(params);
       setResult(next);
       setSelected((current) => current ? next.items.find((item) => item.id === current.id) ?? current : null);
@@ -62,7 +57,7 @@ export function NetworkAudit() {
     } finally {
       setLoading(false);
     }
-  }, [actorUserId, entityId, entityType, page]);
+  }, [entityType, page]);
 
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
@@ -81,17 +76,15 @@ export function NetworkAudit() {
         eyebrow="Theo dõi thay đổi"
         title="Nhật ký mạng lưới"
         description="Xem ai đã tạo, sửa, kích hoạt, ngừng hoặc thay đổi dữ liệu vận hành trong mạng lưới."
-        help={{ description: "Nhật ký dùng để truy vết thay đổi và hỗ trợ xử lý sự cố.", bullets: ["Lọc theo loại dữ liệu, mã bản ghi hoặc người thao tác.", "Chọn một dòng để xem dữ liệu trước và sau thay đổi.", "Các mã UUID được giữ ở đây vì đây là màn hình kiểm tra kỹ thuật và audit."] }}
+        help={{ description: "Nhật ký dùng để truy vết thay đổi và hỗ trợ xử lý sự cố.", bullets: ["Lọc theo loại dữ liệu nghiệp vụ.", "Chọn một dòng để xem dữ liệu trước và sau thay đổi.", "Mã kỹ thuật chỉ xuất hiện trong phần chi tiết để phục vụ điều tra, không dùng làm bộ lọc."] }}
         actions={<Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />Tải lại</Button>}
       />
 
       {error ? <NetworkError message={error} onRetry={() => void load()} /> : null}
 
       <Card>
-        <CardContent className="grid gap-3 p-4 lg:grid-cols-4">
+        <CardContent className="grid gap-3 p-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
           <select className={selectClassName} value={entityType} onChange={(event) => { setEntityType(event.target.value); setPage(1); }}><option value="">Mọi loại dữ liệu</option>{auditEntityTypes.map((item) => <option key={item} value={item}>{auditEntityTypeLabel(item)}</option>)}</select>
-          <Input placeholder="Mã bản ghi (UUID)" value={entityId} onChange={(event) => { setEntityId(event.target.value); setPage(1); }} />
-          <Input placeholder="Mã người thao tác (UUID)" value={actorUserId} onChange={(event) => { setActorUserId(event.target.value); setPage(1); }} />
           <div className="flex items-center justify-end gap-2 text-[0.65rem] font-bold text-muted-foreground">{[...counts.entries()].slice(0, 3).map(([action, count]) => <span key={action} className="rounded-full border px-2 py-1">{auditActionLabel(action as NetworkAuditAction)} {count}</span>)}</div>
         </CardContent>
       </Card>

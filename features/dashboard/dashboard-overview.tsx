@@ -26,6 +26,7 @@ import {
   canAccessOperationsAssignments,
   canAccessOperationsWorkforce,
   canAccessShipmentCases,
+  canAccessShipmentExceptionQueue,
   hasAnyPermission,
   hasPermission,
 } from "@/lib/auth/access";
@@ -37,6 +38,7 @@ type MetricKey =
   | "pendingMerchants"
   | "activeShipments"
   | "deliveryFailed"
+  | "pendingExceptionApprovals"
   | "activeWorkforce"
   | "pendingAssignments"
   | "highRiskCases"
@@ -132,6 +134,15 @@ const metrics: Metric[] = [
     load: () => loadCount("admin/shipments?limit=1&status=DELIVERY_FAILED"),
   },
   {
+    key: "pendingExceptionApprovals",
+    label: "Ngoại lệ chờ duyệt",
+    href: "/shipments/exceptions?status=PENDING_APPROVAL",
+    hint: "Huỷ / hoàn / chuyển tiếp cần cấp duyệt",
+    icon: ShieldCheckIcon,
+    canAccess: canAccessShipmentExceptionQueue,
+    load: () => loadField("admin/shipments/exception-queue/summary", "pendingApproval"),
+  },
+  {
     key: "activeWorkforce",
     label: "Workforce active",
     href: "/operations/workforce?status=ACTIVE",
@@ -224,6 +235,13 @@ const capabilities: Capability[] = [
     canAccess: (user) => hasPermission(user, "shipments.admin.read"),
   },
   {
+    label: "Duyệt ngoại lệ",
+    description: "Huỷ, hoàn, chuyển tiếp và review cân lại theo cấp duyệt.",
+    href: "/shipments/exceptions",
+    icon: ShieldCheckIcon,
+    canAccess: canAccessShipmentExceptionQueue,
+  },
+  {
     label: "Shipment Cases",
     description: "Problem parcel và unidentified parcel investigation.",
     href: "/shipments/cases",
@@ -299,6 +317,7 @@ export function DashboardOverview() {
     }
 
     const candidates: Array<[MetricKey, string, string, string]> = [
+      ["pendingExceptionApprovals", "Duyệt ngoại lệ", "/shipments/exceptions?status=PENDING_APPROVAL", "yêu cầu huỷ/hoàn/chuyển tiếp chờ duyệt"],
       ["criticalAlerts", "Control Tower", "/control-tower?severity=CRITICAL", "cảnh báo critical"],
       ["deadLetters", "Dispatch & outbox", "/operations/dispatch", "dead-letter integration"],
       ["deliveryFailed", "Vận đơn giao thất bại", "/shipments?status=DELIVERY_FAILED", "vận đơn giao thất bại"],

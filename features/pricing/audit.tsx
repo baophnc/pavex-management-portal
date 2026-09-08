@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { getPricingAudit, getPricingAuditEntry } from "@/features/pricing/api";
 import type { PricingAuditEntityType, PricingAuditLog, PricingPageResponse } from "@/features/pricing/contracts";
 import { auditActionLabel, auditEntityLabel } from "@/features/pricing/contracts";
@@ -25,8 +24,6 @@ function prettyJson(value: string | null) {
 export function PricingAudit() {
   const [data, setData] = useState<PricingPageResponse<PricingAuditLog> | null>(null);
   const [entityType, setEntityType] = useState<PricingAuditEntityType | "">("");
-  const [entityId, setEntityId] = useState("");
-  const [actorUserId, setActorUserId] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +35,6 @@ export function PricingAudit() {
     let active = true;
     const params = new URLSearchParams({ page: String(page), pageSize: "50" });
     if (entityType) params.set("entityType", entityType);
-    if (entityId.trim()) params.set("entityId", entityId.trim());
-    if (actorUserId.trim()) params.set("actorUserId", actorUserId.trim());
     getPricingAudit(params)
       .then((result) => {
         if (!active) return;
@@ -53,7 +48,7 @@ export function PricingAudit() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [entityType, entityId, actorUserId, page, refreshKey]);
+  }, [entityType, page, refreshKey]);
 
   const openDetail = async (id: string) => {
     setDetailLoading(true);
@@ -73,16 +68,15 @@ export function PricingAudit() {
         title="Nhật ký thay đổi"
         description="Theo dõi lịch sử thay đổi bảng giá và quy tắc: ai thực hiện, lúc nào, trước/sau ra sao và lý do vận hành."
         help={{
-          description: "Nhật ký giữ lại bằng chứng thay đổi bảng giá để đối chiếu, điều tra sai lệch và kiểm soát phiên bản. ID kỹ thuật được giữ ở trang này vì đây là màn kiểm tra lịch sử.",
-          bullets: ["Dữ liệu trước/sau được lưu tại thời điểm thao tác.", "Có thể lọc theo loại đối tượng, ID đối tượng hoặc người thao tác.", "Xóa bản nháp vẫn giữ lại nhật ký."],
+          description: "Nhật ký giữ lại bằng chứng thay đổi bảng giá để đối chiếu, điều tra sai lệch và kiểm soát phiên bản.",
+          bullets: ["Dữ liệu trước/sau được lưu tại thời điểm thao tác.", "Bộ lọc dùng loại đối tượng nghiệp vụ, không yêu cầu nhập ID kỹ thuật.", "Xóa bản nháp vẫn giữ lại nhật ký."],
         }}
         actions={<Button variant="outline" onClick={() => { setLoading(true); setRefreshKey((value) => value + 1); }}><RefreshCwIcon className="size-4" />Làm mới</Button>}
       />
 
-      <Card className="grid gap-3 p-4 md:grid-cols-3">
+      <Card className="grid gap-3 p-4 md:grid-cols-[minmax(0,20rem)_1fr] md:items-end">
         <label className="grid gap-1.5 text-xs font-bold"><span>Loại đối tượng</span><select className={selectClassName} value={entityType} onChange={(event) => { setPage(1); setEntityType(event.target.value as PricingAuditEntityType | ""); }}><option value="">Tất cả</option><option value="RATE_PLAN">Bảng giá</option><option value="RATE_RULE">Quy tắc giá</option></select></label>
-        <label className="grid gap-1.5 text-xs font-bold"><span>ID đối tượng</span><Input value={entityId} placeholder="ID đối tượng" onChange={(event) => { setPage(1); setEntityId(event.target.value); }} /></label>
-        <label className="grid gap-1.5 text-xs font-bold"><span>Người thao tác</span><Input value={actorUserId} placeholder="ID người dùng" onChange={(event) => { setPage(1); setActorUserId(event.target.value); }} /></label>
+        <p className="text-xs leading-5 text-muted-foreground">Chọn loại dữ liệu để thu hẹp lịch sử. Mã kỹ thuật vẫn có trong chi tiết audit khi cần điều tra.</p>
       </Card>
 
       {loading ? <PricingLoading label="Đang tải nhật ký giá cước..." /> : error ? <PricingError message={error} onRetry={() => { setLoading(true); setRefreshKey((value) => value + 1); }} /> : (
