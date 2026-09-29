@@ -72,10 +72,10 @@ export async function deleteRateRule(id: string, serviceLevel: ServiceLevel, pri
   );
 }
 
-export async function activateRatePlan(id: string, reason?: string) {
+export async function activateRatePlan(id: string, reason?: string, replaceActivePlan = false) {
   return apiRequest<RatePlan>(`admin/pricing/rate-plans/${encodeURIComponent(id)}/activate`, {
     method: "POST",
-    body: JSON.stringify({ reason: reason || null }),
+    body: JSON.stringify({ reason: reason || null, replaceActivePlan }),
   });
 }
 
