@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getAllHubs } from "@/features/network/api";
+import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
 import {
   createProblemParcelCase,
@@ -196,7 +196,7 @@ export function ShipmentCases() {
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => { const task = window.setTimeout(() => setSearchDraft(search), 0); return () => window.clearTimeout(task); }, [search]);
-  useEffect(() => { const task = window.setTimeout(() => { void getAllHubs().then(setHubs).catch(() => undefined); }, 0); return () => window.clearTimeout(task); }, []);
+  useEffect(() => { const task = window.setTimeout(() => { void getScopedHubs().then(setHubs).catch(() => undefined); }, 0); return () => window.clearTimeout(task); }, []);
 
   const query = useMemo(() => {
     const q = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });

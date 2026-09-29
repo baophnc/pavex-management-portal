@@ -319,7 +319,7 @@ export function AdminShipments({
                     <td className="px-4 py-3 tabular-nums">
                       <p className="font-black">{money(shipment.shippingFee)}</p>
                       <p className="mt-1 text-[0.64rem] text-muted-foreground">
-                        Thu hộ {money(shipment.codAmount)}
+                        Thu người nhận {money(shipment.amountToCollect)}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-[0.68rem] font-bold">

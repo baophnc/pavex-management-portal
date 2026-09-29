@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getAllHubs } from "@/features/network/api";
+import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
 import { getWorkforce } from "@/features/operations/api";
 import type { WorkforceMember } from "@/features/operations/contracts";
@@ -52,9 +52,9 @@ function personLabel(member: WorkforceMember | undefined) {
 }
 
 export function ShipmentCaseDetail({ caseId }: { caseId: string }) {
-  const { hasPermission } = useAccess();
+  const { hasPermission, hasAnyPermission } = useAccess();
   const canManage = hasPermission("shipments.cases.manage");
-  const canReadGlobalShipments = hasPermission("shipments.admin.read");
+  const canReadGlobalShipments = hasAnyPermission(["shipments.admin.read", "shipments.read-hub"]);
   const canReadWorkforce = [
     "operations.workforce.read",
     "operations.workforce.manage",
@@ -93,9 +93,9 @@ export function ShipmentCaseDetail({ caseId }: { caseId: string }) {
   useEffect(() => { const task = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(task); }, [load]);
   useEffect(() => {
     const task = window.setTimeout(() => {
-      void getAllHubs().then(setHubs).catch(() => undefined);
+      void getScopedHubs().then(setHubs).catch(() => undefined);
       if (canReadWorkforce) {
-        const params = new URLSearchParams({ page: "1", pageSize: "100", status: "ACTIVE", kind: "DISPATCHER" });
+        const params = new URLSearchParams({ page: "1", pageSize: "100", status: "ACTIVE", kind: "HUB_MANAGER" });
         void getWorkforce(params).then((page) => setWorkforce(page.items)).catch(() => undefined);
       }
     }, 0);

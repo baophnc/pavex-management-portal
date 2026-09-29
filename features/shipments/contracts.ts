@@ -22,7 +22,7 @@ export type ShipmentRoutingStatus =
   | "CONSUMED"
   | "RELEASED";
 export type ShipmentPricingZone =
-  | "SAME_SERVICE_AREA"
+  | "SAME_PROVINCE"
   | "SAME_REGION"
   | "CROSS_REGION";
 export type ShipmentCoverageTier = "STANDARD" | "REMOTE" | "ISLAND";
@@ -106,6 +106,19 @@ export type ShipmentTimelineEvent = {
   occurredAt: string;
 };
 
+export type ShipmentCollectionStatus = "NOT_REQUIRED" | "PENDING" | "COLLECTED" | "VOIDED";
+
+/** What the courier collects from the recipient and the fee charged to the merchant. */
+export type ShipmentCollection = {
+  status: ShipmentCollectionStatus;
+  amountToCollect: number;
+  codAmount: number;
+  recipientShippingFee: number;
+  merchantShippingFee: number;
+  collectedAmount: number | null;
+  collectedAt: string | null;
+};
+
 export type ShipmentDetail = {
   trackingCode: string;
   merchantReference: string | null;
@@ -115,6 +128,7 @@ export type ShipmentDetail = {
   recipient: ShipmentAddress;
   shippingFeePayer: ShippingFeePayer;
   pricing: ShipmentPricing;
+  collection: ShipmentCollection;
   routing: ShipmentRouting;
   parcels: ShipmentParcel[];
   timeline: ShipmentTimelineEvent[];
@@ -137,6 +151,7 @@ export type AdminShipmentSummary = {
   serviceLevel: ShipmentServiceLevel;
   shippingFee: number;
   codAmount: number;
+  amountToCollect: number;
   destinationProvinceCode: string;
   destinationProvinceName: string;
   destinationWardCode: string;

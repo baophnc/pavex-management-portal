@@ -50,9 +50,11 @@ import {
   shipmentEventLabel,
   parcelStatusLabel,
   shipmentStatusLabel,
+  collectionStatusLabel,
   shippingFeePayerLabel,
 } from "@/features/shipments/presentation";
 import { formatDateTime } from "@/lib/utils";
+import { roundingOf } from "@/features/pricing/ui";
 
 function KeyValue({
   label,
@@ -487,6 +489,9 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
               label="Phí bảo hiểm"
               value={money(pricing.insuranceFee, pricing.currency)}
             />
+            {roundingOf(pricing.shippingFee, pricing) !== 0 ? (
+              <KeyValue label="Làm tròn lên 1.000 ₫" value={money(roundingOf(pricing.shippingFee, pricing), pricing.currency)} />
+            ) : null}
             <KeyValue label="Tổng cước" value={money(pricing.shippingFee, pricing.currency)} />
             <KeyValue
               label="Số tiền cần thu hộ"
@@ -500,6 +505,20 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
               label="Người trả cước"
               value={shippingFeePayerLabel(shipment.shippingFeePayer)}
             />
+            <KeyValue
+              label="Thu người nhận"
+              value={`${money(shipment.collection.amountToCollect, pricing.currency)} · ${collectionStatusLabel(shipment.collection.status)}`}
+            />
+            <KeyValue
+              label="Merchant trả cước"
+              value={money(shipment.collection.merchantShippingFee, pricing.currency)}
+            />
+            {shipment.collection.collectedAt ? (
+              <KeyValue
+                label="Đã thu lúc"
+                value={formatDateTime(shipment.collection.collectedAt)}
+              />
+            ) : null}
             <KeyValue
               label="Phạm vi tính cước"
               value={pricingZoneLabel(pricing.pricingZone)}
