@@ -12,17 +12,19 @@ import {
   PhoneIcon,
   RefreshCwIcon,
   RouteIcon,
+  ScanBarcodeIcon,
   ShieldCheckIcon,
   TruckIcon,
   UserRoundIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
+import { Barcode } from "@/features/shipments/barcode";
 import { displayUserName } from "@/features/identity/presentation";
 import {
   emptyShipmentDetailContext,
@@ -285,6 +287,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
   const [contextLoading, setContextLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [technicalOpen, setTechnicalOpen] = useState(false);
+  const [barcodeParcel, setBarcodeParcel] = useState<string | null>(null);
 
   const loadContext = useCallback(
     async (detail: AdminShipmentDetail) => {
@@ -613,12 +616,26 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
             </thead>
             <tbody className="divide-y">
               {shipment.parcels.map((parcel) => (
-                <tr key={parcel.code}>
+                <Fragment key={parcel.code}>
+                <tr>
                   <td className="px-4 py-3">
                     <p className="font-mono font-black">{parcel.code}</p>
                     <p className="mt-1 text-[0.64rem] text-muted-foreground">
                       Kiện {parcel.sequence} · Số lượng {parcel.quantity}
                     </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      aria-expanded={barcodeParcel === parcel.code}
+                      onClick={() =>
+                        setBarcodeParcel((current) => (current === parcel.code ? null : parcel.code))
+                      }
+                    >
+                      <ScanBarcodeIcon className="size-3.5" />
+                      {barcodeParcel === parcel.code ? "Ẩn mã vạch" : "Hiện mã vạch"}
+                    </Button>
                   </td>
                   <td className="px-4 py-3 font-bold">
                     {parcelStatusLabel(parcel.status)}
@@ -640,6 +657,20 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
                     {parcel.lengthCm} × {parcel.widthCm} × {parcel.heightCm} cm
                   </td>
                 </tr>
+                {barcodeParcel === parcel.code ? (
+                  <tr>
+                    <td colSpan={5} className="bg-white px-4 py-5">
+                      <div className="flex flex-col items-center text-black">
+                        <Barcode value={parcel.code} label={`Mã vạch kiện ${parcel.code}`} />
+                        <p className="mt-1 font-mono text-sm font-black tracking-[0.08em]">{parcel.code}</p>
+                        <p className="mt-1 text-[0.68rem] text-neutral-500">
+                          Quét bằng app Pavex Bưu cục (mục Quét) khi nhãn kiện bị mất hoặc mờ.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>
