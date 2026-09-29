@@ -70,6 +70,7 @@ function tabTitle(pathname: string) {
   if (pathname.startsWith("/shipments/exceptions")) return "Duyệt ngoại lệ";
   if (pathname.startsWith("/shipments/cases")) return "Hồ sơ sự cố";
   if (pathname.startsWith("/control-tower")) return "Control Tower";
+  if (pathname === "/fleet") return "Xe trung chuyển";
   if (/^\/shipments\/[^/]+$/.test(pathname)) return "Chi tiết vận đơn";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);
@@ -88,7 +89,7 @@ function tabIcon(path: string) {
   if (path.startsWith("/pricing") || path.startsWith("/finance")) return CircleDollarSignIcon;
   if (path.startsWith("/operations")) return CircleGaugeIcon;
   if (path.startsWith("/control-tower")) return CircleGaugeIcon;
-  if (path.startsWith("/shipments")) return TruckIcon;
+  if (path.startsWith("/shipments") || path.startsWith("/fleet")) return TruckIcon;
   if (path === "/account") return UserRoundCogIcon;
   return CircleGaugeIcon;
 }
