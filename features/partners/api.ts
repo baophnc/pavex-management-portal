@@ -1,6 +1,7 @@
 import type {
   AdminMerchantResponse,
   MerchantListResponse,
+  MerchantReadiness,
   MerchantStatus,
   MerchantStatusReason,
 } from "@/features/partners/contracts";
@@ -25,6 +26,11 @@ export function searchMerchants(params: MerchantSearchParams) {
 
 export function getMerchant(merchantId: string) {
   return apiRequest<AdminMerchantResponse>(`admin/merchants/${merchantId}`);
+}
+
+/** Restrictions and pickup addresses exactly as order creation evaluates them. */
+export function getMerchantReadiness(merchantId: string) {
+  return apiRequest<MerchantReadiness>(`admin/merchants/${merchantId}/readiness`);
 }
 
 export function changeMerchantStatus(

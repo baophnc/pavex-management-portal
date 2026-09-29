@@ -29,6 +29,7 @@ import { useAccess } from "@/features/auth/access-context";
 import { getUser } from "@/features/identity/api";
 import type { UserDetail } from "@/features/identity/contracts";
 import {
+  accountLabels,
   isMerchantIdentityEligible,
   profileLabels,
   rolePresentation,
@@ -37,11 +38,13 @@ import {
   merchantReasonLabel,
   merchantStatusLabel,
   merchantStatusReasons,
+  orderRestrictionLabel,
   type AdminMerchantResponse,
+  type MerchantReadiness,
   type MerchantStatus,
   type MerchantStatusReason,
 } from "@/features/partners/contracts";
-import { changeMerchantStatus, getMerchant } from "@/features/partners/api";
+import { changeMerchantStatus, getMerchant, getMerchantReadiness } from "@/features/partners/api";
 import { ApiError } from "@/lib/api/client";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -86,11 +89,11 @@ function statusDescription(status: MerchantStatus) {
     case "PENDING_VERIFICATION":
       return "Hồ sơ đang chờ quản trị viên kiểm tra trước khi kích hoạt quyền Merchant.";
     case "ACTIVE":
-      return "Merchant đã được xác minh. Backend sẽ đồng bộ role MERCHANT cho tài khoản Identity.";
+      return "Merchant đã được xác minh và được tạo vận đơn khi đủ điều kiện ở tab “Sẵn sàng tạo đơn”.";
     case "SUSPENDED":
-      return "Quyền Merchant đang tạm ngưng. Trạng thái này không đồng nghĩa khóa toàn bộ tài khoản Identity.";
+      return "Merchant đang tạm ngưng nên không tạo được vận đơn mới. Tài khoản đăng nhập của họ vẫn hoạt động bình thường.";
     case "REJECTED":
-      return "Hồ sơ đã bị từ chối. Đây là trạng thái kết thúc trong luồng quản trị hiện tại.";
+      return "Hồ sơ đã bị từ chối. Merchant có thể sửa và gửi lại hồ sơ; khi đó hồ sơ quay về “Chờ xét duyệt”.";
   }
 }
 
@@ -102,14 +105,14 @@ function decisionsFor(status: MerchantStatus): Decision[] {
           status: "ACTIVE",
           label: "Phê duyệt Merchant",
           description:
-            "Xác minh hồ sơ, kích hoạt Merchant và yêu cầu backend đồng bộ role MERCHANT.",
+            "Xác nhận hồ sơ hợp lệ. Tài khoản được cấp quyền Merchant tự động.",
           requiresReason: false,
         },
         {
           status: "REJECTED",
           label: "Từ chối hồ sơ",
           description:
-            "Từ chối hồ sơ hiện tại. Backend yêu cầu chọn mã lý do để lưu audit.",
+            "Từ chối hồ sơ hiện tại. Merchant thấy lý do và có thể sửa rồi gửi lại.",
           requiresReason: true,
           destructive: true,
         },
@@ -120,7 +123,7 @@ function decisionsFor(status: MerchantStatus): Decision[] {
           status: "SUSPENDED",
           label: "Tạm ngưng Merchant",
           description:
-            "Tạm ngưng quyền Merchant. Backend yêu cầu chọn mã lý do và sẽ gỡ quyền Merchant qua outbox đồng bộ Identity.",
+            "Chặn tạo vận đơn mới. Các vận đơn đang giao vẫn tiếp tục; quyền Merchant được gỡ tự động.",
           requiresReason: true,
           destructive: true,
         },
@@ -131,14 +134,14 @@ function decisionsFor(status: MerchantStatus): Decision[] {
           status: "ACTIVE",
           label: "Kích hoạt lại",
           description:
-            "Khôi phục Merchant và yêu cầu backend đồng bộ lại role MERCHANT.",
+            "Cho phép Merchant tạo vận đơn trở lại. Quyền Merchant được cấp lại tự động.",
           requiresReason: false,
         },
         {
           status: "REJECTED",
           label: "Từ chối Merchant",
           description:
-            "Chuyển Merchant sang trạng thái từ chối. Backend yêu cầu chọn mã lý do.",
+            "Chuyển Merchant sang “Đã từ chối”. Merchant có thể sửa và gửi lại hồ sơ.",
           requiresReason: true,
           destructive: true,
         },
@@ -232,6 +235,43 @@ function ReadinessRow({
   );
 }
 
+function ReadinessVerdict({
+  readiness,
+  error,
+}: {
+  readiness: MerchantReadiness | null;
+  error: string | null;
+}) {
+  if (!readiness) {
+    return error ? (
+      <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs leading-5 text-destructive">
+        {error}
+      </p>
+    ) : null;
+  }
+  if (readiness.canCreateOrder === null) {
+    return (
+      <p className="rounded-lg border bg-muted/30 p-3 text-xs font-bold leading-5">
+        Chưa kết luận được: các điều kiện khác đều đạt nhưng chưa kiểm tra được tài khoản đăng nhập.
+      </p>
+    );
+  }
+  return readiness.canCreateOrder ? (
+    <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] p-3 text-xs font-bold leading-5 text-emerald-800 dark:text-emerald-200">
+      Merchant đang tạo được vận đơn.
+    </p>
+  ) : (
+    <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs leading-5 text-destructive">
+      <p className="font-bold">Merchant chưa tạo được vận đơn vì:</p>
+      <ul className="mt-1 list-disc pl-4">
+        {readiness.restrictions.map((code) => (
+          <li key={code}>{orderRestrictionLabel(code)}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function MerchantDetail({ merchantId }: { merchantId: string }) {
   const { hasPermission } = useAccess();
   const pathname = usePathname();
@@ -245,6 +285,8 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
   const [identityUser, setIdentityUser] = useState<UserDetail | null>(null);
   const [identityLoading, setIdentityLoading] = useState(false);
   const [identityError, setIdentityError] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<MerchantReadiness | null>(null);
+  const [readinessError, setReadinessError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
@@ -281,13 +323,27 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
     [canReadIdentity],
   );
 
+  const loadReadiness = useCallback(async () => {
+    setReadinessError(null);
+    try {
+      setReadiness(await getMerchantReadiness(merchantId));
+    } catch (reason) {
+      setReadiness(null);
+      setReadinessError(
+        reason instanceof Error
+          ? reason.message
+          : "Không thể kiểm tra điều kiện tạo vận đơn.",
+      );
+    }
+  }, [merchantId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const result = await getMerchant(merchantId);
       setDetail(result);
-      await loadIdentity(result.merchant.userId);
+      await Promise.all([loadIdentity(result.merchant.userId), loadReadiness()]);
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -297,7 +353,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [loadIdentity, merchantId]);
+  }, [loadIdentity, loadReadiness, merchantId]);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
@@ -376,6 +432,9 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
   const merchantRoleExpected = merchant?.status === "ACTIVE";
   const roleSyncHealthy =
     merchantRolePresent === null || merchantRoleExpected === merchantRolePresent;
+  const defaultPickup = readiness?.pickupAddresses.find(
+    (address) => address.id === readiness.defaultPickupAddressId,
+  ) ?? null;
 
   function setView(view: DetailView) {
     const params = new URLSearchParams(searchParams.toString());
@@ -412,6 +471,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
 
       setDetail(updated);
       void loadIdentity(updated.merchant.userId);
+      void loadReadiness();
       setDecision(null);
       setReasonCode("");
       setReasonDetail("");
@@ -419,7 +479,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 409) {
         toast.error(
-          "Transition không còn hợp lệ. Dữ liệu Merchant sẽ được tải lại.",
+          "Trạng thái Merchant vừa được thay đổi ở nơi khác. Dữ liệu sẽ được tải lại.",
         );
         setDecision(null);
         setReasonCode("");
@@ -546,9 +606,17 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
           </div>
           <div className="p-3.5 sm:p-4">
             <p className="text-[0.6rem] font-black uppercase tracking-[0.1em] text-muted-foreground">
-              Version
+              Tạo vận đơn
             </p>
-            <p className="mt-1.5 text-xs font-black">v{merchant.version}</p>
+            <p className="mt-1.5 text-xs font-black">
+              {readiness === null
+                ? "Chưa kiểm tra"
+                : readiness.canCreateOrder === null
+                  ? "Chưa kết luận"
+                  : readiness.canCreateOrder
+                    ? "Được phép"
+                    : "Đang bị chặn"}
+            </p>
           </div>
         </div>
 
@@ -638,8 +706,8 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
               </CardHeader>
               <CardContent>
                 <p className="text-xs leading-5 text-muted-foreground">
-                  Role MERCHANT được backend Partners đồng bộ theo trạng thái
-                  Merchant; không cần gán thủ công trong màn này.
+                  Quyền Merchant của tài khoản được cấp hoặc gỡ tự động theo
+                  trạng thái hồ sơ; không cần gán thủ công.
                 </p>
                 <p className="mt-3 break-all font-mono text-[0.68rem] font-bold">
                   {merchant.userId}
@@ -669,55 +737,65 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-black">Merchant order readiness</h2>
+                  <h2 className="text-sm font-black">Sẵn sàng tạo vận đơn</h2>
                   <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
-                    Đối chiếu những điều Management đọc được từ Partners và Identity.
+                    Cùng các điều kiện hệ thống kiểm tra khi Merchant bấm “Tạo vận đơn”.
                   </p>
                 </div>
-                {canReadIdentity ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={identityLoading}
-                    onClick={() => void loadIdentity(merchant.userId)}
-                  >
-                    <RefreshCwIcon
-                      className={cn("size-3.5", identityLoading && "animate-spin")}
-                    />
-                    Kiểm tra Identity
-                  </Button>
-                ) : null}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={identityLoading}
+                  onClick={() => {
+                    void loadReadiness();
+                    void loadIdentity(merchant.userId);
+                  }}
+                >
+                  <RefreshCwIcon
+                    className={cn("size-3.5", identityLoading && "animate-spin")}
+                  />
+                  Kiểm tra lại
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="grid gap-3">
+              <ReadinessVerdict readiness={readiness} error={readinessError} />
               <ReadinessRow
                 state={merchant.status === "ACTIVE" ? "ok" : "blocked"}
-                title="Merchant status"
+                title="Trạng thái Merchant"
                 detail={
                   merchant.status === "ACTIVE"
-                    ? "Merchant đang ACTIVE."
-                    : `Merchant đang ${merchantStatusLabel(merchant.status)}; order capability sẽ bị chặn.`
+                    ? "Đang hoạt động."
+                    : `Đang ở trạng thái “${merchantStatusLabel(merchant.status)}” nên chưa tạo được vận đơn.`
                 }
               />
               <ReadinessRow
                 state={
-                  identityLoading
-                    ? "pending"
-                    : identityEligible === null
+                  readiness
+                    ? !readiness.identityChecked
                       ? "unknown"
-                      : identityEligible
-                        ? "ok"
-                        : "blocked"
+                      : readiness.restrictions.includes("IDENTITY_NOT_ELIGIBLE")
+                        ? "blocked"
+                        : "ok"
+                    : identityLoading
+                      ? "pending"
+                      : identityEligible === null
+                        ? "unknown"
+                        : identityEligible
+                          ? "ok"
+                          : "blocked"
                 }
-                title="Identity eligibility"
+                title="Tài khoản đăng nhập"
                 detail={
-                  !canReadIdentity
-                    ? "Cần identity.users.read để đối chiếu account status, email verification và profile status."
-                    : identityError
-                      ? identityError
-                      : identityUser
-                        ? `${identityUser.status} · email ${identityUser.emailVerified ? "verified" : "chưa verified"} · profile ${profileLabels[identityUser.profileStatus]}`
-                        : "Đang chờ dữ liệu Identity."
+                  readiness && !readiness.identityChecked
+                    ? "Không kiểm tra được tài khoản lúc này. Hãy thử lại sau ít phút."
+                    : identityUser
+                      ? `${accountLabels[identityUser.status]} · email ${identityUser.emailVerified ? "đã xác minh" : "chưa xác minh"} · hồ sơ ${profileLabels[identityUser.profileStatus].toLowerCase()}`
+                      : readiness?.restrictions.includes("IDENTITY_NOT_ELIGIBLE")
+                        ? "Tài khoản bị khóa, chưa xác minh email hoặc chưa hoàn tất hồ sơ."
+                        : readiness
+                          ? "Đủ điều kiện."
+                          : identityError ?? "Đang kiểm tra…"
                 }
               />
               <ReadinessRow
@@ -730,27 +808,45 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                         ? "ok"
                         : "pending"
                 }
-                title="MERCHANT role sync"
+                title="Quyền Merchant trên tài khoản"
                 detail={
                   !canReadIdentity
-                    ? "Không thể kiểm tra role sync khi thiếu identity.users.read."
+                    ? "Bạn không có quyền xem tài khoản người dùng nên chưa kiểm tra được."
                     : identityError
-                      ? "Identity hiện không đọc được; chưa kết luận được role sync."
+                      ? "Không đọc được tài khoản người dùng lúc này."
                       : merchantRolePresent === null
-                        ? "Chưa có dữ liệu role."
+                        ? "Đang kiểm tra…"
                         : roleSyncHealthy
                           ? merchantRolePresent
-                            ? "Identity đang có role MERCHANT đúng với Merchant ACTIVE."
-                            : "Merchant không ACTIVE và Identity không còn role MERCHANT."
+                            ? "Tài khoản đã có quyền Merchant."
+                            : "Merchant không hoạt động và tài khoản không còn quyền Merchant."
                           : merchantRoleExpected
-                            ? "Merchant đã ACTIVE nhưng Identity chưa có MERCHANT. Có thể outbox đang chờ xử lý; refresh lại sau vài giây."
-                            : "Merchant không ACTIVE nhưng Identity vẫn còn MERCHANT. Có thể outbox gỡ role đang chờ xử lý."
+                            ? "Merchant đã được duyệt nhưng tài khoản chưa có quyền Merchant. Hệ thống đang cập nhật; bấm “Kiểm tra lại” sau vài giây."
+                            : "Merchant không hoạt động nhưng tài khoản vẫn còn quyền Merchant. Hệ thống đang gỡ quyền; bấm “Kiểm tra lại” sau vài giây."
                 }
               />
               <ReadinessRow
-                state="unknown"
-                title="Default pickup address"
-                detail="Partners AdminMerchantResponse hiện chưa expose pickup address hoặc order-capability. Management Web không thể kết luận DEFAULT_PICKUP_REQUIRED từ API admin hiện tại."
+                state={
+                  !readiness
+                    ? "unknown"
+                    : readiness.restrictions.includes("DEFAULT_PICKUP_REQUIRED")
+                      ? "blocked"
+                      : defaultPickup && !defaultPickup.usableAsSender
+                        ? "pending"
+                        : "ok"
+                }
+                title="Điểm lấy hàng mặc định"
+                detail={
+                  !readiness
+                    ? readinessError ?? "Đang kiểm tra…"
+                    : readiness.restrictions.includes("DEFAULT_PICKUP_REQUIRED")
+                      ? "Merchant chưa đặt điểm lấy hàng mặc định."
+                      : defaultPickup && !defaultPickup.usableAsSender
+                        ? `“${defaultPickup.name}” chưa dùng được làm người gửi (số điện thoại hoặc địa chỉ không hợp lệ). Merchant cần cập nhật trước khi tạo đơn.`
+                        : defaultPickup
+                          ? `“${defaultPickup.name}”.`
+                          : "Đã thiết lập."
+                }
               />
             </CardContent>
           </Card>
@@ -759,62 +855,89 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <UserRoundIcon className="size-4 text-brand" />
-                  <h2 className="text-sm font-black">Identity snapshot</h2>
+                  <MapPinIcon className="size-4 text-brand" />
+                  <h2 className="text-sm font-black">
+                    Điểm lấy hàng{readiness ? ` (${readiness.pickupAddresses.length})` : ""}
+                  </h2>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {!canReadIdentity ? (
+                {!readiness ? (
                   <p className="rounded-lg bg-muted p-3 text-xs leading-5 text-muted-foreground">
-                    Bạn không có identity.users.read nên Management chỉ hiển thị trạng thái Partners.
+                    {readinessError ?? "Đang tải điểm lấy hàng…"}
                   </p>
-                ) : identityLoading && !identityUser ? (
-                  <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                    Đang đọc Identity...
-                  </p>
-                ) : identityUser ? (
-                  <>
-                    <Fact label="Email" value={identityUser.email} />
-                    <Fact label="Account" value={identityUser.status} />
-                    <Fact
-                      label="Profile"
-                      value={profileLabels[identityUser.profileStatus]}
-                    />
-                    <Fact
-                      label="Roles"
-                      value={
-                        identityUser.roles.length
-                          ? identityUser.roles
-                              .map((role) => rolePresentation(role).name)
-                              .join(", ")
-                          : "Không có role"
-                      }
-                    />
-                  </>
+                ) : readiness.pickupAddresses.length ? (
+                  readiness.pickupAddresses.map((address) => (
+                    <article key={address.id} className="rounded-lg border bg-muted/15 p-3.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-black">{address.name}</p>
+                        {address.isDefault ? (
+                          <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[0.6rem] font-black text-brand">
+                            Mặc định
+                          </span>
+                        ) : null}
+                        {!address.usableAsSender ? (
+                          <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[0.6rem] font-black text-amber-700 dark:text-amber-300">
+                            Chưa dùng được để tạo đơn
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1.5 text-[0.68rem] leading-5 text-muted-foreground">
+                        {address.contactName} · {address.contactPhone}
+                      </p>
+                      <p className="text-[0.68rem] leading-5 text-muted-foreground">
+                        {[address.addressLine, address.wardName ?? address.wardCode, address.provinceName ?? address.provinceCode].join(", ")}
+                      </p>
+                    </article>
+                  ))
                 ) : (
-                  <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs leading-5 text-destructive">
-                    {identityError ?? "Không có Identity snapshot."}
+                  <p className="rounded-lg bg-muted p-3 text-xs leading-5 text-muted-foreground">
+                    Merchant chưa thêm điểm lấy hàng nào.
                   </p>
                 )}
               </CardContent>
             </Card>
 
-            <Card className="border-amber-500/20 bg-amber-500/[0.035]">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <MapPinIcon className="size-4 text-amber-700 dark:text-amber-300" />
-                  <h2 className="text-sm font-black">Giới hạn contract hiện tại</h2>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs leading-5 text-muted-foreground">
-                <p>
-                  Backend Partners admin hiện trả merchant profile + status history, chưa trả default pickup hay restrictions của order capability.
-                </p>
-                <p>
-                  Vì vậy UI cố tình hiển thị “không xác định” thay vì đoán. Nếu cần readiness 100%, backend phải bổ sung admin capability snapshot ở một patch riêng.
-                </p>
-              </CardContent>
-            </Card>
+            {canReadIdentity ? (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <UserRoundIcon className="size-4 text-brand" />
+                    <h2 className="text-sm font-black">Tài khoản đăng nhập</h2>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {identityLoading && !identityUser ? (
+                    <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                      Đang tải tài khoản…
+                    </p>
+                  ) : identityUser ? (
+                    <>
+                      <Fact label="Email" value={identityUser.email} />
+                      <Fact label="Trạng thái tài khoản" value={accountLabels[identityUser.status]} />
+                      <Fact
+                        label="Hồ sơ cá nhân"
+                        value={profileLabels[identityUser.profileStatus]}
+                      />
+                      <Fact
+                        label="Vai trò"
+                        value={
+                          identityUser.roles.length
+                            ? identityUser.roles
+                                .map((role) => rolePresentation(role).name)
+                                .join(", ")
+                            : "Không có vai trò"
+                        }
+                      />
+                    </>
+                  ) : (
+                    <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs leading-5 text-destructive">
+                      {identityError ?? "Không tải được tài khoản."}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -850,11 +973,12 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                 label="Đổi trạng thái lúc"
                 value={formatDateTime(merchant.statusChangedAt)}
               />
-              <p className="text-[0.68rem] leading-5 text-muted-foreground">
-                Backend kiểm tra transition cuối cùng. PENDING_VERIFICATION chỉ
-                được ACTIVE/REJECTED; ACTIVE chỉ được SUSPENDED; SUSPENDED được
-                ACTIVE/REJECTED; REJECTED là terminal.
-              </p>
+              <ul className="grid gap-1 text-[0.68rem] leading-5 text-muted-foreground">
+                <li>Chờ xét duyệt → Phê duyệt hoặc Từ chối.</li>
+                <li>Đang hoạt động → Tạm ngưng.</li>
+                <li>Tạm ngưng → Kích hoạt lại hoặc Từ chối.</li>
+                <li>Đã từ chối → Merchant tự sửa và gửi lại hồ sơ để được xét duyệt lại.</li>
+              </ul>
             </CardContent>
           </Card>
 
@@ -907,7 +1031,8 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                 ))
               ) : (
                 <p className="rounded-md bg-muted p-4 text-xs leading-5 text-muted-foreground">
-                  Trạng thái hiện tại không có transition quản trị tiếp theo.
+                  Không cần thao tác thêm. Khi Merchant sửa và gửi lại hồ sơ,
+                  hồ sơ sẽ quay về “Chờ xét duyệt” để bạn xét lại.
                 </p>
               )}
             </CardContent>
@@ -968,8 +1093,10 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                         </p>
                         <p className="mt-1 max-w-60 break-all font-mono text-[0.62rem] text-muted-foreground">
                           {item.changedByUserId
-                            ? `actor: ${item.changedByUserId}`
-                            : "system / self-service"}
+                            ? item.changedByUserId === merchant.userId
+                              ? "Merchant tự thao tác"
+                              : `Người thực hiện: ${item.changedByUserId}`
+                            : "Hệ thống"}
                         </p>
                       </div>
                     </div>
