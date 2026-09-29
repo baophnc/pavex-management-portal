@@ -246,7 +246,7 @@ export function NetworkRouteTemplates({ embedded = false }: { embedded?: boolean
         </Card>
 
         <Card className="h-fit 2xl:sticky 2xl:top-32">
-          <CardHeader><p className="text-sm font-black">{selected ? selected.name : creating ? "Tạo hành trình" : "Chi tiết hành trình"}</p><p className="mt-1 text-xs text-muted-foreground">Các chặng phải nối liên tục từ điểm đầu đến điểm cuối; backend sẽ chặn tuyến bị đứt hoặc tạo vòng lặp.</p></CardHeader>
+          <CardHeader><p className="text-sm font-black">{selected ? selected.name : creating ? "Tạo hành trình" : "Chi tiết hành trình"}</p><p className="mt-1 text-xs text-muted-foreground">Các chặng phải nối liên tục từ điểm đầu đến điểm cuối; hệ thống không lưu hành trình bị đứt đoạn hoặc đi vòng lại.</p></CardHeader>
           {!selected && !creating ? <EmptyState title="Chọn hành trình" description="Chọn một hành trình ở danh sách hoặc tạo mới." /> : (
             <CardContent>
               <form key={editorKey} className="grid gap-3" onSubmit={save}>
@@ -264,7 +264,7 @@ export function NetworkRouteTemplates({ embedded = false }: { embedded?: boolean
 
                 {selected ? <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3"><div><p className="text-xs font-black">Phiên bản {selected.revision}</p><p className="mt-1 text-[0.65rem] text-muted-foreground">Mỗi lần thay đổi hành trình hoặc thông tin tuyến sẽ tăng phiên bản.</p></div><StatusBadge active={selected.status === "ACTIVE"} /></div> : null}
                 {canManage ? <div className="flex flex-wrap gap-2 border-t pt-4"><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}{selected ? "Lưu thay đổi" : "Tạo hành trình"}</Button>{selected ? <Button type="button" variant={selected.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving} onClick={() => setPendingAction({ kind: "status", template: selected })}>{selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt hành trình"}</Button> : null}{selected?.status === "INACTIVE" ? <Button type="button" variant="ghost" disabled={saving} onClick={() => setPendingAction({ kind: "delete", template: selected })}><Trash2Icon className="size-4 text-destructive" />Xóa hành trình</Button> : null}</div> : null}
-                {selected ? <ActionPolicyNote>Hành trình là cấu hình Network duy nhất hiện có API xóa cứng. Backend chỉ cho xóa khi hành trình đang ngừng hoạt động; nhật ký audit vẫn được giữ.</ActionPolicyNote> : null}
+                {selected ? <ActionPolicyNote>Chỉ xoá được hành trình đã ngừng hoạt động. Nhật ký thay đổi vẫn được giữ lại sau khi xoá.</ActionPolicyNote> : null}
               </form>
             </CardContent>
           )}
@@ -285,7 +285,7 @@ export function NetworkRouteTemplates({ embedded = false }: { embedded?: boolean
             ? `Hành trình ${pendingAction.template.name} sẽ bị xóa khỏi cấu hình. Nhật ký thay đổi vẫn được giữ. Thao tác này chỉ hợp lệ khi tuyến đang ngừng hoạt động.`
             : pendingAction?.template.status === "ACTIVE"
               ? `Hành trình ${pendingAction?.template.name ?? "này"} sẽ không còn được planner ưu tiên.`
-              : `Hành trình ${pendingAction?.template.name ?? "này"} sẽ được đưa vào danh sách ưu tiên. Backend sẽ kiểm tra toàn bộ hub, lane và lịch chạy trước khi kích hoạt.`
+              : `Hành trình ${pendingAction?.template.name ?? "này"} sẽ được đưa vào danh sách ưu tiên. Hệ thống sẽ kiểm tra các bưu cục, tuyến và lịch chạy trước khi kích hoạt.`
         }
         confirmLabel={
           pendingAction?.kind === "delete"

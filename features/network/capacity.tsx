@@ -273,7 +273,7 @@ export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision
         title={pendingAction?.kind === "release" ? "Giải phóng reservation?" : "Ghi nhận đã dùng tải?"}
         description={pendingAction?.kind === "release"
           ? "Các chặng vẫn còn RESERVED sẽ được giải phóng và sức chứa tương ứng trở lại khả dụng. Thao tác được ghi audit."
-          : `Chặng ${pendingAction?.kind === "consume" ? pendingAction.legSequence : ""} sẽ chuyển sang CONSUMED. Backend yêu cầu consume đúng thứ tự các chặng.`}
+          : `Chặng ${pendingAction?.kind === "consume" ? pendingAction.legSequence : ""} sẽ được đánh dấu đã sử dụng. Các chặng phải được xác nhận lần lượt theo đúng thứ tự.`}
         confirmLabel={pendingAction?.kind === "release" ? "Giải phóng tải" : "Xác nhận đã dùng"}
         destructive={pendingAction?.kind === "release"}
         loading={loading}
