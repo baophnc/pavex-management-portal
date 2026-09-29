@@ -45,6 +45,56 @@ export type AdminMerchantResponse = {
   history: MerchantStatusHistory[];
 };
 
+export type MerchantOrderRestriction =
+  | "MERCHANT_REQUIRED"
+  | "MERCHANT_NOT_ACTIVE"
+  | "MERCHANT_SUSPENDED"
+  | "IDENTITY_NOT_ELIGIBLE"
+  | "DEFAULT_PICKUP_REQUIRED";
+
+export type AdminPickupAddress = {
+  id: string;
+  name: string;
+  contactName: string;
+  contactPhone: string;
+  addressLine: string;
+  provinceCode: string;
+  provinceName: string | null;
+  wardCode: string;
+  wardName: string | null;
+  isDefault: boolean;
+  /** False when shipments cannot be created from this address (e.g. landline phone). */
+  usableAsSender: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MerchantReadiness = {
+  /** Null when nothing else blocks but the login account could not be checked. */
+  canCreateOrder: boolean | null;
+  restrictions: string[];
+  identityChecked: boolean;
+  defaultPickupAddressId: string | null;
+  pickupAddresses: AdminPickupAddress[];
+};
+
+export function orderRestrictionLabel(code: string) {
+  switch (code as MerchantOrderRestriction) {
+    case "MERCHANT_REQUIRED":
+      return "Chưa có hồ sơ Merchant";
+    case "MERCHANT_NOT_ACTIVE":
+      return "Hồ sơ Merchant chưa được duyệt";
+    case "MERCHANT_SUSPENDED":
+      return "Merchant đang tạm ngưng";
+    case "IDENTITY_NOT_ELIGIBLE":
+      return "Tài khoản đăng nhập chưa đủ điều kiện (bị khóa, chưa xác minh email hoặc chưa hoàn tất hồ sơ)";
+    case "DEFAULT_PICKUP_REQUIRED":
+      return "Chưa có điểm lấy hàng mặc định";
+    default:
+      return code;
+  }
+}
+
 export type MerchantListResponse = {
   content: MerchantProfile[];
   page: number;

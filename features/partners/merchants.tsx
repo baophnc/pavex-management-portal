@@ -253,14 +253,14 @@ export function MerchantManagement() {
                   Partners control
                 </p>
                 <h1 className="mt-0.5 text-xl font-black tracking-tight sm:text-2xl">
-                  Merchant management
+                  Quản lý Merchant
                 </h1>
               </div>
             </div>
             <p className="mt-3 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-              Xem hồ sơ doanh nghiệp, xử lý xác minh và quản lý trạng thái
-              Merchant. Search backend hỗ trợ mã Merchant, tên doanh nghiệp,
-              mã số thuế và email liên hệ.
+              Xem hồ sơ doanh nghiệp, xét duyệt và quản lý trạng thái
+              Merchant. Tìm theo mã Merchant, tên doanh nghiệp, mã số thuế
+              hoặc email liên hệ.
             </p>
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
