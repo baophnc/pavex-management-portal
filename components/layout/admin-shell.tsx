@@ -2,12 +2,14 @@
 
 import {
   Building2Icon,
+  InboxIcon,
   CalendarClockIcon,
   ClipboardListIcon,
   ChevronRightIcon,
   CircleDollarSignIcon,
   CircleGaugeIcon,
   CircleUserRoundIcon,
+  LandmarkIcon,
   LogOutIcon,
   MenuIcon,
   MoonIcon,
@@ -37,16 +39,22 @@ import { useAppTheme } from "@/components/theme/app-theme-provider";
 import { Button } from "@/components/ui/button";
 import { AccessProvider } from "@/features/auth/access-context";
 import { roleLabel } from "@/features/identity/presentation";
+import { getMyHubScope } from "@/features/operations/hub-scope";
 import {
   canAccessControlTower,
+  canAccessCourierDeliveries,
+  canAccessSupportRequests,
+  canAccessDispatchReliability,
   canAccessManagementPath,
   canAccessOperations,
   canAccessOperationsAssignments,
   canAccessOperationsWorkforce,
   canAccessShipmentCases,
   canAccessShipmentExceptionQueue,
+  canAccessShipmentList,
   hasAnyPermission,
   hasPermission,
+  seesAllHubs,
 } from "@/lib/auth/access";
 import type { CurrentUser } from "@/lib/auth/contracts";
 import { cn } from "@/lib/utils";
@@ -98,11 +106,11 @@ const navigationSections: NavigationSection[] = [
     ],
   },
   {
-    label: "Identity",
+    label: "Tài khoản",
     items: [
       {
         href: "/identity/users",
-        label: "Người dùng",
+        label: "Tài khoản",
         icon: UsersRoundIcon,
         permission: "identity.users.read",
       },
@@ -115,13 +123,19 @@ const navigationSections: NavigationSection[] = [
     ],
   },
   {
-    label: "Partners",
+    label: "Khách hàng",
     items: [
       {
         href: "/partners/merchants",
-        label: "Merchant",
+        label: "Shop",
         icon: Building2Icon,
         permission: "partners.merchants.read",
+      },
+      {
+        href: "/support",
+        label: "Yêu cầu hỗ trợ",
+        icon: InboxIcon,
+        access: canAccessSupportRequests,
       },
     ],
   },
@@ -189,7 +203,7 @@ const navigationSections: NavigationSection[] = [
       },
       {
         href: "/operations/workforce",
-        label: "Nhân sự vận hành",
+        label: "Nhân sự bưu cục",
         icon: UsersRoundIcon,
         access: canAccessOperationsWorkforce,
       },
@@ -207,15 +221,15 @@ const navigationSections: NavigationSection[] = [
       },
       {
         href: "/operations/dispatch",
-        label: "Dispatch & outbox",
+        label: "Hàng đợi sự kiện",
         icon: ShieldAlertIcon,
-        access: canAccessOperationsAssignments,
+        access: canAccessDispatchReliability,
       },
       {
         href: "/shipments",
         label: "Vận đơn",
         icon: TruckIcon,
-        permission: "shipments.admin.read",
+        access: canAccessShipmentList,
       },
       {
         href: "/shipments/exceptions",
@@ -231,7 +245,7 @@ const navigationSections: NavigationSection[] = [
       },
       {
         href: "/control-tower",
-        label: "Control Tower",
+        label: "Giám sát vận đơn",
         icon: CircleGaugeIcon,
         access: canAccessControlTower,
       },
@@ -263,6 +277,40 @@ const navigationSections: NavigationSection[] = [
         label: "Nhật ký giá",
         icon: CircleGaugeIcon,
         permissionsAny: ["pricing.read", "pricing.manage"],
+      },
+    ],
+  },
+  {
+    label: "Tài chính",
+    items: [
+      {
+        href: "/finance/cash",
+        label: "Duyệt tiền nộp",
+        icon: LandmarkIcon,
+        permission: "billing.cash.approve",
+      },
+      {
+        href: "/finance/settlements",
+        label: "Đối soát shop",
+        icon: CircleDollarSignIcon,
+        permission: "billing.manage",
+      },
+      {
+        href: "/finance/invoices",
+        label: "Hóa đơn",
+        icon: CircleDollarSignIcon,
+        permission: "billing.manage",
+      },
+    ],
+  },
+  {
+    label: "Việc của tôi",
+    items: [
+      {
+        href: "/deliveries",
+        label: "Giao hàng",
+        icon: TruckIcon,
+        access: canAccessCourierDeliveries,
       },
     ],
   },
@@ -314,6 +362,30 @@ function currentSection(item: NavigationItem | undefined) {
     navigationSections.find((section) =>
       section.items.some((candidate) => candidate.href === item.href),
     )?.label ?? "PAVEX"
+  );
+}
+
+/** Tells hub staff which hubs every screen is limited to. */
+function HubScopeBadge() {
+  const [label, setLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getMyHubScope()
+      .then((scope) => {
+        if (!active) return;
+        const names = scope.hubs.map((hub) => hub.name);
+        setLabel(names.length ? names.join(", ") : "Chưa được phân bưu cục");
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  if (!label) return null;
+  return (
+    <span className="hidden max-w-64 items-center gap-1 truncate rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[0.58rem] font-black text-brand sm:inline-flex" title={label}>
+      Bưu cục: {label}
+    </span>
   );
 }
 
@@ -380,7 +452,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         if (!response.ok) {
           setConnectionError(
-            payload?.message ?? "Không thể kết nối backend Pavex.",
+            payload?.message ?? "Không thể kết nối máy chủ Pavex.",
           );
           return;
         }
@@ -388,7 +460,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         setUser(payload?.user ?? null);
       } catch (reason) {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
-        setConnectionError("Không thể kết nối Management BFF.");
+        setConnectionError("Không thể kết nối máy chủ Pavex.");
       } finally {
         if (!abort.signal.aborted) setLoaded(true);
       }
@@ -720,11 +792,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                       )}
                     />
                     {connectionError
-                      ? "backend lỗi"
+                      ? "Mất kết nối"
                       : loaded
-                        ? "core-api"
-                        : "đang kết nối"}
+                        ? "Đã kết nối"
+                        : "Đang kết nối"}
                   </span>
+                  {loaded && user && !seesAllHubs(user) && hasPermission(user, "operations.hub.read") ? (
+                    <HubScopeBadge />
+                  ) : null}
                 </div>
               </div>
 
@@ -799,7 +874,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-destructive/10">
                     <ShieldAlertIcon className="size-6 text-destructive" />
                   </span>
-                  <h1 className="mt-4 text-lg font-black">Backend tạm thời không khả dụng</h1>
+                  <h1 className="mt-4 text-lg font-black">Máy chủ Pavex tạm thời không phản hồi</h1>
                   <p className="mt-2 text-xs leading-5 text-muted-foreground">
                     {connectionError} Phiên đăng nhập hiện tại chưa bị xóa; hãy
                     thử kết nối lại trước khi đăng nhập lại.
