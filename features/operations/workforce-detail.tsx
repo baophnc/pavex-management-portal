@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getAllHubs } from "@/features/network/api";
+import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
 import {
   assignWorkforceHub,
@@ -138,7 +138,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
 
   useEffect(() => {
     if (!canReadNetwork) return;
-    void getAllHubs().then(setHubs).catch(() => setHubs([]));
+    void getScopedHubs().then(setHubs).catch(() => setHubs([]));
   }, [canReadNetwork]);
 
   const activeMemberships = useMemo(() => member?.hubMemberships.filter((item) => item.isActive) ?? [], [member]);
@@ -162,7 +162,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
 
   const saveStatus = () => {
     if (status !== "ACTIVE" && !statusReason.trim()) {
-      toast.error("Backend yêu cầu lý do khi suspend/offboard workforce.");
+      toast.error("Vui lòng nhập lý do khi tạm ngưng hoặc cho nghỉ việc nhân sự.");
       return;
     }
     void mutate("status", () => setWorkforceStatus(workforceId, { status, reason: statusReason.trim() || null }), "Đã cập nhật trạng thái workforce.");
@@ -275,7 +275,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                 </label>
                 <Input value={hubReason} onChange={(event) => setHubReason(event.target.value)} placeholder="Lý do gán hub (tùy chọn)" />
               </div>
-              {!globalManager ? <p className="text-[0.66rem] text-muted-foreground">Hub-scoped manager có thể gán member trong phạm vi backend cho phép nhưng không được đặt primary hub.</p> : null}
+              {!globalManager ? <p className="text-[0.66rem] text-muted-foreground">Quản lý bưu cục gán được nhân sự vào bưu cục mình quản lý nhưng không đặt được bưu cục chính.</p> : null}
 
               <div className="grid gap-3 lg:grid-cols-2">
                 {activeMemberships.map((membership) => (
@@ -354,12 +354,12 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
 
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-[0.68rem] leading-5 text-amber-800 dark:text-amber-200">
                   <p className="font-black">Operational safety</p>
-                  <p className="mt-1">Backend sẽ chặn suspend/offboard hoặc gỡ hub nếu member còn assignment IN_PROGRESS. Các assignment ASSIGNED/ACCEPTED có thể bị requeue.</p>
+                  <p className="mt-1">Không tạm ngưng, cho nghỉ hoặc gỡ bưu cục được khi nhân sự còn việc đang làm. Việc đã giao hoặc đã nhận nhưng chưa làm sẽ được đưa lại hàng chờ.</p>
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <Card><CardContent className="flex items-start gap-3 text-xs leading-5 text-muted-foreground"><CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-brand" /><p>Bạn đang ở hub scope. Các mutation global như đổi status/capacity được ẩn; quyền hub vẫn được backend enforce cho thao tác membership.</p></CardContent></Card>
+            <Card><CardContent className="flex items-start gap-3 text-xs leading-5 text-muted-foreground"><CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-brand" /><p>Bạn đang quản lý theo bưu cục. Các thao tác toàn hệ thống như đổi trạng thái hoặc năng lực nhân sự được ẩn; bạn chỉ gán/gỡ nhân sự trong bưu cục của mình.</p></CardContent></Card>
           )}
         </div>
       </div>

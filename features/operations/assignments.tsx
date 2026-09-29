@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getAllHubs } from "@/features/network/api";
+import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
 import { useAccess } from "@/features/auth/access-context";
 import { getOperationalAssignments, getWorkforce } from "@/features/operations/api";
@@ -66,8 +66,8 @@ function shortId(value: string | null) {
 }
 
 export function OperationsAssignments() {
-  const { hasPermission } = useAccess();
-  const canReadGlobalShipments = hasPermission("shipments.admin.read");
+  const { hasAnyPermission } = useAccess();
+  const canReadGlobalShipments = hasAnyPermission(["shipments.admin.read", "shipments.read-hub"]);
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -105,7 +105,7 @@ export function OperationsAssignments() {
     setError(null);
     try {
       const [networkHubs, workforcePage, shipmentPage] = await Promise.all([
-        getAllHubs().catch(() => []),
+        getScopedHubs().catch(() => []),
         getWorkforce(new URLSearchParams({ page: "1", pageSize: "100" })).catch(() => null),
         canReadGlobalShipments
           ? getAdminShipments(new URLSearchParams({ limit: "100" })).catch(() => null)

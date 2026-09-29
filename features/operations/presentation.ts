@@ -7,14 +7,14 @@ import type {
 
 export function workforceKindLabel(kind: WorkforceMemberKind) {
   switch (kind) {
-    case "COURIER":
-      return "Nhân viên giao nhận";
+    case "HUB_MANAGER":
+      return "Trưởng bưu cục";
     case "WAREHOUSE_OPERATOR":
-      return "Nhân viên kho";
-    case "DISPATCHER":
-      return "Điều phối viên";
+      return "Nhân viên bưu cục";
+    case "COURIER":
+      return "Bưu tá";
     case "LINE_HAUL_DRIVER":
-      return "Tài xế liên tỉnh";
+      return "Tài xế trung chuyển";
   }
 }
 
