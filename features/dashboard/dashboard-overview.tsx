@@ -5,6 +5,7 @@ import {
   ArrowUpRightIcon,
   Building2Icon,
   CircleDollarSignIcon,
+  InboxIcon,
   CircleGaugeIcon,
   CircleUserRoundIcon,
   ClipboardListIcon,
@@ -22,11 +23,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
 import {
   canAccessControlTower,
+  canAccessCourierDeliveries,
+  canAccessSupportRequests,
   canAccessOperations,
   canAccessOperationsAssignments,
   canAccessOperationsWorkforce,
   canAccessShipmentCases,
   canAccessShipmentExceptionQueue,
+  canAccessShipmentList,
   hasAnyPermission,
   hasPermission,
 } from "@/lib/auth/access";
@@ -36,6 +40,7 @@ import type { CurrentUser } from "@/lib/auth/contracts";
 type MetricKey =
   | "users"
   | "pendingMerchants"
+  | "newSupportRequests"
   | "activeShipments"
   | "deliveryFailed"
   | "pendingExceptionApprovals"
@@ -116,12 +121,21 @@ const metrics: Metric[] = [
       loadCount("admin/merchants?page=1&pageSize=1&status=PENDING_VERIFICATION"),
   },
   {
+    key: "newSupportRequests",
+    label: "Yêu cầu hỗ trợ mới",
+    href: "/support",
+    hint: "Khách đang chờ phản hồi",
+    icon: InboxIcon,
+    canAccess: canAccessSupportRequests,
+    load: () => loadField("admin/support/requests/counts", "new"),
+  },
+  {
     key: "activeShipments",
     label: "Vận đơn đang hoạt động",
     href: "/shipments?lifecycleStatus=ACTIVE",
     hint: "Shipment lifecycle ACTIVE",
     icon: TruckIcon,
-    canAccess: (user) => hasPermission(user, "shipments.admin.read"),
+    canAccess: canAccessShipmentList,
     load: () => loadCount("admin/shipments?limit=1&lifecycleStatus=ACTIVE"),
   },
   {
@@ -130,7 +144,7 @@ const metrics: Metric[] = [
     href: "/shipments?status=DELIVERY_FAILED",
     hint: "Ưu tiên xử lý ngoại lệ giao",
     icon: ShieldAlertIcon,
-    canAccess: (user) => hasPermission(user, "shipments.admin.read"),
+    canAccess: canAccessShipmentList,
     load: () => loadCount("admin/shipments?limit=1&status=DELIVERY_FAILED"),
   },
   {
@@ -146,7 +160,7 @@ const metrics: Metric[] = [
     key: "activeWorkforce",
     label: "Workforce active",
     href: "/operations/workforce?status=ACTIVE",
-    hint: "Theo scope global hoặc hub backend cấp",
+    hint: "Theo phạm vi bưu cục bạn được xem",
     icon: UsersRoundIcon,
     canAccess: canAccessOperationsWorkforce,
     load: () =>
@@ -192,6 +206,20 @@ const metrics: Metric[] = [
 
 const capabilities: Capability[] = [
   {
+    label: "Yêu cầu hỗ trợ",
+    description: "Liên hệ, hỗ trợ, khiếu nại và hồ sơ ứng tuyển khách gửi từ website.",
+    href: "/support",
+    icon: InboxIcon,
+    canAccess: canAccessSupportRequests,
+  },
+  {
+    label: "Giao hàng",
+    description: "Kiện đang giao, tiền cần thu của người nhận và nộp tiền về bưu cục.",
+    href: "/deliveries",
+    icon: TruckIcon,
+    canAccess: canAccessCourierDeliveries,
+  },
+  {
     label: "Identity & Access",
     description: "Users, role catalog và permission matrix.",
     href: "/identity/users",
@@ -232,7 +260,7 @@ const capabilities: Capability[] = [
     description: "Vận đơn, delivery, exception và weight review.",
     href: "/shipments",
     icon: TruckIcon,
-    canAccess: (user) => hasPermission(user, "shipments.admin.read"),
+    canAccess: canAccessShipmentList,
   },
   {
     label: "Duyệt ngoại lệ",
@@ -310,7 +338,7 @@ export function DashboardOverview() {
   const priority = (() => {
     if (loading) {
       return {
-        text: "Đang tải tín hiệu ưu tiên từ các backend bạn được phép xem.",
+        text: "Đang tải các việc cần ưu tiên trong phạm vi bạn được xem.",
         href: null as string | null,
         label: null as string | null,
       };
@@ -394,7 +422,7 @@ export function DashboardOverview() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[0.62rem] font-black tracking-[0.14em] text-brand uppercase">Live backend snapshot</p>
+          <p className="text-[0.62rem] font-black tracking-[0.14em] text-brand uppercase">Số liệu trực tiếp</p>
           <h2 className="mt-1 text-xl font-black">Xin chào, {user?.displayName ?? user?.email ?? "Pavex operator"}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             {visibleCapabilities.length} workspace khả dụng · {visibleMetrics.length} chỉ số được phép tải với JWT hiện tại.
@@ -468,7 +496,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent className="space-y-3 text-xs leading-5 text-muted-foreground">
             <p><span className="font-black text-foreground">RBAC:</span> route guard, sidebar và dashboard dùng chung capability helpers.</p>
-            <p><span className="font-black text-foreground">Scope:</span> Operations hub scope và Control Tower scope vẫn do backend quyết định.</p>
+            <p><span className="font-black text-foreground">Phạm vi:</span> Bạn chỉ thấy số liệu của các bưu cục được phân công, trừ khi tài khoản xem toàn mạng lưới.</p>
             <p><span className="font-black text-foreground">Reliability:</span> outbox/dead-letter chỉ hiện cho global assignment manager.</p>
             <p><span className="font-black text-foreground">Alerts:</span> Control Tower là computed read-only view; Management không tạo lifecycle giả.</p>
             <Link href="/account" className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-black text-foreground hover:bg-muted">

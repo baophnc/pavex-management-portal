@@ -31,6 +31,7 @@ export const MANAGEMENT_PERMISSIONS = [
   "operations.dispatch.manage",
   "operations.hub.read",
   "operations.hub.manage",
+  "support.requests.read",
 ] as const;
 
 export function hasPermission(
@@ -98,6 +99,20 @@ export function canAccessOperationsAssignments(
   return hasAnyPermission(user, OPERATIONS_SCOPE_PERMISSIONS);
 }
 
+/** Head-office users see every hub; hub staff only the hubs they are assigned to. */
+export function seesAllHubs(user: CurrentUser | null | undefined) {
+  return hasPermission(user, "scope.all-hubs");
+}
+
+export function canAccessShipmentList(user: CurrentUser | null | undefined) {
+  return hasAnyPermission(user, ["shipments.admin.read", "shipments.read-hub"]);
+}
+
+/** Event queue repair is a system task, not part of a hub's day. */
+export function canAccessDispatchReliability(user: CurrentUser | null | undefined) {
+  return seesAllHubs(user) && canAccessOperationsAssignments(user);
+}
+
 export function canAccessShipmentCases(
   user: CurrentUser | null | undefined,
 ) {
@@ -122,8 +137,17 @@ export function canAccessControlTower(
   );
 }
 
+export function canAccessSupportRequests(user: CurrentUser | null | undefined) {
+  return hasPermission(user, "support.requests.read");
+}
+
+/** Couriers use the portal only for their own deliveries and the cash they carry. */
+export function canAccessCourierDeliveries(user: CurrentUser | null | undefined) {
+  return hasPermission(user, "deliveries.complete-own");
+}
+
 export function canAccessManagement(user: CurrentUser | null | undefined) {
-  return hasAnyPermission(user, MANAGEMENT_PERMISSIONS);
+  return hasAnyPermission(user, MANAGEMENT_PERMISSIONS) || canAccessCourierDeliveries(user);
 }
 
 export function canAccessManagementPath(
@@ -153,9 +177,21 @@ export function canAccessManagementPath(
   if (pathname.startsWith("/pricing")) {
     return hasAnyPermission(user, ["pricing.read", "pricing.manage"]);
   }
+  if (pathname.startsWith("/support")) {
+    return canAccessSupportRequests(user);
+  }
+  if (pathname.startsWith("/deliveries")) {
+    return canAccessCourierDeliveries(user);
+  }
+  if (pathname.startsWith("/finance/cash")) {
+    return hasPermission(user, "billing.cash.approve");
+  }
+  if (pathname.startsWith("/finance")) {
+    return hasPermission(user, "billing.manage");
+  }
 
   if (pathname.startsWith("/operations/dispatch")) {
-    return canAccessOperationsAssignments(user);
+    return canAccessDispatchReliability(user);
   }
   if (pathname.startsWith("/operations/assignments")) {
     return canAccessOperationsAssignments(user);
@@ -180,7 +216,7 @@ export function canAccessManagementPath(
     return canAccessControlTower(user);
   }
   if (pathname.startsWith("/shipments")) {
-    return hasPermission(user, "shipments.admin.read");
+    return canAccessShipmentList(user);
   }
 
   // Unknown paths should still reach Next.js' not-found/error handling. New
