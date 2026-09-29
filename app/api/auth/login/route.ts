@@ -52,14 +52,23 @@ export async function POST(request: NextRequest) {
         result.payload,
         "Email hoặc mật khẩu không chính xác.",
       );
-      const status = result.response.status === 429 ? 429 : 401;
+      const backendStatus = result.response.status;
+      const status =
+        backendStatus >= 400 && backendStatus <= 599 ? backendStatus : 502;
+      const invalidCredentials = status === 401;
+
       return jsonWithRetryAfter(
         {
-          code: problem.code ?? (status === 429 ? "login_rate_limited" : "invalid_credentials"),
-          message:
-            status === 429
-              ? problem.message
-              : "Email hoặc mật khẩu không chính xác.",
+          code:
+            problem.code ??
+            (status === 429
+              ? "login_rate_limited"
+              : invalidCredentials
+                ? "invalid_credentials"
+                : "login_backend_error"),
+          message: invalidCredentials
+            ? "Email hoặc mật khẩu không chính xác."
+            : problem.message,
           traceId: problem.traceId,
         },
         status,

@@ -30,6 +30,7 @@ import {
   type ShipmentDetailContext,
 } from "@/features/shipments/detail-context";
 import { getAdminShipment } from "@/features/shipments/api";
+import { ShipmentExceptionsPanel } from "@/features/shipments/exceptions-panel";
 import type {
   AdminShipmentDetail,
   AdminShipmentEvent,
@@ -47,6 +48,7 @@ import {
   shipmentErrorMessage,
   shipmentEventDescription,
   shipmentEventLabel,
+  parcelStatusLabel,
   shipmentStatusLabel,
   shippingFeePayerLabel,
 } from "@/features/shipments/presentation";
@@ -272,7 +274,7 @@ function actorText(event: AdminShipmentEvent, context: ShipmentDetailContext) {
 }
 
 export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string }) {
-  const { hasPermission, hasRole } = useAccess();
+  const { hasPermission, hasAnyPermission, hasRole } = useAccess();
   const [data, setData] = useState<AdminShipmentDetail | null>(null);
   const [context, setContext] = useState<ShipmentDetailContext>(
     emptyShipmentDetailContext,
@@ -363,6 +365,12 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
   const pricing = shipment.pricing;
   const creator = context.users[data.createdByUserId];
   const canViewTechnical = hasRole("ADMIN");
+  const canManageExceptions = hasPermission("shipments.exceptions.manage");
+  const canAdjustWeight = hasPermission("shipments.weight.adjust");
+  const canManageCases = hasPermission("shipments.cases.manage");
+  const canViewControlTower =
+    hasPermission("shipments.control-tower.read") &&
+    hasAnyPermission(["operations.assignments.manage", "operations.hub.manage"]);
   const originHubName =
     context.network.originHub?.publicName ||
     context.network.originHub?.name ||
@@ -416,6 +424,22 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
               >
                 <Code2Icon className="size-4" />
               </Button>
+            ) : null}
+            {canManageCases ? (
+              <Link
+                href={`/shipments/cases?trackingCode=${encodeURIComponent(shipment.trackingCode)}`}
+                className="inline-flex h-10 items-center rounded-md border bg-background px-4 text-sm font-bold hover:bg-muted"
+              >
+                Hồ sơ sự cố
+              </Link>
+            ) : null}
+            {canViewControlTower ? (
+              <Link
+                href={`/control-tower?search=${encodeURIComponent(shipment.trackingCode)}`}
+                className="inline-flex h-10 items-center rounded-md border bg-background px-4 text-sm font-bold hover:bg-muted"
+              >
+                Control Tower
+              </Link>
             ) : null}
             <Button
               variant="outline"
@@ -542,7 +566,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
           {routing.routeRevision > 0 ? (
             <div className="border-t p-4">
               <Link
-                href={`/network/capacity?shipmentId=${encodeURIComponent(data.id)}&routeRevision=${routing.routeRevision}`}
+                href={`/network/capacity?trackingCode=${encodeURIComponent(shipment.trackingCode)}&routeRevision=${routing.routeRevision}`}
                 className="text-xs font-black text-brand hover:underline"
               >
                 Xem tình trạng giữ tải →
@@ -578,7 +602,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
                     </p>
                   </td>
                   <td className="px-4 py-3 font-bold">
-                    {shipmentStatusLabel(parcel.status)}
+                    {parcelStatusLabel(parcel.status)}
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-bold">{goodsCategoryLabel(parcel.category)}</p>
@@ -602,6 +626,22 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
           </table>
         </div>
       </Card>
+
+      {canManageExceptions ? (
+        <ShipmentExceptionsPanel
+          shipmentId={data.id}
+          trackingCode={shipment.trackingCode}
+          lifecycleStatus={shipment.lifecycleStatus}
+          parcels={shipment.parcels}
+          originHubId={data.originHubId}
+          originHubName={originHubName}
+          destinationHubId={data.destinationHubId}
+          destinationHubName={destinationHubName}
+          canManage={canManageExceptions}
+          canAdjustWeight={canAdjustWeight}
+          onShipmentChanged={() => void load()}
+        />
+      ) : null}
 
       <div className="grid gap-4 2xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="overflow-hidden">

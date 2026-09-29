@@ -2,6 +2,7 @@ import type {
   DeliveryFailureReason,
   DeliveryProofMethod,
   GoodsCategory,
+  ParcelStatus,
   ShipmentCoverageTier,
   ShipmentLifecycleStatus,
   ShipmentPricingZone,
@@ -16,9 +17,9 @@ export function shipmentStatusLabel(status: ShipmentStatus) {
   const labels: Record<ShipmentStatus, string> = {
     AWAITING_PICKUP: "Chờ lấy hàng",
     PICKED_UP: "Đã lấy hàng",
-    AT_ORIGIN_HUB: "Tại hub gửi",
+    AT_ORIGIN_HUB: "Đã đến bưu cục gửi",
     IN_TRANSIT: "Đang trung chuyển",
-    AT_DESTINATION_HUB: "Tại hub nhận",
+    AT_DESTINATION_HUB: "Đã đến bưu cục phát",
     OUT_FOR_DELIVERY: "Đang giao",
     DELIVERY_FAILED: "Giao thất bại",
     PARTIALLY_DELIVERED: "Giao một phần",
@@ -28,6 +29,10 @@ export function shipmentStatusLabel(status: ShipmentStatus) {
     CANCELLED: "Đã hủy",
   };
   return labels[status];
+}
+
+export function parcelStatusLabel(status: ParcelStatus) {
+  return status === "AT_TRANSIT_HUB" ? "Đã đến bưu cục trung chuyển" : shipmentStatusLabel(status);
 }
 
 export function lifecycleLabel(status: ShipmentLifecycleStatus) {
@@ -55,6 +60,20 @@ export function shipmentEventLabel(code: string, status: ShipmentStatus) {
     "parcel.at-destination-hub": "Kiện hàng đến điểm trung chuyển đích",
     "parcel.delivered": "Giao kiện hàng thành công",
     "parcel.delivery-failed": "Giao kiện hàng không thành công",
+    "shipment.hold.placed": "Tạm giữ vận đơn",
+    "shipment.hold.released": "Gỡ tạm giữ vận đơn",
+    "shipment.return.requested": "Yêu cầu hoàn hàng",
+    "shipment.return.processing": "Đang xử lý hoàn hàng",
+    "shipment.return.completed": "Hoàn tất hoàn hàng",
+    "shipment.forward.requested": "Yêu cầu chuyển tiếp",
+    "shipment.forward.approved": "Duyệt chuyển tiếp",
+    "shipment.forward.completed": "Hoàn tất chuyển tiếp",
+    "shipment.cancellation.requested": "Yêu cầu hủy vận đơn",
+    "shipment.cancellation.approved": "Duyệt hủy vận đơn",
+    "shipment.cancellation.processing": "Đang thu hồi để hủy",
+    "shipment.cancellation.completed": "Hoàn tất hủy vận đơn",
+    "shipment.weight-adjusted": "Điều chỉnh khối lượng",
+    "shipment.weight-review.completed": "Hoàn tất kiểm tra khối lượng",
   };
   return labels[code] ?? shipmentStatusLabel(status);
 }
@@ -157,4 +176,70 @@ export function shipmentErrorMessage(reason: unknown, fallback: string) {
   }
   if (reason.status === 403) return "Tài khoản không có quyền xem vận đơn toàn hệ thống.";
   return reason.message || fallback;
+}
+
+
+export function shipmentCaseTypeLabel(type: import("@/features/shipments/contracts").ShipmentCaseType) {
+  return type === "PROBLEM_PARCEL" ? "Kiện hàng có vấn đề" : "Kiện chưa xác định";
+}
+
+export function shipmentCaseStatusLabel(status: import("@/features/shipments/contracts").ShipmentCaseStatus) {
+  const labels: Record<import("@/features/shipments/contracts").ShipmentCaseStatus, string> = {
+    OPEN: "Mới mở",
+    ASSIGNED: "Đã phân công",
+    INVESTIGATING: "Đang điều tra",
+    RESOLVED: "Đã xử lý",
+    CLOSED: "Đã đóng",
+  };
+  return labels[status];
+}
+
+export function shipmentCaseSeverityLabel(severity: import("@/features/shipments/contracts").ShipmentCaseSeverity) {
+  const labels: Record<import("@/features/shipments/contracts").ShipmentCaseSeverity, string> = {
+    LOW: "Thấp",
+    MEDIUM: "Trung bình",
+    HIGH: "Cao",
+    CRITICAL: "Khẩn cấp",
+  };
+  return labels[severity];
+}
+
+export function shipmentCaseEventLabel(code: string) {
+  const labels: Record<string, string> = {
+    "case.created": "Tạo case",
+    "case.assigned": "Phân công",
+    "case.investigating": "Bắt đầu điều tra",
+    "case.note-added": "Thêm ghi chú",
+    "case.shipment-linked": "Liên kết vận đơn",
+    "case.resolved": "Xử lý xong",
+    "case.closed": "Đóng case",
+  };
+  return labels[code] ?? code;
+}
+
+export function shipmentControlAlertTypeLabel(
+  type: import("@/features/shipments/contracts").ShipmentControlAlertType,
+) {
+  switch (type) {
+    case "SENT_BUT_NOT_ARRIVED": return "Đã gửi nhưng chưa đến";
+    case "MISSING_ARRIVAL_SCAN": return "Thiếu scan đến";
+    case "ARRIVED_NOT_OUT_FOR_DELIVERY": return "Đến bưu cục nhưng chưa phát giao";
+    case "ROUTE_DEVIATION": return "Sai lệch tuyến";
+    case "SHIPMENT_STUCK": return "Vận đơn đứng yên";
+    case "ESTIMATED_DELIVERY_OVERDUE": return "Quá ETA giao hàng";
+    case "CASE_OVERDUE": return "Case quá SLA";
+    case "EXCEPTION_OVERDUE": return "Exception quá SLA";
+    case "SIGNATURE_WITHOUT_DELIVERY": return "Có chữ ký nhưng chưa Delivered";
+    case "DELIVERED_WITHOUT_SIGNATURE": return "Delivered thiếu chữ ký";
+  }
+}
+
+export function shipmentControlAlertSeverityLabel(
+  severity: import("@/features/shipments/contracts").ShipmentControlAlertSeverity,
+) {
+  switch (severity) {
+    case "INFO": return "Thông tin";
+    case "WARNING": return "Cảnh báo";
+    case "CRITICAL": return "Khẩn cấp";
+  }
 }

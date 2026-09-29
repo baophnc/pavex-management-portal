@@ -2,6 +2,7 @@ import type {
   AccountStatus,
   CreateUserResponse,
   Gender,
+  PermissionItem,
   ProfileStatus,
   RoleItem,
   UserDetail,
@@ -34,6 +35,18 @@ export type UpdateUserProfileInput = Omit<
   "email" | "roleCode"
 >;
 
+export type CreateRoleInput = {
+  code: string;
+  name: string;
+  description: string | null;
+  permissionCodes: string[];
+};
+
+export type UpdateRoleInput = {
+  name: string;
+  description: string | null;
+};
+
 export function searchUsers(params: UserSearchParams) {
   const query = new URLSearchParams({
     page: String(params.page),
@@ -52,6 +65,38 @@ export function getUser(userId: string) {
 
 export function getRoles() {
   return apiRequest<RoleItem[]>("roles");
+}
+
+export function getPermissions() {
+  return apiRequest<PermissionItem[]>("permissions");
+}
+
+export function createRole(input: CreateRoleInput) {
+  return apiRequest<RoleItem>("roles", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateRole(roleId: string, input: UpdateRoleInput) {
+  return apiRequest<RoleItem>(`roles/${roleId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function replaceRolePermissions(
+  roleId: string,
+  permissionCodes: string[],
+) {
+  return apiRequest<RoleItem>(`roles/${roleId}/permissions`, {
+    method: "PUT",
+    body: JSON.stringify({ permissionCodes }),
+  });
+}
+
+export function deleteRole(roleId: string) {
+  return apiRequest<null>(`roles/${roleId}`, { method: "DELETE" });
 }
 
 export function createUser(input: CreateUserInput) {

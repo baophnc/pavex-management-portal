@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,14 @@ export function LoginForm({
           {error}
         </p>
       ) : null}
+      <div className="text-sm">
+        <Link href="/forgot-password" className="font-semibold text-brand underline underline-offset-4">
+          Quên mật khẩu / đặt mật khẩu lần đầu
+        </Link>
+        <p className="mt-2 text-muted-foreground">
+          Tài khoản do quản trị viên tạo? Dùng email đã được cấp để tự đặt mật khẩu.
+        </p>
+      </div>
       <Button className="w-full" disabled={pending}>
         {pending ? (
           <span

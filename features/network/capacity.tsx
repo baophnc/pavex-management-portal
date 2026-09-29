@@ -39,6 +39,7 @@ import {
   NetworkPageHeader,
   selectClassName,
 } from "@/features/network/ui";
+import { getAdminShipment } from "@/features/shipments/api";
 import { formatDateTime } from "@/lib/utils";
 
 function ratio(allocated: number, total: number) {
@@ -50,7 +51,7 @@ type PendingCapacityAction =
   | { kind: "release" }
   | { kind: "consume"; legSequence: number };
 
-export function NetworkCapacity({ initialShipmentId = "", initialRouteRevision = "" }: { initialShipmentId?: string; initialRouteRevision?: string }) {
+export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision = "" }: { initialTrackingCode?: string; initialRouteRevision?: string }) {
   const { hasPermission } = useAccess();
   const canManage = hasPermission("network.manage");
   const [lanes, setLanes] = useState<HubLane[]>([]);
@@ -58,6 +59,7 @@ export function NetworkCapacity({ initialShipmentId = "", initialRouteRevision =
   const [serviceDate, setServiceDate] = useState("");
   const [capacity, setCapacity] = useState<LaneCapacity | null>(null);
   const [reservation, setReservation] = useState<CapacityReservation | null>(null);
+  const [reservationTrackingCode, setReservationTrackingCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingCapacityAction | null>(null);
 
@@ -97,17 +99,20 @@ export function NetworkCapacity({ initialShipmentId = "", initialRouteRevision =
   async function lookupReservation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const shipmentId = String(form.get("shipmentId") ?? "").trim();
+    const trackingCode = String(form.get("trackingCode") ?? "").trim().toUpperCase();
     const routeRevision = Number(form.get("routeRevision"));
-    if (!shipmentId || !Number.isInteger(routeRevision) || routeRevision < 1) {
-      toast.error("Nhập Shipment ID và phiên bản tuyến hợp lệ.");
+    if (!trackingCode || !Number.isInteger(routeRevision) || routeRevision < 1) {
+      toast.error("Nhập mã vận đơn và phiên bản tuyến hợp lệ.");
       return;
     }
     setLoading(true);
     try {
-      setReservation(await getCapacityReservation(shipmentId, routeRevision));
+      const shipment = await getAdminShipment(trackingCode);
+      setReservation(await getCapacityReservation(shipment.id, routeRevision));
+      setReservationTrackingCode(shipment.shipment.trackingCode);
     } catch (reason) {
       setReservation(null);
+      setReservationTrackingCode("");
       toast.error(networkErrorMessage(reason, "Không tìm thấy dữ liệu giữ chỗ."));
     } finally {
       setLoading(false);
@@ -162,7 +167,7 @@ export function NetworkCapacity({ initialShipmentId = "", initialRouteRevision =
           description: "Sức chứa được tính theo từng chuyến cụ thể, không dùng một con số chung cho cả tuyến.",
           bullets: [
             "Chọn tuyến và ngày để xem tải của từng giờ khởi hành.",
-            "Shipment giữ chỗ theo shipmentId + routeRevision và từng leg theo thứ tự.",
+            "Vận đơn giữ chỗ theo phiên bản tuyến và từng chặng theo thứ tự.",
             "Giải phóng/consume ở trang này là thao tác vận hành có audit; chỉ dùng khi hiểu rõ trạng thái Shipment.",
           ],
         }}
@@ -212,10 +217,10 @@ export function NetworkCapacity({ initialShipmentId = "", initialRouteRevision =
         </div>
 
         <Card className="h-fit xl:sticky xl:top-32">
-          <CardHeader><p className="text-sm font-black">Tra cứu giữ chỗ</p><p className="mt-1 text-xs text-muted-foreground">Dùng Shipment UUID và route revision để kiểm tra reservation thật.</p></CardHeader>
+          <CardHeader><p className="text-sm font-black">Tra cứu giữ chỗ</p><p className="mt-1 text-xs text-muted-foreground">Dùng mã vận đơn khách hàng nhìn thấy và phiên bản tuyến.</p></CardHeader>
           <CardContent className="space-y-4">
             <form className="grid gap-3" onSubmit={lookupReservation}>
-              <FormField label="Shipment ID"><Input name="shipmentId" placeholder="UUID" className="font-mono" defaultValue={initialShipmentId} /></FormField>
+              <FormField label="Mã vận đơn"><Input name="trackingCode" placeholder="PAVEX..." className="font-mono uppercase" defaultValue={initialTrackingCode} /></FormField>
               <FormField label="Phiên bản tuyến"><Input name="routeRevision" type="number" min="1" defaultValue={initialRouteRevision || "1"} /></FormField>
               <Button type="submit" variant="outline" disabled={loading}><SearchIcon className="size-4" />Tra cứu</Button>
             </form>
@@ -224,7 +229,7 @@ export function NetworkCapacity({ initialShipmentId = "", initialRouteRevision =
               <div className="space-y-3 border-t pt-4">
                 <div className="rounded-lg border bg-muted/20 p-3">
                   <div className="flex items-center justify-between gap-2"><p className="text-xs font-black">{reservationStatusLabel(reservation.status)}</p><span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">{routeSourceLabel(reservation.source)}</span></div>
-                  <p className="mt-2 break-all font-mono text-[0.65rem] text-muted-foreground">{reservation.shipmentId}</p>
+                  <p className="mt-2 font-mono text-xs font-bold text-brand">{reservationTrackingCode || "Vận đơn đang tra cứu"}</p>
                   <p className="mt-2 text-xs text-muted-foreground">Dự kiến đến {formatDateTime(reservation.estimatedDeliveryAt)}</p><p className="mt-1 text-xs text-muted-foreground">{Number(reservation.shipmentWeightKg).toLocaleString("vi-VN")} kg · phiên bản {reservation.routeRevision}</p>
                 </div>
                 {reservation.legs.map((leg) => (

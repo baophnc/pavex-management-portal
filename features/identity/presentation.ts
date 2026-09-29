@@ -8,7 +8,7 @@ import type {
   UserListItem,
 } from "@/features/identity/contracts";
 
-export type RoleOwnership = "IDENTITY" | "PARTNERS" | "PLATFORM";
+export type RoleOwnership = "IDENTITY" | "PARTNERS" | "OPERATIONS" | "PLATFORM";
 
 export type RolePresentation = {
   name: string;
@@ -36,41 +36,45 @@ const ROLE_PRESENTATION: Record<string, RolePresentation> = {
     name: "Quản lý vận hành",
     description:
       "Điều phối mạng lưới, nhân sự và các công việc vận hành trên phạm vi rộng.",
-    ownership: "IDENTITY",
-    ownershipLabel: "Quản trị viên cấp",
-    assignableFromIdentity: true,
+    ownership: "OPERATIONS",
+    ownershipLabel: "Operations cấp khi onboarding",
+    assignableFromIdentity: false,
     assignmentSummary:
-      "Người có quyền phân vai có thể gán trực tiếp cho nhân sự quản lý vận hành.",
+      "Tạo từ Operations > Workforce để Identity profile, role và workforce luôn đồng bộ.",
+    note: "Không tạo hoặc gán thủ công role này tại Identity. Hãy dùng luồng Thêm nhân sự trong Operations.",
   },
   HUB_MANAGER: {
     name: "Quản lý bưu cục",
     description:
       "Quản lý hoạt động, dòng tiền và công việc tại bưu cục được phân công.",
-    ownership: "IDENTITY",
-    ownershipLabel: "Quản trị viên cấp",
-    assignableFromIdentity: true,
+    ownership: "OPERATIONS",
+    ownershipLabel: "Operations cấp khi onboarding",
+    assignableFromIdentity: false,
     assignmentSummary:
-      "Người có quyền phân vai có thể gán trực tiếp cho người phụ trách bưu cục.",
+      "Tạo từ Operations > Workforce để gán bưu cục và hồ sơ nhân sự trong cùng một luồng.",
+    note: "Không tạo hoặc gán thủ công role này tại Identity. Hãy dùng luồng Thêm nhân sự trong Operations.",
   },
   WAREHOUSE_STAFF: {
     name: "Nhân viên kho",
     description:
       "Tiếp nhận, quét và xử lý kiện hàng cùng các công việc kho tại bưu cục.",
-    ownership: "IDENTITY",
-    ownershipLabel: "Quản trị viên cấp",
-    assignableFromIdentity: true,
+    ownership: "OPERATIONS",
+    ownershipLabel: "Operations cấp khi onboarding",
+    assignableFromIdentity: false,
     assignmentSummary:
-      "Người có quyền phân vai có thể gán trực tiếp cho nhân viên kho.",
+      "Tạo từ Operations > Workforce để có profile đầy đủ, hub membership và capacity ngay khi onboarding.",
+    note: "Không tạo hoặc gán thủ công role này tại Identity. Hãy dùng luồng Thêm nhân sự trong Operations.",
   },
   DRIVER: {
     name: "Nhân viên giao nhận",
     description:
       "Nhận công việc lấy hàng, vận chuyển, giao hàng và cập nhật vị trí khi làm nhiệm vụ.",
-    ownership: "IDENTITY",
-    ownershipLabel: "Quản trị viên cấp",
-    assignableFromIdentity: true,
+    ownership: "OPERATIONS",
+    ownershipLabel: "Operations cấp khi onboarding",
+    assignableFromIdentity: false,
     assignmentSummary:
-      "Người có quyền phân vai có thể gán trực tiếp cho nhân viên giao nhận.",
+      "Tạo từ Operations > Workforce để role DRIVER luôn gắn với workforce thực tế.",
+    note: "Không tạo hoặc gán thủ công role này tại Identity. Hãy dùng luồng Thêm nhân sự trong Operations.",
   },
   MERCHANT: {
     name: "Đối tác gửi hàng",
@@ -123,8 +127,11 @@ export const permissionLabels: Record<string, string> = {
   "shipments.create": "Tạo vận đơn",
   "shipments.update-own": "Sửa vận đơn của mình trước khi lấy hàng",
   "shipments.cancel-own": "Hủy vận đơn của mình",
+  "shipments.read-hub": "Xem vận đơn trong phạm vi bưu cục",
+  "shipments.exceptions.read": "Xem ngoại lệ vận đơn trong phạm vi",
   "shipments.exceptions.manage": "Xử lý ngoại lệ vận đơn",
   "shipments.weight.adjust": "Điều chỉnh khối lượng kiện hàng",
+  "shipments.cases.read": "Xem hồ sơ sự cố vận đơn",
   "shipments.cases.manage": "Quản lý hồ sơ sự cố vận đơn",
   "shipments.control-tower.read": "Theo dõi cảnh báo vận đơn",
   "shipments.admin.read": "Tra cứu toàn bộ vận đơn phục vụ quản trị",
@@ -149,13 +156,18 @@ export const permissionLabels: Record<string, string> = {
   "network.manage": "Quản lý bưu cục, vùng và tuyến vận chuyển",
   "pricing.read": "Xem bảng giá và quy tắc tính cước",
   "pricing.manage": "Quản lý bảng giá và quy tắc tính cước",
+  "operations.workforce.read": "Xem nhân sự vận hành trong phạm vi",
   "operations.workforce.manage": "Quản lý nhân sự vận hành",
+  "operations.assignments.read": "Xem công việc vận hành trong phạm vi",
   "operations.assignments.manage": "Điều phối công việc vận hành",
+  "operations.dispatch.manage": "Phân công công việc tại bưu cục",
+  "operations.hub.read": "Xem hoạt động tại bưu cục được giao",
   "operations.hub.manage": "Quản lý hoạt động tại bưu cục được giao",
   "scans.create": "Quét và ghi nhận kiện hàng",
   "identity.users.read": "Xem danh sách tài khoản",
   "identity.users.manage-profile": "Chỉnh sửa hồ sơ tài khoản",
   "identity.roles.read": "Xem vai trò và quyền hạn",
+  "identity.roles.manage": "Tạo và quản lý vai trò tùy chỉnh",
   "identity.users.create": "Tạo tài khoản",
   "identity.users.invite": "Gửi lời mời kích hoạt tài khoản",
   "identity.roles.assign": "Phân vai cho tài khoản",

@@ -96,7 +96,7 @@ export function CreateIdentityUser() {
     }
     if (!isIdentityAssignableRole(normalizedRole)) {
       setError(
-        "Vai trò Đối tác gửi hàng được đồng bộ sau khi hồ sơ đối tác được duyệt; không gán thủ công tại màn tài khoản.",
+        "Vai trò này được quản lý ở workspace nghiệp vụ riêng và không thể gán thủ công tại Identity.",
       );
       return;
     }
@@ -115,7 +115,7 @@ export function CreateIdentityUser() {
         avatarUrl: optionalText(form.get("avatarUrl")),
       });
 
-      toast.success("Đã tạo tài khoản và chuẩn bị lời mời kích hoạt.");
+      toast.success("Đã tạo tài khoản. Nhân viên dùng Quên mật khẩu tại trang đăng nhập để tự đặt mật khẩu bằng email vừa cấp.");
       router.push(`/identity/users/${created.userId}`);
       router.refresh();
     } catch (reason) {
@@ -234,16 +234,11 @@ export function CreateIdentityUser() {
                   className="h-10 w-full rounded-md border bg-background px-3 text-xs font-bold disabled:opacity-60"
                 >
                   <option value="">{rolesLoading ? "Đang tải vai trò..." : "Chọn vai trò"}</option>
-                  {roles.map((role) => {
+                  {roles.filter((role) => isIdentityAssignableRole(role.code)).map((role) => {
                     const presentation = rolePresentation(role.code, role);
                     return (
-                      <option
-                        key={role.id}
-                        value={role.code}
-                        disabled={!presentation.assignableFromIdentity}
-                      >
+                      <option key={role.id} value={role.code}>
                         {presentation.name}
-                        {!presentation.assignableFromIdentity ? " · đồng bộ tự động" : ""}
                       </option>
                     );
                   })}
@@ -269,10 +264,10 @@ export function CreateIdentityUser() {
               ) : null}
 
               <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
-                Sau khi tạo, hệ thống chuẩn bị thông tin kích hoạt tài khoản. Nếu cần gửi lại thư mời, dùng nút ở trang chi tiết tài khoản.
+                Sau khi tạo, nhân viên mở trang đăng nhập, chọn <Link href="/forgot-password" className="font-bold text-brand hover:underline">Quên mật khẩu / đặt mật khẩu lần đầu</Link> và nhập đúng email được cấp. Liên kết trong email giúp tự đặt mật khẩu và xác minh email. Bạn cũng có thể gửi thư mời ở trang chi tiết tài khoản.
               </div>
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">
-                Không dùng màn tài khoản để cấp vai trò Đối tác gửi hàng. Người dùng cần hoàn tất hồ sơ đối tác và được duyệt tại mục Đối tác; hệ thống sẽ đồng bộ vai trò này tự động.
+                Role nghiệp vụ được cấp tại đúng workspace sở hữu nó: <strong>Đối tác gửi hàng</strong> được đồng bộ sau duyệt Merchant; <strong>Tài xế, Nhân viên kho, Quản lý bưu cục và Quản lý vận hành</strong> được tạo tại <Link href="/operations/workforce" className="font-black text-brand hover:underline">Operations → Workforce</Link>. Tài khoản tự đăng ký ngoài hệ thống chỉ nhận role Khách hàng.
               </div>
             </CardContent>
           </Card>

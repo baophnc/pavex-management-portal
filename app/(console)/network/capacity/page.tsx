@@ -12,7 +12,7 @@ export default async function NetworkCapacityPage({
   const params = await searchParams;
   return (
     <NetworkCapacity
-      initialShipmentId={first(params.shipmentId)?.trim() ?? ""}
+      initialTrackingCode={first(params.trackingCode)?.trim() ?? ""}
       initialRouteRevision={first(params.routeRevision)?.trim() ?? ""}
     />
   );

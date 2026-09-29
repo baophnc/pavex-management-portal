@@ -35,7 +35,7 @@ export type GoodsCategory =
   | "HOUSEHOLD"
   | "FRAGILE_GOODS"
   | "OTHER";
-export type ParcelStatus = Exclude<ShipmentStatus, "PARTIALLY_DELIVERED">;
+export type ParcelStatus = Exclude<ShipmentStatus, "PARTIALLY_DELIVERED"> | "AT_TRANSIT_HUB";
 
 export type ShipmentAddress = {
   contactName: string;
@@ -81,6 +81,7 @@ export type ShipmentRouting = {
 };
 
 export type ShipmentParcel = {
+  id: string;
   code: string;
   sequence: number;
   description: string;
@@ -238,4 +239,318 @@ export const SHIPMENT_LIFECYCLE_STATUSES: ShipmentLifecycleStatus[] = [
   "ACTIVE",
   "COMPLETED",
   "CANCELLED",
+];
+
+export type ShipmentExceptionRequestKind = "RETURN" | "FORWARD" | "CANCELLATION";
+export type ShipmentExceptionRequestStatus =
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "REJECTED"
+  | "PROCESSING"
+  | "COMPLETED";
+
+export type ForwardRecipient = {
+  contactName: string;
+  contactPhone: string;
+  addressLine: string;
+  provinceCode: string;
+  wardCode: string;
+};
+
+export type ShipmentExceptionRequest = {
+  requestId: string;
+  kind: ShipmentExceptionRequestKind;
+  status: ShipmentExceptionRequestStatus;
+  reason: string;
+  requestedByUserId: string;
+  requestedAt: string;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  routingRequired: boolean;
+  forwardRecipient: ForwardRecipient | null;
+  completedByUserId: string | null;
+  completedAt: string | null;
+  version: number;
+};
+
+export type ShipmentWeightAdjustment = {
+  adjustmentId: string;
+  parcelId: string;
+  oldActualWeightKg: number;
+  newActualWeightKg: number;
+  oldChargeableWeightKg: number;
+  newChargeableWeightKg: number;
+  reason: string;
+  actorUserId: string;
+  hubId: string | null;
+  adjustedAt: string;
+  reviewCompleted: boolean;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+};
+
+export type ShipmentExceptionState = {
+  shipmentId: string;
+  trackingCode: string;
+  isOnHold: boolean;
+  holdReason: string | null;
+  holdActorUserId: string | null;
+  holdHubId: string | null;
+  heldAt: string | null;
+  hasPendingWeightReview: boolean;
+  returnRequest: ShipmentExceptionRequest | null;
+  forwardRequest: ShipmentExceptionRequest | null;
+  cancellationRequest: ShipmentExceptionRequest | null;
+  weightAdjustments: ShipmentWeightAdjustment[];
+};
+
+export type ShipmentHoldInput = {
+  reason: string;
+  hubId: string | null;
+};
+
+export type ShipmentExceptionReviewInput = {
+  approve: boolean;
+  note: string | null;
+};
+
+export type ShipmentExceptionCompleteInput = {
+  note: string | null;
+};
+
+export type ShipmentForwardInput = {
+  reason: string;
+  recipient: ForwardRecipient;
+};
+
+export type ShipmentWeightAdjustmentInput = {
+  parcelId: string;
+  actualWeightKg: number;
+  reason: string;
+  hubId: string | null;
+};
+
+export type ShipmentExceptionQueueKind =
+  | "RETURN"
+  | "FORWARD"
+  | "CANCELLATION"
+  | "WEIGHT_REVIEW";
+
+export type ShipmentExceptionQueueStatus =
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "PROCESSING"
+  | "PENDING_REVIEW"
+  | "REJECTED"
+  | "COMPLETED";
+
+export type ShipmentExceptionQueueItem = {
+  id: string;
+  shipmentId: string;
+  trackingCode: string;
+  kind: ShipmentExceptionQueueKind;
+  status: ShipmentExceptionQueueStatus;
+  reason: string;
+  requestedAt: string;
+  requestedByUserId: string;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
+  parcelId: string | null;
+  parcelCode: string | null;
+  hubId: string | null;
+  shipmentStatus: ShipmentStatus;
+  lifecycleStatus: ShipmentLifecycleStatus;
+  originHubCode: string;
+  originHubName: string;
+  destinationHubCode: string;
+  destinationHubName: string;
+  isOnHold: boolean;
+  holdReason: string | null;
+};
+
+export type ShipmentExceptionQueuePage = {
+  items: ShipmentExceptionQueueItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type ShipmentExceptionQueueSummary = {
+  pendingApproval: number;
+  approvedOrProcessing: number;
+  pendingWeightReview: number;
+  cancellationPending: number;
+  returnPending: number;
+  forwardPending: number;
+};
+
+export const SHIPMENT_EXCEPTION_QUEUE_KINDS: ShipmentExceptionQueueKind[] = [
+  "RETURN",
+  "FORWARD",
+  "CANCELLATION",
+  "WEIGHT_REVIEW",
+];
+
+export const SHIPMENT_EXCEPTION_QUEUE_STATUSES: ShipmentExceptionQueueStatus[] = [
+  "PENDING_APPROVAL",
+  "PENDING_REVIEW",
+  "APPROVED",
+  "PROCESSING",
+  "REJECTED",
+  "COMPLETED",
+];
+
+export type ShipmentCaseType = "PROBLEM_PARCEL" | "UNIDENTIFIED_PARCEL";
+export type ShipmentCaseStatus = "OPEN" | "ASSIGNED" | "INVESTIGATING" | "RESOLVED" | "CLOSED";
+export type ShipmentCaseSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export type ShipmentCaseEvent = {
+  id: string;
+  code: string;
+  description: string;
+  actorUserId: string;
+  occurredAt: string;
+  dataJson: string | null;
+};
+
+export type ShipmentCaseSummary = {
+  id: string;
+  caseNumber: string;
+  type: ShipmentCaseType;
+  status: ShipmentCaseStatus;
+  severity: ShipmentCaseSeverity;
+  hubId: string;
+  shipmentId: string | null;
+  trackingCode: string | null;
+  parcelId: string | null;
+  parcelCode: string | null;
+  externalBarcode: string | null;
+  title: string;
+  assignedToUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ShipmentCase = ShipmentCaseSummary & {
+  description: string;
+  reportedByUserId: string;
+  resolution: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  version: number;
+  events: ShipmentCaseEvent[];
+};
+
+export type ShipmentCasePage = {
+  items: ShipmentCaseSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type ShipmentCaseMonitoringSummary = {
+  totalActive: number;
+  open: number;
+  assigned: number;
+  investigating: number;
+  problemParcels: number;
+  unidentifiedParcels: number;
+  highOrCritical: number;
+  resolvedToday: number;
+};
+
+export type CreateProblemParcelCaseInput = {
+  shipmentId: string;
+  parcelId: string | null;
+  hubId: string;
+  severity: ShipmentCaseSeverity;
+  title: string;
+  description: string;
+};
+
+export type CreateUnidentifiedParcelCaseInput = {
+  hubId: string;
+  severity: ShipmentCaseSeverity;
+  title: string;
+  description: string;
+  externalBarcode: string | null;
+};
+
+export const SHIPMENT_CASE_TYPES: ShipmentCaseType[] = ["PROBLEM_PARCEL", "UNIDENTIFIED_PARCEL"];
+export const SHIPMENT_CASE_STATUSES: ShipmentCaseStatus[] = ["OPEN", "ASSIGNED", "INVESTIGATING", "RESOLVED", "CLOSED"];
+export const SHIPMENT_CASE_SEVERITIES: ShipmentCaseSeverity[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+
+export type ShipmentControlAlertType =
+  | "SENT_BUT_NOT_ARRIVED"
+  | "MISSING_ARRIVAL_SCAN"
+  | "ARRIVED_NOT_OUT_FOR_DELIVERY"
+  | "ROUTE_DEVIATION"
+  | "SHIPMENT_STUCK"
+  | "ESTIMATED_DELIVERY_OVERDUE"
+  | "CASE_OVERDUE"
+  | "EXCEPTION_OVERDUE"
+  | "SIGNATURE_WITHOUT_DELIVERY"
+  | "DELIVERED_WITHOUT_SIGNATURE";
+
+export type ShipmentControlAlertSeverity = "INFO" | "WARNING" | "CRITICAL";
+
+export type ShipmentControlTowerAlert = {
+  key: string;
+  type: ShipmentControlAlertType;
+  severity: ShipmentControlAlertSeverity;
+  shipmentId: string | null;
+  trackingCode: string | null;
+  parcelId: string | null;
+  parcelCode: string | null;
+  hubId: string;
+  routeLegId: string | null;
+  caseId: string | null;
+  caseNumber: string | null;
+  title: string;
+  description: string;
+  detectedAt: string;
+  dueAt: string | null;
+  overdueMinutes: number | null;
+  lastActivityAt: string | null;
+  shipmentPath: string | null;
+  casePath: string | null;
+};
+
+export type ShipmentControlTowerPage = {
+  items: ShipmentControlTowerAlert[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type ShipmentControlTowerSummary = {
+  total: number;
+  critical: number;
+  warning: number;
+  info: number;
+  byType: Record<ShipmentControlAlertType, number>;
+};
+
+export const SHIPMENT_CONTROL_ALERT_TYPES: ShipmentControlAlertType[] = [
+  "SENT_BUT_NOT_ARRIVED",
+  "MISSING_ARRIVAL_SCAN",
+  "ARRIVED_NOT_OUT_FOR_DELIVERY",
+  "ROUTE_DEVIATION",
+  "SHIPMENT_STUCK",
+  "ESTIMATED_DELIVERY_OVERDUE",
+  "CASE_OVERDUE",
+  "EXCEPTION_OVERDUE",
+  "SIGNATURE_WITHOUT_DELIVERY",
+  "DELIVERED_WITHOUT_SIGNATURE",
+];
+
+export const SHIPMENT_CONTROL_ALERT_SEVERITIES: ShipmentControlAlertSeverity[] = [
+  "INFO",
+  "WARNING",
+  "CRITICAL",
 ];

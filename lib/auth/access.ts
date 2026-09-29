@@ -4,6 +4,7 @@ export const MANAGEMENT_PERMISSIONS = [
   "identity.users.read",
   "identity.users.manage-profile",
   "identity.roles.read",
+  "identity.roles.manage",
   "identity.users.create",
   "identity.users.invite",
   "identity.roles.assign",
@@ -15,7 +16,21 @@ export const MANAGEMENT_PERMISSIONS = [
   "pricing.read",
   "pricing.manage",
   "shipments.admin.read",
+  "shipments.read-hub",
   "shipments.admin.manage",
+  "shipments.exceptions.read",
+  "shipments.exceptions.manage",
+  "shipments.weight.adjust",
+  "shipments.cases.read",
+  "shipments.cases.manage",
+  "shipments.control-tower.read",
+  "operations.workforce.manage",
+  "operations.workforce.read",
+  "operations.assignments.manage",
+  "operations.assignments.read",
+  "operations.dispatch.manage",
+  "operations.hub.read",
+  "operations.hub.manage",
 ] as const;
 
 export function hasPermission(
@@ -50,6 +65,63 @@ export function hasAnyRole(
   return roles.some((role) => hasRole(user, role));
 }
 
+const OPERATIONS_SCOPE_PERMISSIONS = [
+  "operations.assignments.read",
+  "operations.assignments.manage",
+  "operations.dispatch.manage",
+  "operations.hub.manage",
+] as const;
+
+export function canAccessOperations(user: CurrentUser | null | undefined) {
+  return hasAnyPermission(user, [
+    "operations.workforce.read",
+    "operations.workforce.manage",
+    "operations.dispatch.manage",
+    "operations.hub.read",
+    ...OPERATIONS_SCOPE_PERMISSIONS,
+  ]);
+}
+
+export function canAccessOperationsWorkforce(
+  user: CurrentUser | null | undefined,
+) {
+  return hasAnyPermission(user, [
+    "operations.workforce.read",
+    "operations.workforce.manage",
+    "operations.hub.manage",
+  ]);
+}
+
+export function canAccessOperationsAssignments(
+  user: CurrentUser | null | undefined,
+) {
+  return hasAnyPermission(user, OPERATIONS_SCOPE_PERMISSIONS);
+}
+
+export function canAccessShipmentCases(
+  user: CurrentUser | null | undefined,
+) {
+  return hasAnyPermission(user, ["shipments.cases.read", "shipments.cases.manage"]);
+}
+
+export function canAccessShipmentExceptionQueue(
+  user: CurrentUser | null | undefined,
+) {
+  return hasAnyPermission(user, [
+    "shipments.exceptions.read",
+    "shipments.exceptions.manage",
+  ]);
+}
+
+export function canAccessControlTower(
+  user: CurrentUser | null | undefined,
+) {
+  return (
+    hasPermission(user, "shipments.control-tower.read") &&
+    hasAnyPermission(user, OPERATIONS_SCOPE_PERMISSIONS)
+  );
+}
+
 export function canAccessManagement(user: CurrentUser | null | undefined) {
   return hasAnyPermission(user, MANAGEMENT_PERMISSIONS);
 }
@@ -82,6 +154,31 @@ export function canAccessManagementPath(
     return hasAnyPermission(user, ["pricing.read", "pricing.manage"]);
   }
 
+  if (pathname.startsWith("/operations/dispatch")) {
+    return canAccessOperationsAssignments(user);
+  }
+  if (pathname.startsWith("/operations/assignments")) {
+    return canAccessOperationsAssignments(user);
+  }
+  if (
+    pathname.startsWith("/operations/workforce") ||
+    pathname.startsWith("/operations/shifts")
+  ) {
+    return canAccessOperationsWorkforce(user);
+  }
+  if (pathname.startsWith("/operations")) {
+    return canAccessOperations(user);
+  }
+
+  if (pathname.startsWith("/shipments/exceptions")) {
+    return canAccessShipmentExceptionQueue(user);
+  }
+  if (pathname.startsWith("/shipments/cases")) {
+    return canAccessShipmentCases(user);
+  }
+  if (pathname.startsWith("/control-tower")) {
+    return canAccessControlTower(user);
+  }
   if (pathname.startsWith("/shipments")) {
     return hasPermission(user, "shipments.admin.read");
   }
