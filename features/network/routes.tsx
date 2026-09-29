@@ -31,7 +31,7 @@ export function NetworkRoutes({
           bullets: [
             "Tạo và chỉnh lịch chạy ngay trong tuyến trực tiếp.",
             "Hành trình ưu tiên chỉ ghép các tuyến đã tồn tại trong mạng lưới.",
-            "Backend vẫn giữ riêng tuyến, lịch chạy và hành trình ưu tiên; giao diện chỉ gom chúng theo cách người vận hành sử dụng.",
+            "Tuyến, lịch chạy và hành trình ưu tiên được quản lý riêng; màn này gom chúng lại để dễ theo dõi.",
           ],
         }}
       />

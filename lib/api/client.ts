@@ -61,7 +61,7 @@ export async function apiRequest<T = unknown>(
     });
   } catch {
     throw new ApiError(
-      "Không thể kết nối Management BFF.",
+      "Không thể kết nối máy chủ Pavex.",
       0,
       "management_bff_unavailable",
     );

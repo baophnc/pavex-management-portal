@@ -116,7 +116,7 @@ export function networkErrorMessage(reason: unknown, fallback: string) {
     const fieldMessage = fieldErrorMessage(reason);
     if (fieldMessage) return fieldMessage;
     if (reason.code && messages[reason.code]) return messages[reason.code];
-    if (reason.status === 0) return "Không thể kết nối Management BFF. Hãy kiểm tra web server rồi thử lại.";
+    if (reason.status === 0) return "Không thể kết nối máy chủ Pavex. Hãy kiểm tra mạng rồi thử lại.";
     if (reason.status === 401) return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
     if (reason.status === 403) return "Bạn không có quyền thực hiện thao tác này. Cần quyền quản lý mạng lưới.";
     if (reason.status === 404) return "Không tìm thấy dữ liệu cần thao tác. Hãy tải lại trang rồi thử lại.";

@@ -66,7 +66,7 @@ function asProfileDraft(profile: CurrentAccountProfile): ProfileDraft {
 
 function errorMessage(reason: unknown, fallback: string) {
   if (reason instanceof ApiError) {
-    if (reason.status === 0) return "Không thể kết nối Management BFF.";
+    if (reason.status === 0) return "Không thể kết nối máy chủ Pavex.";
     if (reason.status === 401) return "Phiên đăng nhập đã hết hạn.";
     if (reason.status === 403) return "Bạn không có quyền thực hiện thao tác này.";
     if (reason.status === 429) {
@@ -546,7 +546,7 @@ export function AccountSettings() {
               icon={KeyRoundIcon}
               eyebrow="Security"
               title="Đổi mật khẩu"
-              description="Backend yêu cầu mật khẩu mới từ 8 đến 128 ký tự và tự thu hồi toàn bộ refresh session sau khi đổi."
+              description="Mật khẩu mới dài 8–128 ký tự. Sau khi đổi, mọi phiên đăng nhập khác sẽ bị đăng xuất."
             />
           </CardHeader>
           <CardContent>
@@ -614,7 +614,7 @@ export function AccountSettings() {
             icon={LaptopIcon}
             eyebrow="Sessions"
             title="Phiên đăng nhập"
-            description="Danh sách refresh session còn hiệu lực. Backend hiện không trả session nào là thiết bị hiện tại, nên UI không suy đoán cờ current-session."
+            description="Các phiên đăng nhập còn hiệu lực. Hệ thống chưa nhận biết được phiên nào là thiết bị bạn đang dùng."
           />
           <Button
             variant="destructive"

@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         code: "management_backend_unavailable",
-        message: "Không thể kết nối backend Pavex.",
+        message: "Không thể kết nối máy chủ Pavex.",
       },
       { status: 502 },
     );

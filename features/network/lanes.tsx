@@ -391,7 +391,7 @@ export function NetworkLanes({ embedded = false }: { embedded?: boolean } = {}) 
         <Card className="h-fit 2xl:sticky 2xl:top-32">
           <CardHeader>
             <p className="text-sm font-black">{selected ? `${selected.fromHubName} → ${selected.toHubName}` : creating ? "Tạo tuyến vận chuyển" : "Chi tiết tuyến"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Khi tuyến đang hoạt động, backend có thể khóa điểm đi/đến; hãy ngừng hoạt động trước khi thay đổi cấu trúc tuyến.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Khi tuyến đang hoạt động, điểm đi/đến bị khoá; hãy ngừng hoạt động tuyến trước khi thay đổi cấu trúc.</p>
           </CardHeader>
           {!selected && !creating ? (
             <EmptyState title="Chọn một tuyến" description="Chọn tuyến để xem thông tin và quản lý lịch chạy." />
@@ -422,7 +422,7 @@ export function NetworkLanes({ embedded = false }: { embedded?: boolean } = {}) 
                 <FormField label="Khoảng cách (km)"><Input name="distanceKm" type="number" min="0.01" step="0.01" defaultValue={selected?.distanceKm ?? ""} disabled={!canManage} /></FormField>
                 <FormField label="Khối lượng đơn tối đa (kg)"><Input name="maxShipmentWeightKg" type="number" min="0.001" step="0.001" defaultValue={selected?.maxShipmentWeightKg ?? 30} disabled={!canManage} /></FormField>
                 {canManage ? <div className="sm:col-span-2 flex flex-wrap gap-2 border-t pt-4"><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}{selected ? "Lưu thay đổi" : "Tạo tuyến"}</Button>{selected ? <Button type="button" variant={selected.status === "ACTIVE" ? "destructive" : "outline"} disabled={saving || (selected.status === "INACTIVE" && !canActivateSelectedLane)} title={selected.status === "INACTIVE" && !canActivateSelectedLane ? "Tạo ít nhất một lịch chạy đang hoạt động trước khi kích hoạt tuyến." : undefined} onClick={() => setPendingStatus({ kind: "lane", lane: selected })}>{selected.status === "ACTIVE" ? "Ngừng hoạt động" : "Kích hoạt tuyến"}</Button> : null}</div> : null}
-                {selected?.status === "ACTIVE" ? <div className="sm:col-span-2"><ActionPolicyNote>Điểm đi, điểm đến và phương thức vận chuyển đang được khóa đúng theo rule backend. Muốn đổi cấu trúc tuyến, hãy ngừng hoạt động tuyến trước.</ActionPolicyNote></div> : null}
+                {selected?.status === "ACTIVE" ? <div className="sm:col-span-2"><ActionPolicyNote>Điểm đi, điểm đến và phương thức vận chuyển đang bị khoá vì tuyến còn hoạt động. Muốn đổi cấu trúc tuyến, hãy ngừng hoạt động tuyến trước.</ActionPolicyNote></div> : null}
                 {selected?.status === "INACTIVE" && !canActivateSelectedLane ? <div className="sm:col-span-2"><ActionPolicyNote>Chưa thể kích hoạt: tuyến cần ít nhất một lịch chạy đang hoạt động và còn hiệu lực.</ActionPolicyNote></div> : null}
               </form>
 
@@ -457,7 +457,7 @@ export function NetworkLanes({ embedded = false }: { embedded?: boolean } = {}) 
                 </section>
               ) : null}
 
-              {selected ? <ActionPolicyNote>Tuyến và lịch chạy không có API xóa cứng. Dùng “Ngừng hoạt động” để giữ lịch sử, audit và các tham chiếu vận hành.</ActionPolicyNote> : null}
+              {selected ? <ActionPolicyNote>Tuyến và lịch chạy không xoá được. Dùng “Ngừng hoạt động” để vẫn giữ lịch sử và nhật ký thay đổi.</ActionPolicyNote> : null}
               {selected ? <p className="text-[0.65rem] text-muted-foreground">Cập nhật {formatDateTime(selected.updatedAt)}</p> : null}
             </CardContent>
           )}
@@ -476,12 +476,12 @@ export function NetworkLanes({ embedded = false }: { embedded?: boolean } = {}) 
         description={
           pendingStatus?.kind === "lane"
             ? pendingStatus.lane.status === "ACTIVE"
-              ? `Ngừng tuyến ${pendingStatus.lane.fromHubName} → ${pendingStatus.lane.toHubName}. Backend sẽ chặn nếu còn giữ chỗ sức chứa hoặc hành trình ưu tiên đang hoạt động sử dụng tuyến này.`
+              ? `Ngừng tuyến ${pendingStatus.lane.fromHubName} → ${pendingStatus.lane.toHubName}. Không ngừng được nếu tuyến còn chỗ đã giữ hoặc đang nằm trong hành trình ưu tiên đang hoạt động.`
               : `Kích hoạt tuyến ${pendingStatus.lane.fromHubName} → ${pendingStatus.lane.toHubName}. Hai điểm đầu/cuối và ít nhất một lịch chạy phải đang hoạt động.`
             : pendingStatus?.kind === "schedule"
               ? pendingStatus.schedule.status === "ACTIVE"
-                ? "Lịch này sẽ ngừng nhận hành trình mới. Backend sẽ chặn nếu còn giữ chỗ tương lai hoặc đây là lịch khả dụng cuối cùng của tuyến đang hoạt động."
-                : "Lịch chạy sẽ được đưa trở lại sử dụng. Backend sẽ kiểm tra trùng lịch trước khi kích hoạt."
+                ? "Lịch này sẽ ngừng nhận hành trình mới. Không ngừng được nếu lịch còn chỗ đã giữ cho các chuyến sắp tới, hoặc đây là lịch duy nhất còn lại của tuyến đang hoạt động."
+                : "Lịch chạy sẽ được đưa trở lại sử dụng. Hệ thống sẽ kiểm tra trùng lịch trước khi kích hoạt."
               : ""
         }
         confirmLabel={
