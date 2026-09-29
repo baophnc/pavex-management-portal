@@ -38,6 +38,7 @@ import {
   PricingField,
   PricingMoneyInput,
   PricingPageHeader,
+  roundingOf,
   selectClassName,
 } from "@/features/pricing/ui";
 
@@ -517,7 +518,8 @@ export function PricingSimulator() {
                       ["Phụ phí khu vực", option.areaSurcharge],
                       ["Phí dịch vụ thu hộ", option.codFee],
                       ["Phí bảo hiểm", option.insuranceFee],
-                    ].map(([label, value]) => (
+                      ["Làm tròn lên 1.000 ₫", roundingOf(option.total, option)],
+                    ].filter(([label, value]) => label !== "Làm tròn lên 1.000 ₫" || value !== 0).map(([label, value]) => (
                       <div key={String(label)} className="flex justify-between gap-3">
                         <span className="text-muted-foreground">{String(label)}</span>
                         <strong>{money(Number(value))}</strong>

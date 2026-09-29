@@ -4,7 +4,9 @@ const messages: Record<string, string> = {
   active_rate_plan_not_found: "Chưa có bảng giá đang áp dụng cho thời điểm hiện tại.",
   active_rate_plan_ambiguous: "Có nhiều bảng giá cùng áp dụng tại thời điểm này. Hãy kiểm tra lại khoảng hiệu lực.",
   multiple_active_rate_plans: "Có nhiều bảng giá đang áp dụng chồng lấn thời gian.",
-  active_rate_plan_overlap: "Khoảng hiệu lực của bảng giá này đang chồng lấn một bảng giá đã áp dụng. Hãy ngừng hoặc đặt ngày kết thúc cho bảng giá cũ trước.",
+  active_rate_plan_overlap: "Khoảng hiệu lực của bảng giá này đang chồng lấn một bảng giá đã áp dụng. Hãy tải lại trang rồi áp dụng lại để thay thế bảng giá cũ.",
+  rate_plan_replacement_gap: "Bảng giá mới kết thúc sớm hơn bảng giá đang áp dụng, sau đó sẽ không còn bảng giá nào. Hãy bỏ hoặc lùi ngày kết thúc của bảng giá mới.",
+  rate_plan_replacement_starts_later: "Có bảng giá đã lên lịch bắt đầu sau thời điểm này nên không thể thay thế. Hãy ngừng bảng giá đã lên lịch đó trước.",
   rate_plan_not_found: "Không tìm thấy bảng giá.",
   rate_plan_revision_exists: "Mã bảng giá và số phiên bản này đã tồn tại.",
   rate_plan_immutable: "Chỉ bản nháp mới được sửa. Hãy tạo phiên bản mới từ bảng giá đang áp dụng.",
@@ -21,6 +23,8 @@ const messages: Record<string, string> = {
   location_required: "Vui lòng chọn đầy đủ tỉnh/thành và xã/phường của điểm gửi, điểm nhận.",
   invalid_location: "Địa chỉ không hợp lệ theo danh mục hoặc không khớp tỉnh/thành đã chọn.",
   location_not_covered: "Điểm gửi hoặc nhận chưa nằm trong phạm vi mạng lưới đang phục vụ.",
+  origin_not_covered: "Điểm gửi chưa nằm trong phạm vi mạng lưới đang phục vụ.",
+  destination_not_covered: "Điểm nhận chưa nằm trong phạm vi mạng lưới đang phục vụ.",
   network_authentication_failed: "Dịch vụ tính cước không xác thực được với dịch vụ mạng lưới.",
   network_authorization_failed: "Dịch vụ mạng lưới từ chối yêu cầu tính cước.",
   network_invalid_response: "Dịch vụ mạng lưới trả dữ liệu không hợp lệ cho việc tính cước.",
@@ -43,7 +47,7 @@ const messages: Record<string, string> = {
 export function pricingErrorMessage(reason: unknown, fallback = "Thao tác giá cước thất bại.") {
   if (reason instanceof ApiError) {
     if (reason.code && messages[reason.code]) return messages[reason.code];
-    if (reason.status === 0) return "Không thể kết nối Management BFF.";
+    if (reason.status === 0) return "Không thể kết nối máy chủ Pavex.";
     if (reason.status === 403) return "Bạn không có quyền thực hiện thao tác này.";
     if (reason.status === 401) return "Phiên đăng nhập đã hết hạn.";
     if (reason.status === 429) {

@@ -8,6 +8,7 @@ import {
   RefreshCwIcon,
   SaveIcon,
   Trash2Icon,
+  Undo2Icon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -33,11 +34,13 @@ import type {
   RatePlan,
   RatePlanPayload,
   RatePlanStatus,
+  RateRule,
   RateRulePayload,
   ServiceLevel,
 } from "@/features/pricing/contracts";
 import {
   pricingZoneLabel,
+  ratePlanPhase,
   serviceLevelLabel,
   pricingZones,
   serviceLevels,
@@ -53,7 +56,9 @@ import {
   PricingLoading,
   PricingMoneyInput,
   PricingPageHeader,
+  PricingPercentInput,
   PricingStatusBadge,
+  thousandHint,
 } from "@/features/pricing/ui";
 import { cn } from "@/lib/utils";
 
@@ -127,55 +132,105 @@ function ruleOf(plan: RatePlan, level: ServiceLevel, zone: PricingZone) {
   return plan.rules.find((rule) => rule.serviceLevel === level && rule.pricingZone === zone) ?? null;
 }
 
-function RuleEditor({
+const ruleColumns: Array<{ field: keyof RateRulePayload; label: string; money?: boolean; min?: number; step?: number }> = [
+  { field: "baseFee", label: "Phí cơ bản", money: true },
+  { field: "includedWeightKg", label: "Bao gồm đến (kg)", min: 0, step: 0.1 },
+  { field: "additionalWeightStepKg", label: "Mỗi bước cân thêm (kg)", min: 0.01, step: 0.1 },
+  { field: "additionalWeightStepFee", label: "Phí mỗi bước cân", money: true },
+  { field: "estimatedMinDays", label: "Giao sớm nhất (ngày)", min: 0, step: 1 },
+  { field: "estimatedMaxDays", label: "Giao chậm nhất (ngày)", min: 0, step: 1 },
+];
+
+const ruleSlots = serviceLevels.flatMap((level) => pricingZones.map((zone) => ({ level, zone, key: ruleKey(level, zone) })));
+
+function rulePayload(rule: RateRule): RateRulePayload {
+  return {
+    baseFee: rule.baseFee,
+    includedWeightKg: rule.includedWeightKg,
+    additionalWeightStepKg: rule.additionalWeightStepKg,
+    additionalWeightStepFee: rule.additionalWeightStepFee,
+    estimatedMinDays: rule.estimatedMinDays,
+    estimatedMaxDays: rule.estimatedMaxDays,
+  };
+}
+
+function savedDrafts(plan: RatePlan): Record<string, RateRulePayload> {
+  return Object.fromEntries(ruleSlots.map(({ level, zone, key }) => {
+    const existing = ruleOf(plan, level, zone);
+    return [key, existing ? rulePayload(existing) : emptyRule];
+  }));
+}
+
+/** All 6 rules side by side, so a price change across zones is edited and saved in one go. */
+function RuleTable({
   plan,
-  level,
-  zone,
   canManage,
   onSaved,
 }: {
   plan: RatePlan;
-  level: ServiceLevel;
-  zone: PricingZone;
   canManage: boolean;
   onSaved: (plan: RatePlan) => void;
 }) {
-  const existing = ruleOf(plan, level, zone);
-  const [form, setForm] = useState<RateRulePayload>(() => existing ? {
-    baseFee: existing.baseFee,
-    includedWeightKg: existing.includedWeightKg,
-    additionalWeightStepKg: existing.additionalWeightStepKg,
-    additionalWeightStepFee: existing.additionalWeightStepFee,
-    estimatedMinDays: existing.estimatedMinDays,
-    estimatedMaxDays: existing.estimatedMaxDays,
-  } : emptyRule);
+  const [drafts, setDrafts] = useState(() => savedDrafts(plan));
+  // Missing rules only count as changed once edited, so untouched defaults are never saved as a price.
+  const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
   const [saving, setSaving] = useState(false);
   const editable = canManage && plan.status === "DRAFT";
 
-  const save = async () => {
-    if (form.estimatedMaxDays < form.estimatedMinDays) {
-      toast.error("Ngày giao tối đa phải lớn hơn hoặc bằng ngày giao tối thiểu.");
+  const changed = ruleSlots.filter(({ level, zone, key }) => {
+    const existing = ruleOf(plan, level, zone);
+    return existing
+      ? ruleColumns.some(({ field }) => existing[field] !== drafts[key][field])
+      : touched.has(key);
+  });
+
+  const update = (key: string, field: keyof RateRulePayload, value: number) => {
+    setDrafts((current) => ({ ...current, [key]: { ...current[key], [field]: value } }));
+    setTouched((current) => new Set(current).add(key));
+  };
+
+  const saveAll = async () => {
+    const backwards = changed.find(({ key }) => drafts[key].estimatedMaxDays < drafts[key].estimatedMinDays);
+    if (backwards) {
+      toast.error(`${serviceLevelLabel(backwards.level)} · ${pricingZoneLabel(backwards.zone)}: ngày giao chậm nhất phải lớn hơn hoặc bằng ngày giao sớm nhất.`);
       return;
     }
+    const noStep = changed.find(({ key }) => !(drafts[key].additionalWeightStepKg > 0));
+    if (noStep) {
+      toast.error(`${serviceLevelLabel(noStep.level)} · ${pricingZoneLabel(noStep.zone)}: bước cân thêm phải lớn hơn 0 kg.`);
+      return;
+    }
+
     setSaving(true);
+    let latest: RatePlan | null = null;
+    let saved = 0;
     try {
-      const next = await upsertRateRule(plan.id, level, zone, form);
-      onSaved(next);
-      toast.success(`Đã lưu ${serviceLevelLabel(level)} · ${pricingZoneLabel(zone)}.`);
+      // One request per rule; stop at the first failure so the admin sees exactly what is left.
+      for (const { level, zone, key } of changed) {
+        latest = await upsertRateRule(plan.id, level, zone, drafts[key]);
+        saved += 1;
+      }
+      setTouched(new Set());
+      toast.success(`Đã lưu ${saved} quy tắc giá.`);
     } catch (reason) {
-      toast.error(pricingErrorMessage(reason, "Không thể lưu quy tắc giá."));
+      const prefix = saved ? `Đã lưu ${saved}/${changed.length} quy tắc. ` : "";
+      toast.error(prefix + pricingErrorMessage(reason, "Không thể lưu quy tắc giá."));
     } finally {
+      if (latest) onSaved(latest);
       setSaving(false);
     }
   };
 
-  const remove = async () => {
-    if (!existing) return;
+  const remove = async (level: ServiceLevel, zone: PricingZone, key: string) => {
     setSaving(true);
     try {
-      const next = await deleteRateRule(plan.id, level, zone);
-      onSaved(next);
-      setForm(emptyRule);
+      onSaved(await deleteRateRule(plan.id, level, zone));
+      setDrafts((current) => ({ ...current, [key]: emptyRule }));
+      setTouched((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
       toast.success("Đã xóa quy tắc khỏi bản nháp.");
     } catch (reason) {
       toast.error(pricingErrorMessage(reason, "Không thể xóa quy tắc giá."));
@@ -185,26 +240,84 @@ function RuleEditor({
   };
 
   return (
-    <Card className={cn("overflow-hidden", !existing && "border-dashed")}>
-      <div className="flex items-start justify-between gap-3 border-b bg-muted/25 px-4 py-3">
-        <div>
-          <p className="text-sm font-black">{serviceLevelLabel(level)}</p>
-          <p className="mt-0.5 text-[0.68rem] text-muted-foreground">{pricingZoneLabel(zone)}</p>
-        </div>
-        <span className={cn("rounded-full border px-2 py-1 text-[0.6rem] font-black", existing ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300")}>{existing ? "Đã cấu hình" : "Còn thiếu"}</span>
-      </div>
-      <div className="grid gap-3 p-4 sm:grid-cols-2">
-        <PricingField label="Phí cơ bản"><PricingMoneyInput disabled={!editable || saving} value={form.baseFee} onValueChange={(value) => setForm((current) => ({ ...current, baseFee: value }))} /></PricingField>
-        <PricingField label="Bao gồm đến (kg)"><Input type="number" min={0} step={0.1} disabled={!editable || saving} value={form.includedWeightKg} onChange={(event) => setForm((value) => ({ ...value, includedWeightKg: Number(event.target.value) }))} /></PricingField>
-        <PricingField label="Mỗi bước cân thêm (kg)"><Input type="number" min={0.01} step={0.1} disabled={!editable || saving} value={form.additionalWeightStepKg} onChange={(event) => setForm((value) => ({ ...value, additionalWeightStepKg: Number(event.target.value) }))} /></PricingField>
-        <PricingField label="Phí mỗi bước cân"><PricingMoneyInput disabled={!editable || saving} value={form.additionalWeightStepFee} onValueChange={(value) => setForm((current) => ({ ...current, additionalWeightStepFee: value }))} /></PricingField>
-        <PricingField label="Giao sớm nhất (ngày)"><Input type="number" min={0} step={1} disabled={!editable || saving} value={form.estimatedMinDays} onChange={(event) => setForm((value) => ({ ...value, estimatedMinDays: Number(event.target.value) }))} /></PricingField>
-        <PricingField label="Giao chậm nhất (ngày)"><Input type="number" min={0} step={1} disabled={!editable || saving} value={form.estimatedMaxDays} onChange={(event) => setForm((value) => ({ ...value, estimatedMaxDays: Number(event.target.value) }))} /></PricingField>
+    <Card className="overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[880px] text-xs">
+          <thead className="bg-muted/35 text-left text-[0.62rem] font-black uppercase tracking-[0.08em] text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2.5">Dịch vụ · vùng</th>
+              {ruleColumns.map((column) => <th key={column.field} className="px-2 py-2.5">{column.label}</th>)}
+              {editable ? <th className="w-10 px-2 py-2.5"><span className="sr-only">Xóa</span></th> : null}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {ruleSlots.map(({ level, zone, key }) => {
+              const existing = ruleOf(plan, level, zone);
+              const draft = drafts[key];
+              const rowChanged = changed.some((item) => item.key === key);
+              return (
+                <tr key={key} className={cn(rowChanged && "bg-brand/[0.04]")}>
+                  <td className="px-3 py-2.5 align-top">
+                    <p className="font-black">{serviceLevelLabel(level)}</p>
+                    <p className="mt-0.5 text-[0.65rem] text-muted-foreground">{pricingZoneLabel(zone)}</p>
+                    <span className={cn(
+                      "mt-1.5 inline-flex rounded-full border px-2 py-0.5 text-[0.58rem] font-black",
+                      rowChanged ? "border-brand/25 bg-brand/10 text-brand"
+                        : existing ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                    )}>
+                      {rowChanged ? "Chưa lưu" : existing ? "Đã cấu hình" : "Còn thiếu"}
+                    </span>
+                  </td>
+                  {ruleColumns.map((column) => (
+                    <td key={column.field} className="px-2 py-2.5 align-top">
+                      {column.money ? (
+                        <>
+                          <PricingMoneyInput disabled={!editable || saving} value={draft[column.field]} onValueChange={(value) => update(key, column.field, value)} />
+                          <div className="mt-1 text-[0.6rem] leading-4">{thousandHint(draft[column.field])}</div>
+                        </>
+                      ) : (
+                        <Input
+                          type="number"
+                          min={column.min}
+                          step={column.step}
+                          disabled={!editable || saving}
+                          value={draft[column.field]}
+                          className="text-right tabular-nums"
+                          onChange={(event) => update(key, column.field, Number(event.target.value))}
+                        />
+                      )}
+                    </td>
+                  ))}
+                  {editable ? (
+                    <td className="px-2 py-2.5 align-top">
+                      {existing ? (
+                        <Button variant="ghost" size="icon" title="Xóa quy tắc" aria-label={`Xóa quy tắc ${serviceLevelLabel(level)} · ${pricingZoneLabel(zone)}`} disabled={saving} onClick={() => void remove(level, zone, key)}>
+                          <Trash2Icon className="size-3.5" />
+                        </Button>
+                      ) : null}
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
       {editable ? (
-        <div className="flex justify-end gap-2 border-t px-4 py-3">
-          {existing ? <Button variant="ghost" size="sm" disabled={saving} onClick={() => void remove()}><Trash2Icon className="size-3.5" />Xóa quy tắc</Button> : null}
-          <Button size="sm" disabled={saving} onClick={() => void save()}>{saving ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : <SaveIcon className="size-3.5" />}Lưu quy tắc</Button>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            {changed.length ? `${changed.length} quy tắc có thay đổi chưa lưu.` : "Không có thay đổi chưa lưu."}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={!changed.length || saving} onClick={() => { setDrafts(savedDrafts(plan)); setTouched(new Set()); }}>
+              <Undo2Icon className="size-3.5" />Hoàn tác
+            </Button>
+            <Button size="sm" disabled={!changed.length || saving} onClick={() => void saveAll()}>
+              {saving ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : <SaveIcon className="size-3.5" />}
+              {changed.length > 1 ? `Lưu ${changed.length} quy tắc` : "Lưu quy tắc"}
+            </Button>
+          </div>
         </div>
       ) : null}
     </Card>
@@ -214,6 +327,9 @@ function RuleEditor({
 export function PricingRatePlans() {
   const { hasPermission } = useAccess();
   const canManage = hasPermission("pricing.manage");
+  const [now, setNow] = useState(0);
+  const [activePlans, setActivePlans] = useState<RatePlan[] | null>(null);
+  const [activePlansError, setActivePlansError] = useState<string | null>(null);
   const [plans, setPlans] = useState<RatePlan[]>([]);
   const [selected, setSelected] = useState<RatePlan | null>(null);
   const selectedIdRef = useRef<string | null>(null);
@@ -232,6 +348,7 @@ export function PricingRatePlans() {
     getRatePlans(status)
       .then((items) => {
         if (!active) return;
+        setNow(Date.now());
         setPlans(items);
         const selectedId = selectedIdRef.current;
         const next = selectedId
@@ -299,13 +416,39 @@ export function PricingRatePlans() {
     }
   };
 
+  const openActivate = () => {
+    setDialog("activate");
+    setActivePlans(null);
+    setActivePlansError(null);
+    getRatePlans("ACTIVE")
+      .then((items) => {
+        setNow(Date.now());
+        setActivePlans(items);
+      })
+      .catch((reason) => setActivePlansError(pricingErrorMessage(reason, "Không thể kiểm tra bảng giá đang áp dụng.")));
+  };
+
+  const handover = selected && activePlans ? planHandover(selected, activePlans, now) : null;
+  // Activation uses the saved window, so an edited-but-unsaved start/end would surprise the admin.
+  const unsavedWindow = Boolean(selected) && (
+    !sameInstant(policy.effectiveFrom, selected?.effectiveFrom ?? null) ||
+    !sameInstant(policy.effectiveTo, selected?.effectiveTo ?? null)
+  );
+
   const runLifecycle = async (reason: string) => {
     if (!selected || !dialog) return;
     setSaving(true);
     try {
       if (dialog === "activate") {
-        replacePlan(await activateRatePlan(selected.id, reason));
-        toast.success("Bảng giá đã bắt đầu áp dụng.");
+        const replacing = Boolean(handover?.replaces.length);
+        const next = await activateRatePlan(selected.id, reason, replacing);
+        replacePlan(next);
+        setNow(Date.now());
+        // The replaced plan changed too; reload so its new end time and status show.
+        if (replacing) setRefreshKey((value) => value + 1);
+        toast.success(handover?.immediate === false
+          ? `Đã lên lịch áp dụng lúc ${dateTime(next.effectiveFrom)}${replacing ? "; bảng giá cũ sẽ kết thúc đúng lúc đó" : ""}.`
+          : replacing ? "Đã áp dụng bảng giá mới và thay thế bảng giá cũ." : "Bảng giá đã bắt đầu áp dụng.");
       } else if (dialog === "retire") {
         replacePlan(await retireRatePlan(selected.id, reason));
         toast.success("Đã ngừng áp dụng bảng giá.");
@@ -347,7 +490,7 @@ export function PricingRatePlans() {
         description="Quản lý chính sách giá theo phiên bản. Bảng giá đang áp dụng là bất biến; mọi thay đổi nên được chuẩn bị ở một bản nháp mới rồi mới kích hoạt."
         help={{
           description: "Một bảng giá chứa chính sách chung và 6 quy tắc giá. Chỉ bản nháp được sửa để mức cước đã tính trước đó không bị thay đổi ngược về sau.",
-          bullets: ["Đủ 6 quy tắc trước khi kích hoạt.", "Không để hai bảng giá đang áp dụng chồng lấn thời gian.", "Tạo phiên bản mới từ bảng giá cũ để thay đổi an toàn."],
+          bullets: ["Đủ 6 quy tắc trước khi kích hoạt.", "Đổi giá: tạo phiên bản mới rồi bấm “Bắt đầu áp dụng”. Bảng giá cũ tự kết thúc đúng lúc bảng giá mới bắt đầu, không cần ngừng trước.", "Đặt “Bắt đầu hiệu lực” ở tương lai để lên lịch đổi giá."],
         }}
         actions={<><Button variant="outline" onClick={() => { setLoading(true); setRefreshKey((value) => value + 1); }}><RefreshCwIcon className="size-4" />Làm mới</Button>{canManage ? <Button onClick={() => setCreateOpen(true)}><PlusIcon className="size-4" />Tạo bảng giá</Button> : null}</>}
       />
@@ -367,7 +510,7 @@ export function PricingRatePlans() {
           <div className="grid content-start gap-2">
             {plans.length ? plans.map((plan) => (
               <button key={plan.id} type="button" className={cn("w-full rounded-xl border bg-card p-4 text-left transition hover:border-brand/30", selected?.id === plan.id && "border-brand/40 ring-2 ring-brand/10")} onClick={() => selectPlan(plan)}>
-                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{plan.name}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">Phiên bản {plan.revision} · cập nhật {dateTime(plan.updatedAt)}</p></div><PricingStatusBadge status={plan.status} /></div>
+                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{plan.name}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">Phiên bản {plan.revision} · cập nhật {dateTime(plan.updatedAt)}</p></div><PricingStatusBadge status={plan.status} phase={ratePlanPhase(plan, now)} /></div>
                 <div className="mt-3 flex items-center justify-between border-t pt-3 text-[0.68rem]"><span>{plan.ruleCount}/6 quy tắc</span><span className="text-muted-foreground">{plan.quoteTtlMinutes} phút hiệu lực</span></div>
               </button>
             )) : <Card className="p-5 text-sm text-muted-foreground">Chưa có bảng giá phù hợp bộ lọc.</Card>}
@@ -378,12 +521,12 @@ export function PricingRatePlans() {
               <Card className="overflow-hidden">
                 <div className="flex flex-col gap-3 border-b bg-muted/25 p-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black">{selected.name}</h2><PricingStatusBadge status={selected.status} /><span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">Phiên bản {selected.revision}</span></div>
+                    <div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black">{selected.name}</h2><PricingStatusBadge status={selected.status} phase={ratePlanPhase(selected, now)} /><span className="rounded-full border px-2 py-1 text-[0.62rem] font-black">Phiên bản {selected.revision}</span></div>
                     <p className="mt-2 text-xs text-muted-foreground">Hiệu lực: {dateTime(selected.effectiveFrom)} → {dateTime(selected.effectiveTo)}</p>
                   </div>
                   {canManage ? <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={() => setDialog("revision")}><CopyPlusIcon className="size-3.5" />Tạo phiên bản mới</Button>
-                    {selected.status === "DRAFT" ? <Button size="sm" disabled={missingRules > 0} title={missingRules > 0 ? `Còn thiếu ${missingRules} quy tắc` : undefined} onClick={() => setDialog("activate")}>Bắt đầu áp dụng</Button> : null}
+                    {selected.status === "DRAFT" ? <Button size="sm" disabled={missingRules > 0} title={missingRules > 0 ? `Còn thiếu ${missingRules} quy tắc` : undefined} onClick={openActivate}>Bắt đầu áp dụng</Button> : null}
                     {selected.status === "ACTIVE" ? <Button variant="outline" size="sm" onClick={() => setDialog("retire")}><ArchiveIcon className="size-3.5" />Ngừng áp dụng</Button> : null}
                     {selected.status === "DRAFT" ? <Button variant="destructive" size="sm" onClick={() => setDialog("delete")}><Trash2Icon className="size-3.5" />Xóa bản nháp</Button> : null}
                   </div> : null}
@@ -395,14 +538,14 @@ export function PricingRatePlans() {
                   <PricingField label="Kết thúc hiệu lực"><Input type="datetime-local" disabled={!editable || saving} value={toLocalDateTime(policy.effectiveTo)} onChange={(event) => setPolicy((value) => ({ ...value, effectiveTo: fromLocalDateTime(event.target.value) }))} /></PricingField>
                   <PricingField label="Kết quả tính cước có hiệu lực (phút)"><Input type="number" min={1} max={240} disabled={!editable || saving} value={policy.quoteTtlMinutes} onChange={(event) => setPolicy((value) => ({ ...value, quoteTtlMinutes: Number(event.target.value) }))} /></PricingField>
                   <PricingField label="Hệ số khối lượng quy đổi"><Input type="number" min={100} step={100} disabled={!editable || saving} value={policy.volumetricDivisor} onChange={(event) => setPolicy((value) => ({ ...value, volumetricDivisor: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="Phụ phí mỗi đầu vùng xa"><PricingMoneyInput disabled={!editable || saving} value={policy.remoteEndpointSurcharge} onValueChange={(value) => setPolicy((current) => ({ ...current, remoteEndpointSurcharge: value }))} /></PricingField>
-                  <PricingField label="Phụ phí hải đảo" hint="Nhập dạng 0.2 = 20%"><Input type="number" min={0} max={1} step={0.01} disabled={!editable || saving} value={policy.islandTransportRate} onChange={(event) => setPolicy((value) => ({ ...value, islandTransportRate: Number(event.target.value) }))} /></PricingField>
+                  <PricingField label="Phụ phí mỗi đầu vùng xa" hint={thousandHint(policy.remoteEndpointSurcharge)}><PricingMoneyInput disabled={!editable || saving} value={policy.remoteEndpointSurcharge} onValueChange={(value) => setPolicy((current) => ({ ...current, remoteEndpointSurcharge: value }))} /></PricingField>
+                  <PricingField label="Phụ phí hải đảo" hint="Phần trăm cộng thêm trên cước vận chuyển."><PricingPercentInput disabled={!editable || saving} value={policy.islandTransportRate} onValueChange={(value) => setPolicy((current) => ({ ...current, islandTransportRate: value }))} /></PricingField>
                   <PricingField label="Miễn phí thu hộ đến"><PricingMoneyInput disabled={!editable || saving} value={policy.codFreeThreshold} onValueChange={(value) => setPolicy((current) => ({ ...current, codFreeThreshold: value }))} /></PricingField>
-                  <PricingField label="Tỷ lệ phí thu hộ" hint="Nhập dạng 0.005 = 0,5%"><Input type="number" min={0} max={1} step={0.001} disabled={!editable || saving} value={policy.codRate} onChange={(event) => setPolicy((value) => ({ ...value, codRate: Number(event.target.value) }))} /></PricingField>
-                  <PricingField label="Phí thu hộ tối thiểu"><PricingMoneyInput disabled={!editable || saving} value={policy.codMinimumFee} onValueChange={(value) => setPolicy((current) => ({ ...current, codMinimumFee: value }))} /></PricingField>
+                  <PricingField label="Tỷ lệ phí thu hộ" hint="Phần trăm trên số tiền thu hộ vượt ngưỡng miễn phí."><PricingPercentInput disabled={!editable || saving} value={policy.codRate} onValueChange={(value) => setPolicy((current) => ({ ...current, codRate: value }))} /></PricingField>
+                  <PricingField label="Phí thu hộ tối thiểu" hint={thousandHint(policy.codMinimumFee)}><PricingMoneyInput disabled={!editable || saving} value={policy.codMinimumFee} onValueChange={(value) => setPolicy((current) => ({ ...current, codMinimumFee: value }))} /></PricingField>
                   <PricingField label="Số tiền thu hộ tối đa"><PricingMoneyInput disabled={!editable || saving} value={policy.maximumCod} onValueChange={(value) => setPolicy((current) => ({ ...current, maximumCod: value }))} /></PricingField>
                   <PricingField label="Bảo hiểm miễn phí đến"><PricingMoneyInput disabled={!editable || saving} value={policy.insuranceFreeThreshold} onValueChange={(value) => setPolicy((current) => ({ ...current, insuranceFreeThreshold: value }))} /></PricingField>
-                  <PricingField label="Tỷ lệ bảo hiểm" hint="Nhập dạng 0.005 = 0,5%"><Input type="number" min={0} max={1} step={0.001} disabled={!editable || saving} value={policy.insuranceRate} onChange={(event) => setPolicy((value) => ({ ...value, insuranceRate: Number(event.target.value) }))} /></PricingField>
+                  <PricingField label="Tỷ lệ bảo hiểm" hint="Phần trăm trên giá trị khai báo vượt ngưỡng miễn phí."><PricingPercentInput disabled={!editable || saving} value={policy.insuranceRate} onValueChange={(value) => setPolicy((current) => ({ ...current, insuranceRate: value }))} /></PricingField>
                   <PricingField label="Giá trị khai báo tối đa"><PricingMoneyInput disabled={!editable || saving} value={policy.maximumDeclaredValue} onValueChange={(value) => setPolicy((current) => ({ ...current, maximumDeclaredValue: value }))} /></PricingField>
                   <PricingField label="Tối đa mỗi kiện (kg)"><Input type="number" min={0.01} step={0.5} disabled={!editable || saving} value={policy.maxParcelWeightKg} onChange={(event) => setPolicy((value) => ({ ...value, maxParcelWeightKg: Number(event.target.value) }))} /></PricingField>
                   <PricingField label="Tổng khối lượng tính cước tối đa (kg)"><Input type="number" min={0.01} step={0.5} disabled={!editable || saving} value={policy.maxShipmentChargeableWeightKg} onChange={(event) => setPolicy((value) => ({ ...value, maxShipmentChargeableWeightKg: Number(event.target.value) }))} /></PricingField>
@@ -415,10 +558,8 @@ export function PricingRatePlans() {
               </Card>
 
               <section>
-                <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-base font-black">6 quy tắc giá</h2><p className="mt-1 text-xs text-muted-foreground">Tiêu chuẩn/Nhanh cho cùng vùng phục vụ, cùng vùng mạng lưới và khác vùng mạng lưới.</p></div><span className="text-xs font-black">{selected.ruleCount}/6</span></div>
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {serviceLevels.flatMap((level) => pricingZones.map((zone) => <RuleEditor key={`${selected.id}:${ruleKey(level, zone)}`} plan={selected} level={level} zone={zone} canManage={canManage} onSaved={replacePlan} />))}
-                </div>
+                <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-base font-black">6 quy tắc giá</h2><p className="mt-1 text-xs text-muted-foreground">Tiêu chuẩn/Nhanh cho nội tỉnh, nội miền và liên miền (tính theo tỉnh của người gửi và người nhận).</p></div><span className="text-xs font-black">{selected.ruleCount}/6</span></div>
+                <RuleTable key={selected.id} plan={selected} canManage={canManage} onSaved={replacePlan} />
               </section>
             </div>
           ) : <Card className="grid min-h-72 place-items-center p-5 text-sm text-muted-foreground">Chọn hoặc tạo một bảng giá để bắt đầu.</Card>}
@@ -444,10 +585,106 @@ export function PricingRatePlans() {
         </div>
       ) : null}
 
-      <PricingConfirmDialog open={dialog === "activate"} title="Bắt đầu áp dụng bảng giá?" description="Sau khi kích hoạt, bảng giá không còn chỉnh sửa trực tiếp. Các lần tính cước mới trong khoảng hiệu lực sẽ sử dụng phiên bản này." confirmLabel="Bắt đầu áp dụng" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
-      <PricingConfirmDialog open={dialog === "retire"} title="Ngừng áp dụng bảng giá?" description="Các mức cước đã tính trước đó vẫn giữ dữ liệu cũ; lần tính cước mới sẽ không dùng bảng giá này nữa." confirmLabel="Ngừng áp dụng" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
+      <PricingConfirmDialog
+        open={dialog === "activate"}
+        title={handover?.replaces.length ? "Áp dụng và thay thế bảng giá?" : "Bắt đầu áp dụng bảng giá?"}
+        description="Sau khi kích hoạt, bảng giá không còn chỉnh sửa trực tiếp. Các lần tính cước mới trong khoảng hiệu lực sẽ sử dụng phiên bản này."
+        confirmLabel={handover?.replaces.length ? "Áp dụng và thay thế" : "Bắt đầu áp dụng"}
+        loading={saving}
+        confirmDisabled={!handover || handover.blocker !== null || unsavedWindow}
+        reason
+        onCancel={() => setDialog(null)}
+        onConfirm={runLifecycle}
+      >
+        {unsavedWindow ? (
+          <div role="alert" className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
+            Bạn đã sửa thời điểm bắt đầu/kết thúc hiệu lực nhưng chưa lưu. Hãy bấm “Lưu chính sách” trước khi áp dụng.
+          </div>
+        ) : null}
+        <HandoverPreview handover={handover} error={activePlansError} />
+      </PricingConfirmDialog>
+      <PricingConfirmDialog open={dialog === "retire"} title="Ngừng áp dụng bảng giá?" description="Các mức cước đã tính trước đó vẫn giữ dữ liệu cũ; lần tính cước mới sẽ không dùng bảng giá này nữa." confirmLabel="Ngừng áp dụng" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle}>
+        {selected && ratePlanPhase(selected, now) === "IN_EFFECT" ? (
+          <div role="alert" className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
+            Đây là bảng giá đang dùng để tính cước. Sau khi ngừng, khách hàng sẽ <strong>không tính được cước và không tạo được vận đơn</strong> cho đến khi có bảng giá mới. Muốn đổi giá không gián đoạn, hãy mở bản nháp mới và bấm “Bắt đầu áp dụng” để thay thế bảng giá này.
+          </div>
+        ) : selected && ratePlanPhase(selected, now) === "SCHEDULED" ? (
+          <div className="rounded-lg border bg-muted/25 p-3 text-xs leading-5 text-muted-foreground">
+            Bảng giá này chưa bắt đầu nên việc ngừng sẽ hủy lịch áp dụng. Nếu nó được lên lịch để thay thế một bảng giá khác, bảng giá cũ vẫn kết thúc đúng lịch; hãy kiểm tra để không có khoảng thời gian thiếu bảng giá.
+          </div>
+        ) : null}
+      </PricingConfirmDialog>
       <PricingConfirmDialog open={dialog === "delete"} title="Xóa bảng giá nháp?" description="Chỉ bản nháp được xóa. Hành động này không ảnh hưởng các mức cước đã được tính từ phiên bản khác." confirmLabel="Xóa bản nháp" destructive loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
       <PricingConfirmDialog open={dialog === "revision"} title="Tạo phiên bản mới?" description="Hệ thống sẽ sao chép chính sách và toàn bộ quy tắc từ phiên bản đang chọn sang một bản nháp mới với số phiên bản tăng tự động." confirmLabel="Tạo phiên bản mới" loading={saving} reason onCancel={() => setDialog(null)} onConfirm={runLifecycle} />
     </div>
+  );
+}
+
+function sameInstant(left: string | null, right: string | null) {
+  return left === right || (left !== null && right !== null && Date.parse(left) === Date.parse(right));
+}
+
+type Handover = {
+  startsAt: number;
+  immediate: boolean;
+  replaces: RatePlan[];
+  blocker: string | null;
+};
+
+/**
+ * Mirrors RatePlanService.activate with replaceActivePlan: the hand-over happens at the draft's
+ * start (never in the past), and every overlapping active plan ends exactly then.
+ */
+function planHandover(draft: RatePlan, activePlans: RatePlan[], now: number): Handover {
+  const requested = draft.effectiveFrom ? Date.parse(draft.effectiveFrom) : now;
+  const startsAt = Math.max(requested, now);
+  const endsAt = draft.effectiveTo ? Date.parse(draft.effectiveTo) : null;
+  const replaces = activePlans.filter((plan) =>
+    plan.id !== draft.id &&
+    (!plan.effectiveTo || Date.parse(plan.effectiveTo) > startsAt) &&
+    (endsAt === null || !plan.effectiveFrom || Date.parse(plan.effectiveFrom) < endsAt));
+
+  let blocker: string | null = null;
+  const startsLater = replaces.find((plan) => plan.effectiveFrom && Date.parse(plan.effectiveFrom) >= startsAt);
+  const outlasts = endsAt === null ? undefined : replaces.find((plan) => !plan.effectiveTo || Date.parse(plan.effectiveTo) > endsAt);
+  if (endsAt !== null && endsAt <= startsAt) {
+    blocker = "Thời điểm kết thúc hiệu lực của bản nháp đã qua. Hãy sửa lại khoảng hiệu lực rồi lưu chính sách.";
+  } else if (startsLater) {
+    blocker = `“${startsLater.name}” đã được lên lịch bắt đầu lúc ${dateTime(startsLater.effectiveFrom)}, sau thời điểm này nên không thể thay thế. Hãy ngừng bảng giá đó trước.`;
+  } else if (outlasts) {
+    blocker = `Bản nháp kết thúc lúc ${dateTime(draft.effectiveTo)}, sớm hơn “${outlasts.name}”, nên sau thời điểm đó sẽ không còn bảng giá nào. Hãy bỏ hoặc lùi ngày kết thúc của bản nháp.`;
+  }
+
+  return { startsAt, immediate: startsAt <= now, replaces, blocker };
+}
+
+function HandoverPreview({ handover, error }: { handover: Handover | null; error: string | null }) {
+  if (error) {
+    return <div role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-xs leading-5 text-destructive">{error}</div>;
+  }
+  if (!handover) {
+    return <p className="flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircleIcon className="size-3.5 animate-spin" />Đang kiểm tra bảng giá đang áp dụng…</p>;
+  }
+
+  const when = handover.immediate ? "ngay khi xác nhận" : `lúc ${dateTime(new Date(handover.startsAt).toISOString())}`;
+  return (
+    <>
+      <div className="rounded-lg border bg-muted/25 p-3 text-xs">
+        <span className="text-muted-foreground">Bắt đầu áp dụng: </span>
+        <strong>{when}</strong>
+      </div>
+      {handover.blocker ? (
+        <div role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-xs leading-5 text-destructive">{handover.blocker}</div>
+      ) : handover.replaces.length ? (
+        <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] p-3 text-xs leading-5">
+          {handover.replaces.map((plan) => (
+            <p key={plan.id}>
+              <strong>{plan.name}</strong> (phiên bản {plan.revision}) sẽ kết thúc {when} và được thay bằng bảng giá này trong cùng một thao tác.
+            </p>
+          ))}
+          <p className="mt-1 text-muted-foreground">Không có thời điểm nào thiếu bảng giá. Các kết quả tính cước đã phát hành vẫn giữ giá cũ đến khi hết hiệu lực.</p>
+        </div>
+      ) : null}
+    </>
   );
 }

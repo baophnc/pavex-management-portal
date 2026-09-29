@@ -27,6 +27,7 @@ import {
   PricingLoading,
   PricingMetric,
   PricingPageHeader,
+  roundingOf,
 } from "@/features/pricing/ui";
 
 function tierLabel(tier: PricingQuoteLocationSnapshot["coverageTier"]) {
@@ -190,7 +191,8 @@ export function PricingQuoteInspector({
                   ["Phụ phí khu vực", quote.fees.areaSurcharge],
                   ["Phí dịch vụ thu hộ", quote.fees.codFee],
                   ["Phí bảo hiểm", quote.fees.insuranceFee],
-                ].map(([label, value]) => (
+                  ["Làm tròn lên 1.000 ₫", roundingOf(quote.fees.total, quote.fees)],
+                ].filter(([label, value]) => label !== "Làm tròn lên 1.000 ₫" || value !== 0).map(([label, value]) => (
                   <div
                     key={String(label)}
                     className="flex items-center justify-between gap-3 px-4 py-3"

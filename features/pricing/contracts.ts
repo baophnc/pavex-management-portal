@@ -1,6 +1,6 @@
 export type RatePlanStatus = "DRAFT" | "ACTIVE" | "RETIRED";
 export type ServiceLevel = "STANDARD" | "EXPRESS";
-export type PricingZone = "SAME_SERVICE_AREA" | "SAME_REGION" | "CROSS_REGION";
+export type PricingZone = "SAME_PROVINCE" | "SAME_REGION" | "CROSS_REGION";
 export type PricingAuditEntityType = "RATE_PLAN" | "RATE_RULE";
 export type PricingAuditAction =
   | "CREATED"
@@ -10,7 +10,8 @@ export type PricingAuditAction =
   | "REVISION_CREATED"
   | "ACTIVATED"
   | "RETIRED"
-  | "DELETED";
+  | "DELETED"
+  | "SUPERSEDED";
 
 export type RateRule = {
   id: string;
@@ -172,7 +173,7 @@ export type PricingPageResponse<T> = {
 
 export const serviceLevels: ServiceLevel[] = ["STANDARD", "EXPRESS"];
 export const pricingZones: PricingZone[] = [
-  "SAME_SERVICE_AREA",
+  "SAME_PROVINCE",
   "SAME_REGION",
   "CROSS_REGION",
 ];
@@ -188,6 +189,25 @@ export function ratePlanStatusLabel(status: RatePlanStatus) {
   }
 }
 
+/**
+ * An ACTIVE plan is only in effect inside its window: activating a replacement can schedule a
+ * plan to start later, or end the current one at the hand-over time.
+ */
+export type RatePlanPhase = "DRAFT" | "SCHEDULED" | "IN_EFFECT" | "ENDED" | "RETIRED";
+
+export function ratePlanPhase(
+  plan: Pick<RatePlan, "status" | "effectiveFrom" | "effectiveTo" | "activatedAt">,
+  now: number,
+): RatePlanPhase {
+  if (plan.status !== "ACTIVE") return plan.status;
+  const startsAt = plan.effectiveFrom ? Date.parse(plan.effectiveFrom) : null;
+  // A plan that started when it was activated is in effect even if this browser's clock lags the server.
+  const startedOnActivation = startsAt !== null && plan.activatedAt !== null && startsAt <= Date.parse(plan.activatedAt);
+  if (startsAt !== null && startsAt > now && !startedOnActivation) return "SCHEDULED";
+  if (plan.effectiveTo && Date.parse(plan.effectiveTo) <= now) return "ENDED";
+  return "IN_EFFECT";
+}
+
 export function serviceLevelLabel(level: ServiceLevel | "Standard" | "Express") {
   if (level === "STANDARD" || level === "Standard") return "Tiêu chuẩn";
   return "Nhanh";
@@ -195,15 +215,15 @@ export function serviceLevelLabel(level: ServiceLevel | "Standard" | "Express") 
 
 export function pricingZoneLabel(zone: PricingZone | string) {
   switch (zone) {
-    case "SAME_SERVICE_AREA":
+    case "SAME_PROVINCE":
     case "Local":
-      return "Cùng vùng phục vụ";
+      return "Nội tỉnh";
     case "SAME_REGION":
     case "Regional":
-      return "Cùng vùng mạng lưới";
+      return "Nội miền";
     case "CROSS_REGION":
     case "National":
-      return "Khác vùng mạng lưới";
+      return "Liên miền";
     default:
       return zone;
   }
@@ -231,6 +251,8 @@ export function auditActionLabel(action: PricingAuditAction) {
       return "Ngừng áp dụng";
     case "DELETED":
       return "Xóa bản nháp";
+    case "SUPERSEDED":
+      return "Được thay thế";
   }
 }
 

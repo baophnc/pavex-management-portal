@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { RatePlanStatus } from "@/features/pricing/contracts";
+import type { RatePlanPhase, RatePlanStatus } from "@/features/pricing/contracts";
 import { cn } from "@/lib/utils";
 
 export const selectClassName =
@@ -81,15 +81,26 @@ export function PricingPageHeader({
   );
 }
 
-export function PricingStatusBadge({ status }: { status: RatePlanStatus }) {
+const phaseLabels: Record<RatePlanPhase, string> = {
+  DRAFT: "Bản nháp",
+  SCHEDULED: "Đã lên lịch",
+  IN_EFFECT: "Đang áp dụng",
+  ENDED: "Đã hết hiệu lực",
+  RETIRED: "Đã ngừng áp dụng",
+};
+
+/** Pass `phase` (see ratePlanPhase) when the plan's window is known, so scheduled and ended plans read correctly. */
+export function PricingStatusBadge({ status, phase }: { status: RatePlanStatus; phase?: RatePlanPhase }) {
+  const shown = phase ?? (status === "ACTIVE" ? "IN_EFFECT" : status);
   return (
     <span className={cn(
-      "inline-flex rounded-full border px-2.5 py-1 text-[0.62rem] font-black",
-      status === "ACTIVE" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-      status === "DRAFT" && "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-      status === "RETIRED" && "border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300",
+      "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[0.62rem] font-black",
+      shown === "IN_EFFECT" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      shown === "SCHEDULED" && "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+      shown === "DRAFT" && "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      (shown === "RETIRED" || shown === "ENDED") && "border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300",
     )}>
-      {status === "ACTIVE" ? "Đang áp dụng" : status === "DRAFT" ? "Bản nháp" : "Đã ngừng áp dụng"}
+      {phaseLabels[shown]}
     </span>
   );
 }
@@ -116,7 +127,7 @@ export function PricingMetric({ label, value, note }: { label: string; value: Re
   return <div className="p-4"><p className="text-[0.6rem] font-black uppercase tracking-[0.1em] text-muted-foreground">{label}</p><p className="mt-1.5 text-xl font-black tabular-nums sm:text-2xl">{value}</p>{note ? <p className="mt-1 text-[0.65rem] text-muted-foreground">{note}</p> : null}</div>;
 }
 
-export function PricingField({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function PricingField({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return <label className="grid gap-1.5 text-xs font-bold"><span>{label}</span>{children}{hint ? <span className="text-[0.65rem] font-normal leading-5 text-muted-foreground">{hint}</span> : null}</label>;
 }
 
@@ -157,6 +168,57 @@ export function PricingMoneyInput({
   );
 }
 
+/**
+ * Edits a rate stored as a fraction (0.005) the way admins think about it (0,5 %).
+ * The typed text is kept while focused so partial input like "0," is not reformatted away.
+ */
+export function PricingPercentInput({
+  value,
+  onValueChange,
+  disabled = false,
+}: {
+  value: number;
+  onValueChange: (value: number) => void;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 4, useGrouping: false }).format(value * 100);
+
+  return (
+    <div className="relative">
+      <Input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        disabled={disabled}
+        value={shown}
+        className="pr-8 text-right font-bold tabular-nums"
+        onChange={(event) => {
+          const text = event.target.value.replace(/[^\d.,]/g, "");
+          setDraft(text);
+          const percentValue = Number(text.replace(",", "."));
+          if (text && Number.isFinite(percentValue) && percentValue <= 100) {
+            onValueChange(Math.round(percentValue * 10_000) / 1_000_000);
+          } else if (!text) {
+            onValueChange(0);
+          }
+        }}
+        onBlur={() => setDraft(null)}
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-xs font-bold text-muted-foreground">
+        %
+      </span>
+    </div>
+  );
+}
+
+/** Fees are collected in cash, so amounts below 1.000 ₫ are almost always a typo. */
+export function thousandHint(value: number): ReactNode {
+  return value % 1000 !== 0 ? (
+    <span className="font-bold text-amber-700 dark:text-amber-300">Có phần lẻ dưới 1.000 ₫ ({money(value % 1000)}). Kiểm tra lại nếu không cố ý.</span>
+  ) : null;
+}
+
 export function PricingConfirmDialog({
   open,
   title,
@@ -165,6 +227,8 @@ export function PricingConfirmDialog({
   destructive = false,
   loading = false,
   reason = false,
+  confirmDisabled = false,
+  children,
   onCancel,
   onConfirm,
 }: {
@@ -175,6 +239,8 @@ export function PricingConfirmDialog({
   destructive?: boolean;
   loading?: boolean;
   reason?: boolean;
+  confirmDisabled?: boolean;
+  children?: ReactNode;
   onCancel: () => void;
   onConfirm: (reason: string) => void | Promise<void>;
 }) {
@@ -185,14 +251,22 @@ export function PricingConfirmDialog({
       <div className="w-full max-w-md rounded-2xl border bg-card p-5 shadow-2xl" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <h2 className="text-base font-black">{title}</h2>
         <p className="mt-2 text-xs leading-5 text-muted-foreground">{description}</p>
+        {children ? <div className="mt-4 grid gap-3">{children}</div> : null}
         {reason ? <PricingField label="Lý do (không bắt buộc)"><textarea value={text} maxLength={500} disabled={loading} className={textareaClassName} onChange={(event) => setText(event.target.value)} placeholder="Ghi chú để người khác hiểu lý do thay đổi..." /></PricingField> : null}
         <div className="mt-5 flex justify-end gap-2 border-t pt-4">
           <Button type="button" variant="outline" disabled={loading} onClick={() => { setText(""); onCancel(); }}>Hủy</Button>
-          <Button type="button" variant={destructive ? "destructive" : "default"} disabled={loading} onClick={() => { const reasonText = text.trim(); setText(""); void onConfirm(reasonText); }}>{loading ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}{confirmLabel}</Button>
+          <Button type="button" variant={destructive ? "destructive" : "default"} disabled={loading || confirmDisabled} onClick={() => { const reasonText = text.trim(); setText(""); void onConfirm(reasonText); }}>{loading ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}{confirmLabel}</Button>
         </div>
       </div>
     </div>
   );
+}
+
+type ItemisedFees = { baseFee: number; additionalWeightFee: number; areaSurcharge: number; codFee: number; insuranceFee: number };
+
+/** Pricing rounds the total up to the next 1,000 VND; this is how much the rounding added. */
+export function roundingOf(total: number, fees: ItemisedFees) {
+  return total - (fees.baseFee + fees.additionalWeightFee + fees.areaSurcharge + fees.codFee + fees.insuranceFee);
 }
 
 export function money(value: number) {
