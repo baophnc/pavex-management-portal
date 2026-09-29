@@ -27,7 +27,7 @@ function unauthenticated() {
   return response;
 }
 
-function backendUnavailable(message = "Không thể kết nối backend Pavex.") {
+function backendUnavailable(message = "Không thể kết nối máy chủ Pavex.") {
   return NextResponse.json(
     { code: "management_backend_unavailable", message },
     { status: 502 },
@@ -59,6 +59,10 @@ async function forward(
     headers: {
       accept: request.headers.get("accept") ?? "application/json",
       authorization: `Bearer ${accessToken}`,
+      // Lets the gateway rate-limit per staff browser instead of per portal server.
+      ...(request.headers.get("x-forwarded-for")
+        ? { "x-forwarded-for": request.headers.get("x-forwarded-for")! }
+        : {}),
       ...(request.headers.get("content-type")
         ? { "content-type": request.headers.get("content-type")! }
         : {}),
