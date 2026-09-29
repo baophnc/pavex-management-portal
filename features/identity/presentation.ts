@@ -20,83 +20,76 @@ export type RolePresentation = {
   note?: string;
 };
 
+const headOffice = (name: string, description: string, note?: string): RolePresentation => ({
+  name,
+  description,
+  ownership: "IDENTITY",
+  ownershipLabel: "Trụ sở · xem toàn quốc",
+  assignableFromIdentity: true,
+  assignmentSummary: "Quản trị hệ thống gán trực tiếp cho nhân viên trụ sở tại màn tài khoản.",
+  note,
+});
+
+const hubWorkforce = (name: string, description: string): RolePresentation => ({
+  name,
+  description,
+  ownership: "OPERATIONS",
+  ownershipLabel: "Bưu cục · chỉ bưu cục được phân công",
+  assignableFromIdentity: false,
+  assignmentSummary: "Cấp khi thêm nhân viên ở mục Nhân sự, cùng lúc với bưu cục làm việc.",
+  note: "Không gán thủ công tại màn tài khoản: vai trò này luôn đi kèm bưu cục được phân công.",
+});
+
 const ROLE_PRESENTATION: Record<string, RolePresentation> = {
-  ADMIN: {
-    name: "Quản trị hệ thống",
-    description:
-      "Quản trị tài khoản, phân quyền, đối tác và các cấu hình dùng chung của nền tảng.",
-    ownership: "IDENTITY",
-    ownershipLabel: "Quản trị viên cấp",
-    assignableFromIdentity: true,
-    assignmentSummary:
-      "Người có quyền phân vai có thể gán trực tiếp cho tài khoản nội bộ phù hợp.",
-    note: "Đây là vai trò có quyền rất cao. Hệ thống bảo vệ quản trị viên đang hoạt động cuối cùng để tránh mất quyền quản trị.",
-  },
-  OPERATIONS_MANAGER: {
-    name: "Quản lý vận hành",
-    description:
-      "Điều phối mạng lưới, nhân sự và các công việc vận hành trên phạm vi rộng.",
-    ownership: "OPERATIONS",
-    ownershipLabel: "Operations cấp khi onboarding",
-    assignableFromIdentity: false,
-    assignmentSummary:
-      "Tạo từ Operations > Workforce để Identity profile, role và workforce luôn đồng bộ.",
-    note: "Không tạo hoặc gán thủ công role này tại Identity. Hãy dùng luồng Thêm nhân sự trong Operations.",
-  },
-  HUB_MANAGER: {
-    name: "Quản lý bưu cục",
-    description:
-      "Quản lý hoạt động, dòng tiền và công việc tại bưu cục được phân công.",
-    ownership: "OPERATIONS",
-    ownershipLabel: "Operations cấp khi onboarding",
-    assignableFromIdentity: false,
-    assignmentSummary:
-      "Tạo từ Operations > Workforce để gán bưu cục và hồ sơ nhân sự trong cùng một luồng.",
-    note: "Không tạo hoặc gán thủ công role này tại Identity. Hãy dùng luồng Thêm nhân sự trong Operations.",
-  },
-  WAREHOUSE_STAFF: {
-    name: "Nhân viên kho",
-    description:
-      "Tiếp nhận, quét và xử lý kiện hàng cùng các công việc kho tại bưu cục.",
-    ownership: "OPERATIONS",
-    ownershipLabel: "Operations cấp khi onboarding",
-    assignableFromIdentity: false,
-    assignmentSummary:
-      "Tạo từ Operations > Workforce để có profile đầy đủ, hub membership và capacity ngay khi onboarding.",
-    note: "Không tạo hoặc gán thủ công role này tại Identity. Hãy dùng luồng Thêm nhân sự trong Operations.",
-  },
-  DRIVER: {
-    name: "Nhân viên giao nhận",
-    description:
-      "Nhận công việc lấy hàng, vận chuyển, giao hàng và cập nhật vị trí khi làm nhiệm vụ.",
-    ownership: "OPERATIONS",
-    ownershipLabel: "Operations cấp khi onboarding",
-    assignableFromIdentity: false,
-    assignmentSummary:
-      "Tạo từ Operations > Workforce để role DRIVER luôn gắn với workforce thực tế.",
-    note: "Không tạo hoặc gán thủ công role này tại Identity. Hãy dùng luồng Thêm nhân sự trong Operations.",
-  },
+  ADMIN: headOffice(
+    "Quản trị hệ thống",
+    "Toàn quyền trên hệ thống, gồm cấp tài khoản và phân vai trò.",
+    "Vai trò có quyền cao nhất. Hệ thống luôn giữ lại ít nhất một quản trị viên đang hoạt động.",
+  ),
+  OPERATIONS_MANAGER: headOffice(
+    "Quản lý vận hành",
+    "Theo dõi vận đơn, xử lý sự cố, quản lý nhân sự và mạng lưới bưu cục trên toàn quốc.",
+  ),
+  COMMERCIAL_MANAGER: headOffice(
+    "Kinh doanh & CSKH",
+    "Duyệt shop, quản lý bảng giá và xử lý khiếu nại của khách hàng trên toàn quốc.",
+  ),
+  FINANCE_ACCOUNTANT: headOffice(
+    "Kế toán",
+    "Duyệt tiền bưu tá nộp, đối soát với shop và quản lý hóa đơn trên toàn quốc.",
+  ),
+  HUB_MANAGER: hubWorkforce(
+    "Trưởng bưu cục",
+    "Điều phối lấy/giao hàng, quản lý nhân viên, vận đơn và tiền thu hộ của bưu cục mình.",
+  ),
+  WAREHOUSE_OPERATOR: hubWorkforce(
+    "Nhân viên bưu cục",
+    "Quét nhập/xuất kho và nhận tiền bưu tá nộp tại bưu cục mình.",
+  ),
+  COURIER: hubWorkforce(
+    "Bưu tá",
+    "Lấy hàng, giao hàng, thu tiền người nhận và nộp tiền về bưu cục.",
+  ),
+  LINE_HAUL_DRIVER: hubWorkforce(
+    "Tài xế trung chuyển",
+    "Chạy các chuyến chở hàng giữa bưu cục và kho được giao.",
+  ),
   MERCHANT: {
-    name: "Đối tác gửi hàng",
-    description:
-      "Tạo và quản lý vận đơn của doanh nghiệp sau khi hồ sơ đối tác được duyệt.",
+    name: "Shop",
+    description: "Tạo và theo dõi vận đơn, hóa đơn và đối soát của shop mình.",
     ownership: "PARTNERS",
-    ownershipLabel: "Đồng bộ theo trạng thái đối tác",
+    ownershipLabel: "Tự cấp khi hồ sơ shop được duyệt",
     assignableFromIdentity: false,
-    assignmentSummary:
-      "Hệ thống tự cấp hoặc thu hồi theo trạng thái duyệt của hồ sơ đối tác gửi hàng.",
-    note: "Không gán hoặc gỡ thủ công vai trò này tại màn tài khoản để tránh lệch trạng thái giữa tài khoản và hồ sơ đối tác.",
+    assignmentSummary: "Hệ thống tự cấp hoặc thu hồi theo trạng thái duyệt hồ sơ shop.",
+    note: "Không gán hoặc gỡ thủ công để tránh lệch với trạng thái hồ sơ shop.",
   },
   CUSTOMER: {
-    name: "Khách hàng",
-    description:
-      "Theo dõi vận đơn liên quan và sử dụng các chức năng hỗ trợ dành cho khách hàng.",
+    name: "Khách cá nhân",
+    description: "Tài khoản khách hàng mặc định khi tự đăng ký.",
     ownership: "PLATFORM",
-    ownershipLabel: "Vai trò nền của khách hàng",
+    ownershipLabel: "Vai trò mặc định",
     assignableFromIdentity: true,
-    assignmentSummary:
-      "Hệ thống tự gán cho tài khoản khách hàng; quản trị viên vẫn có thể chọn khi tạo tài khoản hỗ trợ.",
-    note: "Đây là vai trò nền cho tài khoản khách hàng đăng ký trực tiếp trên hệ thống.",
+    assignmentSummary: "Hệ thống tự gán khi khách hàng tự đăng ký tài khoản.",
   },
 };
 
@@ -121,11 +114,9 @@ export const genderLabels: Record<Gender, string> = {
 };
 
 export const permissionLabels: Record<string, string> = {
-  "tracking.read-own": "Theo dõi vận đơn của mình",
-  "support.create": "Tạo yêu cầu hỗ trợ",
-  "shipments.read": "Xem vận đơn",
+  "scope.all-hubs": "Xem dữ liệu toàn quốc (mọi bưu cục)",
+  "shipments.read-own": "Xem vận đơn của mình",
   "shipments.create": "Tạo vận đơn",
-  "shipments.update-own": "Sửa vận đơn của mình trước khi lấy hàng",
   "shipments.cancel-own": "Hủy vận đơn của mình",
   "shipments.read-hub": "Xem vận đơn trong phạm vi bưu cục",
   "shipments.exceptions.read": "Xem ngoại lệ vận đơn trong phạm vi",
@@ -134,14 +125,12 @@ export const permissionLabels: Record<string, string> = {
   "shipments.cases.read": "Xem hồ sơ sự cố vận đơn",
   "shipments.cases.manage": "Quản lý hồ sơ sự cố vận đơn",
   "shipments.control-tower.read": "Theo dõi cảnh báo vận đơn",
-  "shipments.admin.read": "Tra cứu toàn bộ vận đơn phục vụ quản trị",
-  "shipments.admin.manage": "Thực hiện nghiệp vụ quản trị vận đơn",
+  "shipments.admin.read": "Tra cứu vận đơn phục vụ quản trị",
+  "shipments.read-assigned": "Xem vận đơn được giao",
   "assignments.read-own": "Xem công việc được giao",
   "assignments.accept-own": "Nhận công việc được giao",
   "assignments.execute-own": "Thực hiện công việc được giao",
   "deliveries.complete-own": "Hoàn tất công việc giao hàng",
-  "locations.update-own": "Cập nhật vị trí khi làm nhiệm vụ",
-  "quotes.create": "Tính cước cho vận đơn",
   "billing.invoices.read-own": "Xem hóa đơn của mình",
   "billing.invoices.pay-own": "Thanh toán hóa đơn của mình",
   "billing.manage": "Quản lý hóa đơn và thanh toán",
@@ -149,9 +138,6 @@ export const permissionLabels: Record<string, string> = {
   "billing.cash.submit-own": "Nộp tiền đã thu của mình",
   "billing.cash.read-hub": "Theo dõi tiền mặt tại bưu cục",
   "billing.cash.approve": "Duyệt hoặc từ chối bàn giao tiền",
-  "call-monitoring.read": "Xem lịch sử cuộc gọi",
-  "call-monitoring.manage": "Quản lý và đánh giá cuộc gọi",
-  "call-monitoring.reports.read": "Xem báo cáo cuộc gọi",
   "network.read": "Xem cấu hình mạng lưới",
   "network.manage": "Quản lý bưu cục, vùng và tuyến vận chuyển",
   "pricing.read": "Xem bảng giá và quy tắc tính cước",
@@ -178,12 +164,13 @@ export const permissionLabels: Record<string, string> = {
 };
 
 export const permissionGroups = [
+  { id: "scope", label: "Phạm vi dữ liệu", prefixes: ["scope."] },
   { id: "identity", label: "Tài khoản & phân quyền", prefixes: ["identity."] },
   { id: "partners", label: "Đối tác gửi hàng", prefixes: ["partners."] },
   {
     id: "shipments",
     label: "Vận đơn & tính cước",
-    prefixes: ["shipments.", "tracking.", "quotes."],
+    prefixes: ["shipments."],
   },
   {
     id: "operations",
@@ -192,18 +179,12 @@ export const permissionGroups = [
       "operations.",
       "assignments.",
       "deliveries.",
-      "locations.",
       "scans.",
     ],
   },
   { id: "network", label: "Mạng lưới", prefixes: ["network."] },
   { id: "pricing", label: "Bảng giá & cước", prefixes: ["pricing."] },
   { id: "billing", label: "Tài chính", prefixes: ["billing."] },
-  {
-    id: "support",
-    label: "Chăm sóc khách hàng",
-    prefixes: ["call-monitoring.", "support."],
-  },
 ] as const;
 
 export function rolePresentation(roleCode: string, fallback?: Partial<RoleItem>) {
@@ -242,18 +223,14 @@ function genericPermissionLabel(code: string) {
     identity: "Tài khoản",
     partners: "Đối tác",
     shipments: "Vận đơn",
-    tracking: "Theo dõi vận đơn",
-    quotes: "Tính cước",
     assignments: "Công việc",
     deliveries: "Giao hàng",
-    locations: "Vị trí",
     scans: "Quét kiện hàng",
     network: "Mạng lưới",
     pricing: "Bảng giá",
     billing: "Tài chính",
     operations: "Vận hành",
-    support: "Hỗ trợ",
-    "call-monitoring": "Cuộc gọi",
+    scope: "Phạm vi dữ liệu",
   };
 
   if (code.endsWith(".read") || code.endsWith(".read-own")) {
