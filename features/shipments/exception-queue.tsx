@@ -255,9 +255,9 @@ function QueueItem({ item, currentUserId, canManage, canOpenShipment, onChanged 
 }
 
 export function ShipmentExceptionQueue() {
-  const { user, hasPermission } = useAccess();
+  const { user, hasPermission, hasAnyPermission } = useAccess();
   const canManage = hasPermission("shipments.exceptions.manage");
-  const canOpenShipment = hasPermission("shipments.admin.read");
+  const canOpenShipment = hasAnyPermission(["shipments.admin.read", "shipments.read-hub"]);
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();

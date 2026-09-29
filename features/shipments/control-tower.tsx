@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getAllHubs } from "@/features/network/api";
+import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
 import {
   getShipmentControlTowerAlerts,
@@ -143,7 +143,7 @@ export function ShipmentControlTower() {
   const globalScope = hasPermission("operations.assignments.manage");
   const hubScope = hasPermission("operations.hub.manage");
   const canReadNetwork = hasAnyPermission(["network.read", "network.manage"]);
-  const canOpenShipments = hasPermission("shipments.admin.read");
+  const canOpenShipments = hasAnyPermission(["shipments.admin.read", "shipments.read-hub"]);
   const canOpenCases = hasPermission("shipments.cases.manage");
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export function ShipmentControlTower() {
   useEffect(() => {
     if (!canReadNetwork) return;
     let cancelled = false;
-    void getAllHubs()
+    void getScopedHubs()
       .then((items) => {
         if (!cancelled) setHubs(items.filter((item) => item.status === "ACTIVE"));
       })
@@ -247,10 +247,10 @@ export function ShipmentControlTower() {
         {globalScope ? <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" /> : <ShieldAlertIcon className="mt-0.5 size-4 shrink-0" />}
         <span>
           {globalScope
-            ? "Global Operations scope: backend cho phép xem cảnh báo trên toàn mạng lưới."
+            ? "Bạn đang xem cảnh báo trên toàn mạng lưới."
             : hubScope
-              ? "Hub-scoped Operations access: backend chỉ trả cảnh báo thuộc các hub membership đang hoạt động của bạn."
-              : "JWT hiện không có Operations scope hợp lệ; backend sẽ từ chối Control Tower dù có permission đọc."}
+              ? "Bạn chỉ thấy cảnh báo của các bưu cục mình đang được phân công."
+              : "Tài khoản chưa được gán bưu cục hoặc phạm vi vận hành nên chưa xem được giám sát vận đơn. Hãy liên hệ quản trị viên."}
         </span>
       </div>
 
@@ -335,7 +335,7 @@ export function ShipmentControlTower() {
                 {hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}
               </select>
             ) : (
-              <div className="flex h-10 items-center rounded-md border bg-muted/20 px-3 text-xs text-muted-foreground">Hub scope đang do backend giới hạn tự động.</div>
+              <div className="flex h-10 items-center rounded-md border bg-muted/20 px-3 text-xs text-muted-foreground">Chỉ hiện các bưu cục bạn được phân công.</div>
             )}
             <Button variant="outline" onClick={() => update({ search: searchDraft, hubId: hubDraft })}>
               <SearchIcon className="size-4" /> Lọc

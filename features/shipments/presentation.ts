@@ -3,6 +3,7 @@ import type {
   DeliveryProofMethod,
   GoodsCategory,
   ParcelStatus,
+  ShipmentCollectionStatus,
   ShipmentCoverageTier,
   ShipmentLifecycleStatus,
   ShipmentPricingZone,
@@ -45,6 +46,19 @@ export function serviceLevelLabel(level: ShipmentServiceLevel) {
   return level === "EXPRESS" ? "Hỏa tốc" : "Tiêu chuẩn";
 }
 
+export function collectionStatusLabel(status: ShipmentCollectionStatus) {
+  switch (status) {
+    case "NOT_REQUIRED":
+      return "Không thu tiền";
+    case "PENDING":
+      return "Chờ thu khi giao";
+    case "COLLECTED":
+      return "Đã thu";
+    case "VOIDED":
+      return "Không thu (đơn đã kết thúc)";
+  }
+}
+
 export function shippingFeePayerLabel(payer: ShippingFeePayer) {
   return payer === "SENDER" ? "Người gửi trả cước" : "Người nhận trả cước";
 }
@@ -56,6 +70,7 @@ export function shipmentEventLabel(code: string, status: ShipmentStatus) {
     "shipment.completed": "Hoàn tất vận đơn",
     "shipment.parcel-scanned": "Ghi nhận quét kiện hàng",
     "shipment.delivery-attempt-recorded": "Ghi nhận lần giao hàng",
+    "shipment.cash-collected": "Bưu tá thu tiền người nhận",
     "parcel.scanned": "Quét kiện hàng",
     "parcel.at-destination-hub": "Kiện hàng đến điểm trung chuyển đích",
     "parcel.delivered": "Giao kiện hàng thành công",
@@ -107,9 +122,9 @@ export function routingStatusLabel(status: ShipmentRoutingStatus) {
 }
 
 export function pricingZoneLabel(zone: ShipmentPricingZone) {
-  if (zone === "SAME_SERVICE_AREA") return "Cùng vùng phục vụ";
-  if (zone === "SAME_REGION") return "Cùng vùng";
-  return "Liên vùng";
+  if (zone === "SAME_PROVINCE") return "Nội tỉnh";
+  if (zone === "SAME_REGION") return "Nội miền";
+  return "Liên miền";
 }
 
 export function coverageTierLabel(tier: ShipmentCoverageTier) {
