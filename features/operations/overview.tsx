@@ -23,7 +23,7 @@ const capabilities = [
   {
     permissionsAny: ["operations.workforce.manage", "operations.hub.manage"],
     title: "Ca làm việc",
-    description: "Lập ca, quản roster và theo dõi attendance theo phạm vi hub được backend xác thực.",
+    description: "Lập ca, quản lý danh sách trực và chấm công theo bưu cục bạn phụ trách.",
     icon: CalendarClockIcon,
     href: "/operations/shifts",
   },
@@ -94,7 +94,7 @@ export function OperationsOverview() {
                 </p>
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <p className="text-[0.68rem] font-black text-brand">
-                    {allowedItem ? "Tài khoản hiện tại có quyền" : "Không có quyền trong JWT hiện tại"}
+                    {allowedItem ? "Tài khoản hiện tại có quyền" : "Tài khoản chưa được cấp quyền"}
                   </p>
                   {allowedItem && item.href ? (
                     <Link href={item.href} className="text-[0.68rem] font-black text-brand hover:underline">
@@ -113,7 +113,7 @@ export function OperationsOverview() {
           <p className="text-sm font-black">Phạm vi Operations hiện tại</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             {allowed.length
-              ? `Backend đang cấp quyền truy cập ${allowed.length}/${capabilities.length} workspace Operations cho tài khoản này.`
+              ? `Tài khoản này dùng được ${allowed.length}/${capabilities.length} khu vực vận hành.`
               : "Tài khoản hiện tại chưa có capability Operations."}
             {" "}Workforce, Shifts, Assignments và Dispatch/outbox đã hoạt động theo đúng phạm vi backend cấp.
           </p>

@@ -1,7 +1,7 @@
 export type WorkforceMemberKind =
   | "COURIER"
   | "WAREHOUSE_OPERATOR"
-  | "DISPATCHER"
+  | "HUB_MANAGER"
   | "LINE_HAUL_DRIVER";
 
 export type WorkforceMemberStatus = "ACTIVE" | "SUSPENDED" | "OFFBOARDED";
@@ -96,7 +96,6 @@ export type CreateWorkforceMemberInput = {
 };
 
 export type WorkforceOnboardingGender = "MALE" | "FEMALE" | "OTHER";
-export type DispatcherAccessLevel = "HUB" | "GLOBAL";
 
 export type OnboardWorkforceMemberInput = {
   email: string;
@@ -107,8 +106,7 @@ export type OnboardWorkforceMemberInput = {
   dateOfBirth: string;
   avatarUrl?: string | null;
   kind: WorkforceMemberKind;
-  dispatcherAccessLevel?: DispatcherAccessLevel | null;
-  hubId?: string | null;
+  hubId: string;
   maxConcurrentAssignments?: number | null;
 };
 
@@ -129,9 +127,9 @@ export type AssignWorkforceHubInput = {
 };
 
 export const workforceKinds: WorkforceMemberKind[] = [
-  "COURIER",
+  "HUB_MANAGER",
   "WAREHOUSE_OPERATOR",
-  "DISPATCHER",
+  "COURIER",
   "LINE_HAUL_DRIVER",
 ];
 

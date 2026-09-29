@@ -59,9 +59,9 @@ function shortId(value: string | null) {
 }
 
 export function OperationsDispatch() {
-  const { hasPermission } = useAccess();
+  const { hasPermission, hasAnyPermission } = useAccess();
   const canManageOutbox = hasPermission("operations.assignments.manage");
-  const canReadGlobalShipments = hasPermission("shipments.admin.read");
+  const canReadGlobalShipments = hasAnyPermission(["shipments.admin.read", "shipments.read-hub"]);
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -352,7 +352,7 @@ export function OperationsDispatch() {
                 <ShieldAlertIcon className="size-4 text-brand" />
                 <div>
                   <p className="text-sm font-black">Dead-letter outbox</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Retry hoặc discard có audit actor và backend row lock.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Mỗi lần gửi lại hoặc bỏ qua đều ghi lại người thao tác và không bị xử lý trùng.</p>
                 </div>
               </div>
               {loadingOutbox ? <LoaderCircleIcon className="size-4 animate-spin text-muted-foreground" /> : null}

@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
-import { getAllHubs } from "@/features/network/api";
+import { getScopedHubs } from "@/features/operations/hub-scope";
 import { createWorkShift, getWorkforce, getWorkShifts } from "@/features/operations/api";
 import type { WorkShift, WorkShiftPage, WorkShiftStatus } from "@/features/operations/contracts";
 import { workShiftStatusLabel } from "@/features/operations/presentation";
@@ -122,7 +122,7 @@ function CreateShiftDialog({
           <div>
             <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">Shift planning</p>
             <h2 className="mt-1 text-lg font-black">Tạo ca làm việc</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">Ca tối đa 24 giờ; backend sẽ kiểm tra hub scope và thời gian.</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Ca tối đa 24 giờ; hệ thống sẽ kiểm tra bưu cục và thời gian ca.</p>
           </div>
           <Button type="button" size="icon" variant="ghost" onClick={onClose} disabled={saving}><XIcon className="size-4" /></Button>
         </header>
@@ -195,7 +195,7 @@ export function OperationsShifts() {
   useEffect(() => {
     const loadHubs = async () => {
       try {
-        const networkHubs = await getAllHubs();
+        const networkHubs = await getScopedHubs();
         setHubs(networkHubs.map((hub) => ({ id: hub.id, code: hub.code, name: hub.name, status: hub.status })));
         return;
       } catch {

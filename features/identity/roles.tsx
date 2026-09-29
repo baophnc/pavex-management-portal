@@ -571,7 +571,7 @@ function RoleDetail({
                     Chính sách chỉnh sửa
                   </p>
                   <p className="mt-1 text-xs font-bold">
-                    {role.isSystem ? "Khóa bởi backend" : canManage ? "Có thể quản trị" : "Chỉ đọc"}
+                    {role.isSystem ? "Vai trò hệ thống" : canManage ? "Có thể quản trị" : "Chỉ đọc"}
                   </p>
                   <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
                     {role.isSystem
