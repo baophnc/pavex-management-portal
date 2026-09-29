@@ -11,6 +11,7 @@ import {
   CircleUserRoundIcon,
   LandmarkIcon,
   LogOutIcon,
+  MapPinnedIcon,
   MenuIcon,
   MoonIcon,
   PanelLeftCloseIcon,
@@ -43,6 +44,7 @@ import { getMyHubScope } from "@/features/operations/hub-scope";
 import {
   canAccessControlTower,
   canAccessCourierDeliveries,
+  canAccessFleetTrips,
   canAccessSupportRequests,
   canAccessDispatchReliability,
   canAccessManagementPath,
@@ -248,6 +250,12 @@ const navigationSections: NavigationSection[] = [
         label: "Giám sát vận đơn",
         icon: CircleGaugeIcon,
         access: canAccessControlTower,
+      },
+      {
+        href: "/fleet",
+        label: "Xe trung chuyển",
+        icon: MapPinnedIcon,
+        access: canAccessFleetTrips,
       },
     ],
   },

@@ -32,6 +32,7 @@ export const MANAGEMENT_PERMISSIONS = [
   "operations.hub.read",
   "operations.hub.manage",
   "support.requests.read",
+  "fleet.trips.read-hub",
 ] as const;
 
 export function hasPermission(
@@ -141,6 +142,11 @@ export function canAccessSupportRequests(user: CurrentUser | null | undefined) {
   return hasPermission(user, "support.requests.read");
 }
 
+/** Hub managers watch line-haul trucks of their hubs; head office watches every truck. */
+export function canAccessFleetTrips(user: CurrentUser | null | undefined) {
+  return hasPermission(user, "fleet.trips.read-hub");
+}
+
 /** Couriers use the portal only for their own deliveries and the cash they carry. */
 export function canAccessCourierDeliveries(user: CurrentUser | null | undefined) {
   return hasPermission(user, "deliveries.complete-own");
@@ -182,6 +188,9 @@ export function canAccessManagementPath(
   }
   if (pathname.startsWith("/deliveries")) {
     return canAccessCourierDeliveries(user);
+  }
+  if (pathname.startsWith("/fleet")) {
+    return canAccessFleetTrips(user);
   }
   if (pathname.startsWith("/finance/cash")) {
     return hasPermission(user, "billing.cash.approve");
