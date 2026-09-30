@@ -2,6 +2,8 @@ export type AuthTokens = {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  /** The account still has the temporary password an administrator issued. */
+  passwordChangeRequired: boolean;
 };
 
 export type CurrentUser = {
@@ -29,6 +31,7 @@ export function parseAuthTokens(value: unknown): AuthTokens | null {
     accessToken: value.accessToken,
     refreshToken: value.refreshToken,
     expiresIn: value.expiresIn,
+    passwordChangeRequired: value.passwordChangeRequired === true,
   };
 }
 

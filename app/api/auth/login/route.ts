@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
       const backendStatus = result.response.status;
       const status =
         backendStatus >= 400 && backendStatus <= 599 ? backendStatus : 502;
-      const invalidCredentials = status === 401;
+      const temporaryExpired = problem.code === "temporary_password_expired";
+      const invalidCredentials = status === 401 && !temporaryExpired;
 
       return jsonWithRetryAfter(
         {
@@ -66,9 +67,11 @@ export async function POST(request: NextRequest) {
               : invalidCredentials
                 ? "invalid_credentials"
                 : "login_backend_error"),
-          message: invalidCredentials
-            ? "Email hoặc mật khẩu không chính xác."
-            : problem.message,
+          message: temporaryExpired
+            ? "Mật khẩu tạm đã hết hạn. Bấm “Quên mật khẩu” để đặt mật khẩu mới qua email."
+            : invalidCredentials
+              ? "Email hoặc mật khẩu không chính xác."
+              : problem.message,
           traceId: problem.traceId,
         },
         status,
@@ -127,6 +130,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       authenticated: true,
       user: current.user,
+      passwordChangeRequired: result.tokens.passwordChangeRequired,
     });
     setSession(response, result.tokens);
     return response;

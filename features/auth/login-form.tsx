@@ -35,7 +35,7 @@ export function LoginForm({
         }),
       });
       const payload = (await response.json().catch(() => null)) as
-        | { message?: string; code?: string }
+        | { message?: string; code?: string; passwordChangeRequired?: boolean }
         | null;
       if (!response.ok) {
         const retryAfter = parseRetryAfterSeconds(
@@ -50,7 +50,7 @@ export function LoginForm({
         );
       }
 
-      router.replace(returnTo);
+      router.replace(payload?.passwordChangeRequired ? "/change-password" : returnTo);
       router.refresh();
     } catch (reason) {
       setError(
@@ -97,10 +97,10 @@ export function LoginForm({
       ) : null}
       <div className="text-sm">
         <Link href="/forgot-password" className="font-semibold text-brand underline underline-offset-4">
-          Quên mật khẩu / đặt mật khẩu lần đầu
+          Quên mật khẩu?
         </Link>
         <p className="mt-2 text-muted-foreground">
-          Tài khoản do quản trị viên tạo? Dùng email đã được cấp để tự đặt mật khẩu.
+          Tài khoản mới do quản trị viên tạo: đăng nhập bằng mật khẩu tạm được báo, hệ thống sẽ yêu cầu bạn đặt mật khẩu riêng.
         </p>
       </div>
       <Button className="w-full" disabled={pending}>
