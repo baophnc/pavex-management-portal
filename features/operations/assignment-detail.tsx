@@ -28,6 +28,7 @@ import type {
   OperationalAssignment,
   OperationalAssignmentEvent,
   WorkforceMember,
+  WorkforceMemberKind,
 } from "@/features/operations/contracts";
 import {
   operationalAssignmentEventLabel,
@@ -45,6 +46,11 @@ function apiMessage(error: unknown, fallback: string) {
 
 function shortId(value: string | null) {
   return value ? `${value.slice(0, 8)}…` : "—";
+}
+
+/** Hub managers take hub handling where there is no clerk, as Operations allows. */
+function eligibleKinds(requiredKind: WorkforceMemberKind): WorkforceMemberKind[] {
+  return requiredKind === "WAREHOUSE_OPERATOR" ? ["WAREHOUSE_OPERATOR", "HUB_MANAGER"] : [requiredKind];
 }
 
 export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: string }) {
@@ -66,23 +72,27 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
       const found = candidates.find((item) => item.id === assignmentId) ?? null;
       if (!found) throw new Error("Assignment không nằm trong phạm vi truy cập hiện tại.");
 
-      const [eventPage, workforcePage, visibleHubs] = await Promise.all([
+      const [eventPage, workforcePages, visibleHubs] = await Promise.all([
         getOperationalAssignmentEvents(assignmentId, 1, 100),
-        getWorkforce(
-          new URLSearchParams({
-            page: "1",
-            pageSize: "100",
-            hubId: found.hubId,
-            kind: found.requiredKind,
-            status: "ACTIVE",
-          }),
+        Promise.all(
+          eligibleKinds(found.requiredKind).map((kind) =>
+            getWorkforce(
+              new URLSearchParams({
+                page: "1",
+                pageSize: "100",
+                hubId: found.hubId,
+                kind,
+                status: "ACTIVE",
+              }),
+            ),
+          ),
         ),
         getScopedHubs().catch(() => []),
       ]);
 
       setAssignment(found);
       setEvents(eventPage.items);
-      setWorkforce(workforcePage.items);
+      setWorkforce(workforcePages.flatMap((page) => page.items));
       setHubs(visibleHubs);
       setSelectedWorker(found.assigneeWorkforceMemberId ?? "");
     } catch (cause) {
@@ -105,13 +115,14 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
       );
       return (
         member.status === "ACTIVE" &&
-        member.kind === assignment?.requiredKind &&
+        assignment !== null &&
+        eligibleKinds(assignment.requiredKind).includes(member.kind) &&
         member.identityAccessValid &&
         atHub &&
         (member.availability?.remainingCapacity ?? 0) > 0
       );
     }),
-    [assignment?.hubId, assignment?.requiredKind, workforce],
+    [assignment, workforce],
   );
 
   const selectedMember = workforce.find((item) => item.id === selectedWorker) ?? null;
@@ -241,7 +252,8 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
                 <option value="">Chọn workforce member</option>
                 {eligibleWorkers.map((member) => (
                   <option key={member.id} value={member.id}>
-                    {member.employeeCode} · {workforceIdentityName(member.identity ?? {})} · còn {member.availability?.remainingCapacity ?? 0}
+                    {member.employeeCode} · {workforceIdentityName(member.identity ?? {})}
+                    {member.kind === assignment.requiredKind ? "" : ` (${workforceKindLabel(member.kind)})`} · còn {member.availability?.remainingCapacity ?? 0}
                   </option>
                 ))}
               </select>
