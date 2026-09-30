@@ -13,6 +13,9 @@ function safeReturnTo(value: string | string[] | undefined) {
 
 function loginNotice(reason: string | string[] | undefined) {
   const value = Array.isArray(reason) ? reason[0] : reason;
+  if (value === "password-changed") {
+    return "Đã lưu mật khẩu mới. Hãy đăng nhập lại bằng mật khẩu vừa đặt.";
+  }
   if (value === "management-access") {
     return "Phiên trước không còn quyền truy cập Management Portal. Hãy đăng nhập bằng tài khoản quản trị phù hợp.";
   }

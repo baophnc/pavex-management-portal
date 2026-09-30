@@ -145,7 +145,7 @@ function CreateWorkforceDialog({
         hubId,
         maxConcurrentAssignments: capacityValue,
       });
-      toast.success("Đã tạo tài khoản và hồ sơ nhân viên. Nhân viên dùng Quên mật khẩu tại trang đăng nhập để tự đặt mật khẩu bằng email vừa cấp.");
+      toast.success("Đã tạo tài khoản và hồ sơ nhân viên. Báo nhân viên đăng nhập bằng email này và mật khẩu tạm, rồi đổi mật khẩu trong 72 giờ.");
       onCreated(member);
       onClose();
     } catch (error) {

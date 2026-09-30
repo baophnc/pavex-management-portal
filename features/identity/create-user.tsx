@@ -115,7 +115,7 @@ export function CreateIdentityUser() {
         avatarUrl: optionalText(form.get("avatarUrl")),
       });
 
-      toast.success("Đã tạo tài khoản. Nhân viên dùng Quên mật khẩu tại trang đăng nhập để tự đặt mật khẩu bằng email vừa cấp.");
+      toast.success("Đã tạo tài khoản. Báo nhân viên đăng nhập bằng email này và mật khẩu tạm, rồi đổi mật khẩu trong 72 giờ.");
       router.push(`/identity/users/${created.userId}`);
       router.refresh();
     } catch (reason) {
@@ -169,7 +169,7 @@ export function CreateIdentityUser() {
             </p>
             <h1 className="mt-1 text-xl font-black sm:text-2xl">Tạo tài khoản mới</h1>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-              Hệ thống tạo tài khoản, gán vai trò ban đầu và chuẩn bị lời mời kích hoạt. Quản trị viên không đặt mật khẩu thay người dùng.
+              Hệ thống tạo tài khoản, gán vai trò ban đầu và cấp mật khẩu tạm. Người dùng phải đổi mật khẩu ở lần đăng nhập đầu tiên.
             </p>
           </div>
         </div>
@@ -264,7 +264,7 @@ export function CreateIdentityUser() {
               ) : null}
 
               <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
-                Sau khi tạo, nhân viên mở trang đăng nhập, chọn <Link href="/forgot-password" className="font-bold text-brand hover:underline">Quên mật khẩu / đặt mật khẩu lần đầu</Link> và nhập đúng email được cấp. Liên kết trong email giúp tự đặt mật khẩu và xác minh email. Bạn cũng có thể gửi thư mời ở trang chi tiết tài khoản.
+                Nhân viên đăng nhập bằng email vừa cấp và <strong>mật khẩu tạm</strong> (mặc định <code>123456</code>), rồi đặt mật khẩu riêng ngay ở lần đăng nhập đầu. Mật khẩu tạm hết hạn sau 72 giờ; khi đó nhân viên dùng <Link href="/forgot-password" className="font-bold text-brand hover:underline">Quên mật khẩu</Link> để nhận liên kết đặt mật khẩu qua email.
               </div>
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">
                 Role nghiệp vụ được cấp tại đúng workspace sở hữu nó: <strong>Đối tác gửi hàng</strong> được đồng bộ sau duyệt Merchant; <strong>Tài xế, Nhân viên kho, Quản lý bưu cục và Quản lý vận hành</strong> được tạo tại <Link href="/operations/workforce" className="font-black text-brand hover:underline">Operations → Workforce</Link>. Tài khoản tự đăng ký ngoài hệ thống chỉ nhận role Khách hàng.
