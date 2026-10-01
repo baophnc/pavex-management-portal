@@ -14,7 +14,8 @@ cookies, and forwards authenticated requests to the Kotlin API Gateway.
 
 ## Environment
 
-Set the API Gateway base URL before starting the portal:
+Copy `.env.example` to `.env.local`. It holds the API Gateway base URL, which is
+also the default when the file is missing:
 
 ```bash
 API_BASE_URL=http://localhost:8080
@@ -32,7 +33,7 @@ API_BASE_URL=http://host.docker.internal:8080
 ```bash
 corepack enable
 pnpm install
-pnpm dev
+pnpm dev        # http://localhost:3001 (the customer portal keeps port 3000)
 ```
 
 Quality gates:
