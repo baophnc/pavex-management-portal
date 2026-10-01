@@ -1,6 +1,7 @@
 import { ApiError, apiRequest } from "@/lib/api/client";
 
 import type {
+  ApprovedCash,
   CashCollection,
   CashCollectionStatus,
   CashRemittance,
@@ -32,6 +33,8 @@ export const financeApi = {
   approveRemittance: (id: string) => apiRequest<CashRemittance>(`admin/billing/cash/remittances/${id}/approve`, post()),
   rejectRemittance: (id: string, reason: string) =>
     apiRequest<CashRemittance>(`admin/billing/cash/remittances/${id}/reject`, post({ reason })),
+  approved: (from: string, to: string) =>
+    apiRequest<ApprovedCash>(`admin/billing/cash/approved${query({ from, to })}`),
   approveCollection: (id: string) => apiRequest<CashCollection>(`admin/billing/cash/collections/${id}/approve`, post()),
   rejectCollection: (id: string, reason: string) =>
     apiRequest<CashCollection>(`admin/billing/cash/collections/${id}/reject`, post({ reason })),

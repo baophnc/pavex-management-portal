@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { financeApi } from "@/features/finance/api";
+import { ApprovedCashView } from "@/features/finance/approved-cash";
 import {
   type CashCollection,
   type CashRemittance,
@@ -24,6 +25,7 @@ type Action =
 
 /** Finance approves the cash couriers hand to hubs; approved COD becomes payable to merchants. */
 export function CashReview() {
+  const [view, setView] = useState<"pending" | "approved">("pending");
   const [status, setStatus] = useState<CashRemittanceStatus | "">("SUBMITTED");
   const [remittances, setRemittances] = useState<CashRemittance[]>([]);
   const [collections, setCollections] = useState<CashCollection[]>([]);
@@ -59,7 +61,7 @@ export function CashReview() {
       switch (action.kind) {
         case "approve-remittance":
           await financeApi.approveRemittance(action.remittance.id);
-          toast.success(`Đã duyệt ${money(action.remittance.expectedAmount)} của lô ${action.remittance.remittanceNumber}.`);
+          toast.success(`Đã duyệt ${money(action.remittance.expectedAmount)} của lô ${action.remittance.remittanceNumber}. Xem lại ở tab "Đã duyệt · Doanh thu".`);
           break;
         case "reject-remittance":
           await financeApi.rejectRemittance(action.remittance.id, reason);
@@ -67,7 +69,7 @@ export function CashReview() {
           break;
         case "approve-collection":
           await financeApi.approveCollection(action.collection.id);
-          toast.success(`Đã duyệt ${money(action.collection.amount)} của đơn ${action.collection.trackingCode}.`);
+          toast.success(`Đã duyệt ${money(action.collection.amount)} của đơn ${action.collection.trackingCode}. Xem lại ở tab "Đã duyệt · Doanh thu".`);
           break;
         case "reject-collection":
           await financeApi.rejectCollection(action.collection.id, reason);
@@ -102,6 +104,20 @@ export function CashReview() {
         actions={<Button variant="outline" onClick={reload}><RefreshCwIcon className="size-4" />Làm mới</Button>}
       />
 
+      <div className="flex gap-1 border-b">
+        {([["pending", "Chờ duyệt"], ["approved", "Đã duyệt · Doanh thu"]] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setView(key)}
+            className={`-mb-px border-b-2 px-3 py-2 text-xs font-black ${view === key ? "border-brand text-brand" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === "approved" ? <ApprovedCashView /> : <>
       <div className="flex flex-wrap items-center gap-2">
         <select className={`${selectClassName} w-auto text-xs font-bold`} value={status} onChange={(event) => { setLoading(true); setStatus(event.target.value as CashRemittanceStatus | ""); }}>
           <option value="SUBMITTED">Lô chờ duyệt</option>
@@ -189,6 +205,8 @@ export function CashReview() {
           ) : null}
         </>
       )}
+
+      </>}
 
       <FinanceDialog
         open={action !== null}
