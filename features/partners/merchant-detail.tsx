@@ -432,6 +432,8 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
   const merchantRoleExpected = merchant?.status === "ACTIVE";
   const roleSyncHealthy =
     merchantRolePresent === null || merchantRoleExpected === merchantRolePresent;
+  // Partners retries on its own; after a failed attempt the wait is no longer "a few seconds".
+  const roleSyncFailing = (readiness?.roleSync?.attempts ?? 0) > 0;
   const defaultPickup = readiness?.pickupAddresses.find(
     (address) => address.id === readiness.defaultPickupAddressId,
   ) ?? null;
@@ -806,7 +808,9 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                       ? "unknown"
                       : roleSyncHealthy
                         ? "ok"
-                        : "pending"
+                        : roleSyncFailing
+                          ? "blocked"
+                          : "pending"
                 }
                 title="Quyền cửa hàng trên tài khoản"
                 detail={
@@ -820,9 +824,13 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                           ? merchantRolePresent
                             ? "Tài khoản đã có quyền cửa hàng."
                             : "Cửa hàng không hoạt động và tài khoản không còn quyền cửa hàng."
-                          : merchantRoleExpected
-                            ? "Cửa hàng đã được duyệt nhưng tài khoản chưa có quyền cửa hàng. Hệ thống đang cập nhật; bấm “Kiểm tra lại” sau vài giây."
-                            : "Cửa hàng không hoạt động nhưng tài khoản vẫn còn quyền cửa hàng. Hệ thống đang gỡ quyền; bấm “Kiểm tra lại” sau vài giây."
+                          : roleSyncFailing
+                            ? `Đồng bộ quyền cửa hàng sang tài khoản đã lỗi ${readiness?.roleSync?.attempts} lần${
+                                readiness?.roleSync?.lastError ? ` (${readiness.roleSync.lastError})` : ""
+                              }. Hệ thống tự thử lại; nếu vẫn lỗi, kiểm tra dịch vụ Identity và Partners.`
+                            : merchantRoleExpected
+                              ? "Cửa hàng đã được duyệt nhưng tài khoản chưa có quyền cửa hàng. Hệ thống đang cập nhật; bấm “Kiểm tra lại” sau vài giây."
+                              : "Cửa hàng không hoạt động nhưng tài khoản vẫn còn quyền cửa hàng. Hệ thống đang gỡ quyền; bấm “Kiểm tra lại” sau vài giây."
                 }
               />
               <ReadinessRow

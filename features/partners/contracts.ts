@@ -76,6 +76,16 @@ export type MerchantReadiness = {
   identityChecked: boolean;
   defaultPickupAddressId: string | null;
   pickupAddresses: AdminPickupAddress[];
+  /** A merchant role change not yet delivered to the login account; null when in step. */
+  roleSync: MerchantRoleSync | null;
+};
+
+export type MerchantRoleSync = {
+  /** True when the change grants the merchant role, false when it removes it. */
+  enabled: boolean;
+  pendingSince: string;
+  attempts: number;
+  lastError: string | null;
 };
 
 export function orderRestrictionLabel(code: string) {
