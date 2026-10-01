@@ -1,28 +1,32 @@
 "use client";
 
-import {
-  AlertTriangleIcon,
-  ClipboardListIcon,
-  LoaderCircleIcon,
-  RefreshCwIcon,
-  SearchIcon,
-} from "lucide-react";
+import { AlertTriangleIcon, DownloadIcon, RotateCcwIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { DataTable, Pagination, type Column } from "@/components/workspace/data-table";
+import {
+  CollapseToggle,
+  FilterField,
+  FilterGrid,
+  FilterInput,
+  FilterSelect,
+  ToolbarButton,
+  WorkspaceToolbar,
+} from "@/components/workspace/filters";
 import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
 import { useAccess } from "@/features/auth/access-context";
 import { getOperationalAssignments, getWorkforce } from "@/features/operations/api";
 import {
   operationalAssignmentStatuses,
+  workforceKinds,
   type OperationalAssignment,
   type OperationalAssignmentStatus,
+  type OperationalAssignmentType,
+  type WorkforceMemberKind,
 } from "@/features/operations/contracts";
 import {
   operationalAssignmentStatusLabel,
@@ -32,6 +36,7 @@ import {
 } from "@/features/operations/presentation";
 import { getAdminShipment, getAdminShipments } from "@/features/shipments/api";
 import { ApiError } from "@/lib/api/client";
+import { downloadCsv } from "@/lib/csv";
 import { cn, formatDateTime } from "@/lib/utils";
 
 function apiMessage(error: unknown, fallback: string) {
@@ -61,6 +66,15 @@ function statusClass(status: OperationalAssignmentStatus) {
   }
 }
 
+const ALL_TYPES: OperationalAssignmentType[] = [
+  "PICKUP",
+  "ORIGIN_HUB_HANDLING",
+  "LINE_HAUL",
+  "TRANSIT_HUB_HANDLING",
+  "DESTINATION_HUB_HANDLING",
+  "LAST_MILE_DELIVERY",
+];
+
 function shortId(value: string | null) {
   return value ? `${value.slice(0, 8)}…` : "—";
 }
@@ -82,6 +96,14 @@ export function OperationsAssignments() {
   const [assignmentDraft, setAssignmentDraft] = useState(assignmentCode);
   const [shipmentDraft, setShipmentDraft] = useState(trackingCode);
   const [hubDraft, setHubDraft] = useState(hubCode);
+  const [statusDraft, setStatusDraft] = useState<OperationalAssignmentStatus | "">(status);
+  const [typeDraft, setTypeDraft] = useState<OperationalAssignmentType | "">("");
+  const [kindDraft, setKindDraft] = useState<WorkforceMemberKind | "">("");
+  const [typeFilter, setTypeFilter] = useState<OperationalAssignmentType | "">("");
+  const [kindFilter, setKindFilter] = useState<WorkforceMemberKind | "">("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [collapsed, setCollapsed] = useState(false);
   const [hubs, setHubs] = useState<Hub[]>([]);
   const [shipmentLabels, setShipmentLabels] = useState<Record<string, string>>({});
   const [hubLabels, setHubLabels] = useState<Record<string, string>>({});
@@ -99,6 +121,10 @@ export function OperationsAssignments() {
     const task = window.setTimeout(() => setHubDraft(hubCode), 0);
     return () => window.clearTimeout(task);
   }, [hubCode]);
+  useEffect(() => {
+    const task = window.setTimeout(() => setStatusDraft(status), 0);
+    return () => window.clearTimeout(task);
+  }, [status]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -202,163 +228,244 @@ export function OperationsAssignments() {
     return { pending, active, completed };
   }, [items]);
 
+  const typeOptions = useMemo(() => [...new Set(items.map((item) => item.type))], [items]);
+  const visible = useMemo(
+    () =>
+      items.filter(
+        (item) => (!typeFilter || item.type === typeFilter) && (!kindFilter || item.requiredKind === kindFilter),
+      ),
+    [items, kindFilter, typeFilter],
+  );
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const columns: Column<OperationalAssignment>[] = [
+    {
+      key: "code",
+      header: "Mã việc",
+      width: 180,
+      sortValue: (row) => row.code,
+      cell: (row) => (
+        <Link href={`/operations/assignments/${row.id}`} className="font-mono font-semibold text-brand hover:underline">
+          {row.code}
+        </Link>
+      ),
+    },
+    { key: "type", header: "Loại việc", width: 170, sortValue: (row) => operationalAssignmentTypeLabel(row.type), cell: (row) => operationalAssignmentTypeLabel(row.type) },
+    {
+      key: "shipment",
+      header: "Vận đơn",
+      width: 190,
+      sortValue: (row) => shipmentLabels[row.shipmentId] ?? row.shipmentId,
+      cell: (row) =>
+        shipmentLabels[row.shipmentId] ? (
+          <Link
+            href={`/shipments/tracking?codes=${encodeURIComponent(shipmentLabels[row.shipmentId]!)}`}
+            className="font-mono hover:text-brand hover:underline"
+          >
+            {shipmentLabels[row.shipmentId]}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">{shortId(row.shipmentId)}</span>
+        ),
+    },
+    { key: "hub", header: "Bưu cục", width: 220, sortValue: (row) => hubLabels[row.hubId] ?? "", cell: (row) => hubLabels[row.hubId] || "Bưu cục trong phạm vi" },
+    { key: "kind", header: "Loại nhân sự", width: 130, sortValue: (row) => workforceKindLabel(row.requiredKind), cell: (row) => workforceKindLabel(row.requiredKind) },
+    {
+      key: "assignee",
+      header: "Người nhận",
+      width: 200,
+      sortValue: (row) => (row.assigneeWorkforceMemberId ? workerLabels[row.assigneeWorkforceMemberId] ?? "" : ""),
+      cell: (row) =>
+        row.assigneeWorkforceMemberId ? (
+          workerLabels[row.assigneeWorkforceMemberId] || "Nhân sự đã phân công"
+        ) : (
+          <span className="text-muted-foreground">Chưa phân công</span>
+        ),
+    },
+    {
+      key: "status",
+      header: "Trạng thái",
+      width: 120,
+      sortValue: (row) => operationalAssignmentStatusLabel(row.status),
+      cell: (row) => (
+        <span className={cn("inline-flex rounded-sm border px-1.5 py-0.5 text-[0.68rem]", statusClass(row.status))}>
+          {operationalAssignmentStatusLabel(row.status)}
+        </span>
+      ),
+    },
+    { key: "priority", header: "Ưu tiên", width: 70, align: "right", sortValue: (row) => row.priority, cell: (row) => row.priority },
+    { key: "createdAt", header: "Tạo lúc", width: 130, sortValue: (row) => row.createdAt, cell: (row) => formatDateTime(row.createdAt) },
+    { key: "updatedAt", header: "Cập nhật", width: 130, sortValue: (row) => row.updatedAt, cell: (row) => formatDateTime(row.updatedAt) },
+  ];
+
+  function search(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setTypeFilter(typeDraft);
+    setKindFilter(kindDraft);
+    setPage(1);
+    updateFilters({
+      assignmentCode: assignmentDraft.toUpperCase(),
+      trackingCode: canReadGlobalShipments ? shipmentDraft.toUpperCase() : "",
+      hubCode: hubDraft,
+      status: statusDraft,
+    });
+  }
+
+  function reset() {
+    setAssignmentDraft("");
+    setShipmentDraft("");
+    setHubDraft("");
+    setStatusDraft("");
+    setTypeDraft("");
+    setKindDraft("");
+    setTypeFilter("");
+    setKindFilter("");
+    setPage(1);
+    if (assignmentCode || trackingCode || hubCode || status) router.push(pathname);
+    else void load();
+  }
+
+  function exportRows() {
+    downloadCsv(
+      "phan-cong.csv",
+      ["Mã việc", "Loại việc", "Vận đơn", "Bưu cục", "Loại nhân sự", "Người nhận", "Trạng thái", "Ưu tiên", "Tạo lúc", "Cập nhật"],
+      visible.map((row) => [
+        row.code,
+        operationalAssignmentTypeLabel(row.type),
+        shipmentLabels[row.shipmentId] ?? row.shipmentId,
+        hubLabels[row.hubId] ?? row.hubId,
+        workforceKindLabel(row.requiredKind),
+        row.assigneeWorkforceMemberId ? workerLabels[row.assigneeWorkforceMemberId] ?? row.assigneeWorkforceMemberId : "",
+        operationalAssignmentStatusLabel(row.status),
+        row.priority,
+        formatDateTime(row.createdAt),
+        formatDateTime(row.updatedAt),
+      ]),
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="flex flex-col gap-3 border-b bg-gradient-to-br from-brand/[0.08] via-card to-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-          <div>
-            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Operations assignments</p>
-            <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">Phân công vận hành</h1>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Theo dõi hàng đợi theo shipment/hub, trạng thái thực thi và mở detail để phân công hoặc hủy công việc.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>
-            {loading ? <LoaderCircleIcon className="size-4 animate-spin" /> : <RefreshCwIcon className="size-4" />}
+    <div className="space-y-2.5 rounded-md border bg-card p-3">
+      <form onSubmit={search} className="space-y-2.5">
+        <WorkspaceToolbar
+          trailing={
+            <>
+              <span className="hidden text-xs text-muted-foreground md:inline">
+                Chờ điều phối <b className="text-brand">{counts.pending}</b> · Đang làm <b className="text-foreground">{counts.active}</b> ·
+                Hoàn tất <b className="text-foreground">{counts.completed}</b>
+              </span>
+              <CollapseToggle collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
+            </>
+          }
+        >
+          <ToolbarButton type="submit" tone="primary" icon={<SearchIcon />} disabled={loading}>
+            Tìm kiếm
+          </ToolbarButton>
+          <ToolbarButton icon={<RotateCcwIcon />} onClick={reset} disabled={loading}>
             Làm mới
-          </Button>
-        </div>
-      </section>
+          </ToolbarButton>
+          <ToolbarButton icon={<DownloadIcon />} onClick={exportRows} disabled={loading || visible.length === 0}>
+            Xuất dữ liệu
+          </ToolbarButton>
+        </WorkspaceToolbar>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Chờ điều phối", counts.pending],
-          ["Đang hoạt động", counts.active],
-          ["Đã hoàn tất", counts.completed],
-        ].map(([label, value]) => (
-          <Card key={String(label)}>
-            <CardContent>
-              <p className="text-[0.68rem] font-black uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
-              <p className="mt-2 text-2xl font-black">{value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardContent className="space-y-3">
-          <div className={cn(
-            "grid gap-2",
-            canReadGlobalShipments
-              ? "lg:grid-cols-[1fr_1fr_1fr_220px_auto]"
-              : "lg:grid-cols-[1fr_1fr_220px_auto]",
-          )}>
-            <Input
+        <FilterGrid collapsed={collapsed}>
+          <FilterField label="Mã việc">
+            <FilterInput
               value={assignmentDraft}
               onChange={(event) => setAssignmentDraft(event.target.value)}
-              placeholder="Mã assignment, ví dụ OA-..."
-              className="font-mono text-xs uppercase"
+              placeholder="PAVEX-ASG-…"
+              className="font-mono uppercase placeholder:font-sans"
             />
-            {canReadGlobalShipments ? <Input
-              value={shipmentDraft}
-              onChange={(event) => setShipmentDraft(event.target.value)}
-              placeholder="Mã vận đơn, ví dụ PAVEX..."
-              className="font-mono text-xs uppercase"
-            /> : null}
-            <select
-              value={hubDraft}
-              onChange={(event) => setHubDraft(event.target.value)}
-              className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
-            >
-              <option value="">Tất cả bưu cục trong phạm vi</option>
-              {hubs.map((hub) => <option key={hub.id} value={hub.code}>{hub.code} · {hub.name}</option>)}
-            </select>
-            <select
-              value={status}
-              onChange={(event) => updateFilters({ status: event.target.value })}
-              className="h-10 rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="">Tất cả trạng thái</option>
-              {operationalAssignmentStatuses.map((item) => (
-                <option key={item} value={item}>{operationalAssignmentStatusLabel(item)}</option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              onClick={() => updateFilters({
-                assignmentCode: assignmentDraft.toUpperCase(),
-                trackingCode: canReadGlobalShipments ? shipmentDraft.toUpperCase() : "",
-                hubCode: hubDraft,
-              })}
-            >
-              <SearchIcon className="size-4" />
-              Lọc
-            </Button>
-          </div>
-          {(assignmentCode || trackingCode || hubCode || status) ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setAssignmentDraft("");
-                setShipmentDraft("");
-                setHubDraft("");
-                router.push(pathname);
-              }}
-            >
-              Xóa bộ lọc
-            </Button>
+          </FilterField>
+          {canReadGlobalShipments ? (
+            <FilterField label="Mã vận đơn">
+              <FilterInput
+                value={shipmentDraft}
+                onChange={(event) => setShipmentDraft(event.target.value)}
+                placeholder="PAVEX…"
+                className="font-mono uppercase placeholder:font-sans"
+              />
+            </FilterField>
           ) : null}
-        </CardContent>
-      </Card>
+          <FilterField label="Bưu cục">
+            <FilterSelect value={hubDraft} onChange={(event) => setHubDraft(event.target.value)}>
+              <option value="">Tất cả trong phạm vi</option>
+              {hubs.map((hub) => (
+                <option key={hub.id} value={hub.code}>
+                  {hub.code} · {hub.name}
+                </option>
+              ))}
+            </FilterSelect>
+          </FilterField>
+          <FilterField label="Trạng thái">
+            <FilterSelect value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as OperationalAssignmentStatus | "")}>
+              <option value="">Tất cả</option>
+              {operationalAssignmentStatuses.map((item) => (
+                <option key={item} value={item}>
+                  {operationalAssignmentStatusLabel(item)}
+                </option>
+              ))}
+            </FilterSelect>
+          </FilterField>
+          <FilterField label="Loại việc">
+            <FilterSelect value={typeDraft} onChange={(event) => setTypeDraft(event.target.value as OperationalAssignmentType | "")}>
+              <option value="">Tất cả</option>
+              {(typeOptions.length ? typeOptions : ALL_TYPES).map((item) => (
+                <option key={item} value={item}>
+                  {operationalAssignmentTypeLabel(item)}
+                </option>
+              ))}
+            </FilterSelect>
+          </FilterField>
+          <FilterField label="Loại nhân sự">
+            <FilterSelect value={kindDraft} onChange={(event) => setKindDraft(event.target.value as WorkforceMemberKind | "")}>
+              <option value="">Tất cả</option>
+              {workforceKinds.map((item) => (
+                <option key={item} value={item}>
+                  {workforceKindLabel(item)}
+                </option>
+              ))}
+            </FilterSelect>
+          </FilterField>
+        </FilterGrid>
+      </form>
 
       {error ? (
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-          <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+        <p role="alert" className="flex items-start gap-2 rounded border border-brand/25 bg-brand/5 px-3 py-2 text-xs text-brand">
+          <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
           {error}
-        </div>
+        </p>
       ) : null}
 
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="grid min-h-52 place-items-center text-sm text-muted-foreground">
-              <LoaderCircleIcon className="mr-2 inline size-4 animate-spin" /> Đang tải assignment...
-            </div>
-          ) : items.length === 0 ? (
-            <div className="grid min-h-52 place-items-center px-4 text-center text-sm text-muted-foreground">
-              Không có assignment phù hợp phạm vi và bộ lọc hiện tại.
-            </div>
-          ) : (
-            <div className="divide-y">
-              {items.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/operations/assignments/${item.id}`}
-                  className="grid gap-3 px-4 py-3 transition hover:bg-muted/35 lg:grid-cols-[1.1fr_1.1fr_1fr_0.9fr_auto] lg:items-center"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <ClipboardListIcon className="size-4 shrink-0 text-brand" />
-                      <p className="truncate text-xs font-black">{item.code}</p>
-                    </div>
-                    <p className="mt-1 text-[0.68rem] text-muted-foreground">{operationalAssignmentTypeLabel(item.type)}</p>
-                  </div>
-                  <div className="min-w-0 text-[0.68rem]">
-                    <p className="font-bold">{shipmentLabels[item.shipmentId] || `Vận đơn ${shortId(item.shipmentId)}`}</p>
-                    <p className="mt-1 text-muted-foreground">{hubLabels[item.hubId] || "Bưu cục trong phạm vi"}</p>
-                  </div>
-                  <div className="text-[0.68rem]">
-                    <p className="font-bold">{workforceKindLabel(item.requiredKind)}</p>
-                    <p className="mt-1 text-muted-foreground">{item.assigneeWorkforceMemberId ? workerLabels[item.assigneeWorkforceMemberId] || "Nhân sự đã phân công" : "Chưa phân công"}</p>
-                  </div>
-                  <div className="text-[0.68rem]">
-                    <span className={cn("inline-flex rounded-full border px-2 py-1 font-black", statusClass(item.status))}>
-                      {operationalAssignmentStatusLabel(item.status)}
-                    </span>
-                    <p className="mt-1 text-muted-foreground">Ưu tiên {item.priority}</p>
-                  </div>
-                  <div className="text-right text-[0.65rem] text-muted-foreground">
-                    <p>{formatDateTime(item.updatedAt)}</p>
-                    <p className="mt-1 font-black text-brand">Mở →</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <DataTable
+        columns={columns}
+        rows={pageRows}
+        rowKey={(row) => row.id}
+        loading={loading}
+        startIndex={(currentPage - 1) * pageSize}
+        emptyText="Không có việc phù hợp phạm vi và bộ lọc"
+        actionsWidth={90}
+        actions={(row) => (
+          <Link href={`/operations/assignments/${row.id}`} className="text-xs text-brand hover:underline">
+            Chi tiết
+          </Link>
+        )}
+      />
+
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={visible.length}
+        disabled={loading}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
     </div>
   );
 }

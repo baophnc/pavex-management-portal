@@ -1,29 +1,22 @@
 "use client";
 
-import {
-  ArrowRightIcon,
-  BoxIcon,
-  FilterIcon,
-  RefreshCwIcon,
-  SearchIcon,
-  TruckIcon,
-} from "lucide-react";
+import { DownloadIcon, RotateCcwIcon, ScanSearchIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { getAdminShipments } from "@/features/shipments/api";
-import type {
-  AdminShipmentSummary,
-  ShipmentLifecycleStatus,
-  ShipmentStatus,
-} from "@/features/shipments/contracts";
+import { DataTable, Pagination, type Column } from "@/components/workspace/data-table";
 import {
-  SHIPMENT_LIFECYCLE_STATUSES,
-  SHIPMENT_STATUSES,
-} from "@/features/shipments/contracts";
+  CollapseToggle,
+  FilterField,
+  FilterGrid,
+  FilterInput,
+  FilterSelect,
+  ToolbarButton,
+  WorkspaceToolbar,
+} from "@/components/workspace/filters";
+import { getAdminShipments } from "@/features/shipments/api";
+import type { AdminShipmentSummary, ShipmentLifecycleStatus, ShipmentStatus } from "@/features/shipments/contracts";
+import { SHIPMENT_LIFECYCLE_STATUSES, SHIPMENT_STATUSES } from "@/features/shipments/contracts";
 import {
   lifecycleLabel,
   money,
@@ -31,28 +24,60 @@ import {
   shipmentErrorMessage,
   shipmentStatusLabel,
 } from "@/features/shipments/presentation";
-import { formatDateTime } from "@/lib/utils";
+import { downloadCsv } from "@/lib/csv";
+import { cn, formatDateTime } from "@/lib/utils";
 
-const selectClassName =
-  "h-9 rounded-md border bg-background px-3 text-xs font-bold outline-none focus:border-brand focus:ring-2 focus:ring-brand/15";
+type Filters = { query: string; status: ShipmentStatus | ""; lifecycleStatus: ShipmentLifecycleStatus | "" };
 
-function StatusBadge({ status }: { status: ShipmentStatus }) {
-  const critical = status === "DELIVERY_FAILED";
-  const done = status === "DELIVERED" || status === "RETURNED";
-  return (
-    <span
-      className={
-        critical
-          ? "rounded-full border border-destructive/20 bg-destructive/10 px-2 py-1 text-[0.62rem] font-black text-destructive"
-          : done
-            ? "rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[0.62rem] font-black text-emerald-700 dark:text-emerald-300"
-            : "rounded-full border bg-muted/45 px-2 py-1 text-[0.62rem] font-black"
-      }
-    >
-      {shipmentStatusLabel(status)}
-    </span>
-  );
+/** Pages further than this from the last one loaded are not walked to one by one. */
+const MAX_PAGE_HOPS = 50;
+
+export function ShipmentStatusTag({ status }: { status: ShipmentStatus }) {
+  const tone =
+    status === "DELIVERY_FAILED" || status === "CANCELLED"
+      ? "border-brand/25 bg-brand/5 text-brand"
+      : status === "DELIVERED" || status === "RETURNED"
+        ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300"
+        : "border-sky-500/25 bg-sky-500/5 text-sky-700 dark:text-sky-300";
+  return <span className={cn("inline-flex rounded-sm border px-1.5 py-0.5 text-[0.68rem]", tone)}>{shipmentStatusLabel(status)}</span>;
 }
+
+function params(filters: Filters, size: number, cursor: string | null | undefined) {
+  const result = new URLSearchParams({ limit: String(size) });
+  if (filters.query.trim()) result.set("q", filters.query.trim());
+  if (filters.status) result.set("status", filters.status);
+  if (filters.lifecycleStatus) result.set("lifecycleStatus", filters.lifecycleStatus);
+  if (cursor) result.set("cursor", cursor);
+  return result;
+}
+
+const columns: Column<AdminShipmentSummary>[] = [
+  {
+    key: "trackingCode",
+    header: "Mã vận đơn",
+    width: 190,
+    sortValue: (row) => row.trackingCode,
+    cell: (row) => (
+      <Link href={`/shipments/${encodeURIComponent(row.trackingCode)}`} className="font-mono font-semibold text-brand hover:underline">
+        {row.trackingCode}
+      </Link>
+    ),
+  },
+  { key: "reference", header: "Mã tham chiếu", width: 130, sortValue: (row) => row.merchantReference, cell: (row) => row.merchantReference ?? "—" },
+  { key: "status", header: "Trạng thái", width: 130, sortValue: (row) => shipmentStatusLabel(row.status), cell: (row) => <ShipmentStatusTag status={row.status} /> },
+  { key: "lifecycle", header: "Vòng đời", width: 100, sortValue: (row) => lifecycleLabel(row.lifecycleStatus), cell: (row) => lifecycleLabel(row.lifecycleStatus) },
+  { key: "service", header: "Dịch vụ", width: 90, sortValue: (row) => row.serviceLevel, cell: (row) => serviceLevelLabel(row.serviceLevel) },
+  { key: "parcels", header: "Số kiện", width: 70, align: "right", sortValue: (row) => row.parcelCount, cell: (row) => row.parcelCount },
+  { key: "origin", header: "Bưu cục gửi", width: 170, sortValue: (row) => row.originHubName, cell: (row) => <span title={row.originHubCode}>{row.originHubName}</span> },
+  { key: "destination", header: "Bưu cục phát", width: 170, sortValue: (row) => row.destinationHubName, cell: (row) => <span title={row.destinationHubCode}>{row.destinationHubName}</span> },
+  { key: "province", header: "Tỉnh/thành nhận", width: 130, sortValue: (row) => row.destinationProvinceName, cell: (row) => row.destinationProvinceName },
+  { key: "ward", header: "Phường/xã nhận", width: 150, sortValue: (row) => row.destinationWardName, cell: (row) => row.destinationWardName },
+  { key: "fee", header: "Cước", width: 100, align: "right", sortValue: (row) => row.shippingFee, cell: (row) => money(row.shippingFee) },
+  { key: "cod", header: "COD", width: 100, align: "right", sortValue: (row) => row.codAmount, cell: (row) => money(row.codAmount) },
+  { key: "collect", header: "Thu người nhận", width: 120, align: "right", sortValue: (row) => row.amountToCollect, cell: (row) => money(row.amountToCollect) },
+  { key: "createdAt", header: "Thời gian tạo", width: 130, sortValue: (row) => row.createdAt, cell: (row) => formatDateTime(row.createdAt) },
+  { key: "updatedAt", header: "Cập nhật", width: 130, sortValue: (row) => row.updatedAt, cell: (row) => formatDateTime(row.updatedAt) },
+];
 
 export function AdminShipments({
   initialQuery = "",
@@ -63,301 +88,187 @@ export function AdminShipments({
   initialStatus?: ShipmentStatus | "";
   initialLifecycleStatus?: ShipmentLifecycleStatus | "";
 }) {
-  const [items, setItems] = useState<AdminShipmentSummary[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState(0);
-  const [query, setQuery] = useState(initialQuery);
-  const [status, setStatus] = useState<ShipmentStatus | "">(initialStatus);
-  const [lifecycleStatus, setLifecycleStatus] =
-    useState<ShipmentLifecycleStatus | "">(initialLifecycleStatus);
+  const initial: Filters = { query: initialQuery, status: initialStatus, lifecycleStatus: initialLifecycleStatus };
+  const [draft, setDraft] = useState<Filters>(initial);
+  const [applied, setApplied] = useState<Filters>(initial);
+  const [rows, setRows] = useState<AdminShipmentSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  // cursors[n] loads page n + 1; the list API pages by cursor, so pages are walked in order.
+  const [cursors, setCursors] = useState<Array<string | null>>([null]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
-  const makeParams = useCallback(
-    (cursor?: string | null) => {
-      const params = new URLSearchParams({ limit: "25" });
-      if (query.trim()) params.set("q", query.trim());
-      if (status) params.set("status", status);
-      if (lifecycleStatus) params.set("lifecycleStatus", lifecycleStatus);
-      if (cursor) params.set("cursor", cursor);
-      return params;
-    },
-    [lifecycleStatus, query, status],
-  );
-
-  const load = useCallback(async () => {
+  const load = useCallback(async (target: number, size: number, filters: Filters, known: Array<string | null>) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getAdminShipments(makeParams());
-      setItems(result.items);
-      setNextCursor(result.nextCursor);
-      setTotalCount(result.totalCount);
+      const next = [...known];
+      // Start from the nearest page whose cursor is known and walk forward to the one asked for.
+      let current = Math.min(target, next.length);
+      const goal = Math.min(target, current + MAX_PAGE_HOPS);
+      let result = await getAdminShipments(params(filters, size, next[current - 1]));
+      next[current] = result.nextCursor;
+      while (current < goal && result.nextCursor) {
+        current += 1;
+        result = await getAdminShipments(params(filters, size, result.nextCursor));
+        next[current] = result.nextCursor;
+      }
+      setRows(result.items);
+      setTotal(result.totalCount);
+      setPage(current);
+      setCursors(next);
     } catch (reason) {
-      setItems([]);
-      setNextCursor(null);
-      setTotalCount(0);
+      setRows([]);
       setError(shipmentErrorMessage(reason, "Không thể tải danh sách vận đơn."));
     } finally {
       setLoading(false);
     }
-  }, [makeParams]);
+  }, []);
 
+  // The filters from the address bar load once; later loads come from the toolbar.
+  const initialFilters = useRef(initial);
   useEffect(() => {
-    const task = window.setTimeout(() => void load(), 0);
+    const task = window.setTimeout(() => void load(1, 20, initialFilters.current, [null]), 0);
     return () => window.clearTimeout(task);
   }, [load]);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void load();
+  function search(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    setApplied(draft);
+    void load(1, pageSize, draft, [null]);
   }
 
-  async function loadMore() {
-    if (!nextCursor || loadingMore) return;
-    setLoadingMore(true);
-    setError(null);
-    try {
-      const result = await getAdminShipments(makeParams(nextCursor));
-      setItems((current) => [...current, ...result.items]);
-      setNextCursor(result.nextCursor);
-      setTotalCount(result.totalCount);
-    } catch (reason) {
-      setError(shipmentErrorMessage(reason, "Không thể tải thêm vận đơn."));
-    } finally {
-      setLoadingMore(false);
-    }
+  function reset() {
+    const empty: Filters = { query: "", status: "", lifecycleStatus: "" };
+    setDraft(empty);
+    setApplied(empty);
+    void load(1, pageSize, empty, [null]);
   }
 
-  function clearFilters() {
-    setQuery("");
-    setStatus("");
-    setLifecycleStatus("");
+  function exportPage() {
+    downloadCsv(
+      `van-don-trang-${page}.csv`,
+      ["Mã vận đơn", "Mã tham chiếu", "Trạng thái", "Vòng đời", "Dịch vụ", "Số kiện", "Bưu cục gửi", "Bưu cục phát", "Tỉnh/thành nhận", "Phường/xã nhận", "Cước", "COD", "Thu người nhận", "Thời gian tạo"],
+      rows.map((row) => [
+        row.trackingCode,
+        row.merchantReference,
+        shipmentStatusLabel(row.status),
+        lifecycleLabel(row.lifecycleStatus),
+        serviceLevelLabel(row.serviceLevel),
+        row.parcelCount,
+        row.originHubName,
+        row.destinationHubName,
+        row.destinationProvinceName,
+        row.destinationWardName,
+        row.shippingFee,
+        row.codAmount,
+        row.amountToCollect,
+        formatDateTime(row.createdAt),
+      ]),
+    );
   }
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <p className="text-[0.62rem] font-black tracking-[0.14em] text-brand uppercase">
-              Vận hành vận đơn
-            </p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight">
-              Vận đơn toàn hệ thống
-            </h1>
-            <p className="mt-2 max-w-3xl text-xs leading-5 text-muted-foreground">
-              Tra cứu trạng thái, hành trình, cước phí và lịch sử xử lý vận đơn trên toàn hệ thống Pavex.
-            </p>
-          </div>
-          <div className="rounded-xl border bg-muted/25 px-4 py-3">
-            <p className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-muted-foreground">
-              Tổng theo bộ lọc
-            </p>
-            <p className="mt-1 text-2xl font-black tabular-nums">
-              {totalCount.toLocaleString("vi-VN")}
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="space-y-2.5 rounded-md border bg-card p-3">
+      <form onSubmit={search} className="space-y-2.5">
+        <WorkspaceToolbar trailing={<CollapseToggle collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />}>
+          <ToolbarButton type="submit" tone="primary" icon={<SearchIcon />} disabled={loading}>
+            Tìm kiếm
+          </ToolbarButton>
+          <ToolbarButton icon={<RotateCcwIcon />} onClick={reset} disabled={loading}>
+            Làm mới
+          </ToolbarButton>
+          <ToolbarButton icon={<DownloadIcon />} onClick={exportPage} disabled={loading || rows.length === 0}>
+            Xuất dữ liệu
+          </ToolbarButton>
+          <Link
+            href="/shipments/tracking"
+            className="inline-flex h-8 items-center gap-1.5 rounded border px-3 text-xs font-medium text-foreground/85 transition hover:border-brand/40 hover:text-brand [&_svg]:size-3.5"
+          >
+            <ScanSearchIcon /> Tra hành trình
+          </Link>
+        </WorkspaceToolbar>
 
-      <Card className="p-4">
-        <form
-          onSubmit={submit}
-          className="grid gap-3 xl:grid-cols-[minmax(18rem,1fr)_13rem_13rem_auto]"
-        >
-          <label className="grid gap-1.5 text-xs font-bold">
-            Tìm vận đơn
-            <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Mã vận đơn / mã tham chiếu đối tác"
-                className="pl-9"
-                maxLength={120}
-              />
-            </div>
-          </label>
-          <label className="grid gap-1.5 text-xs font-bold">
-            Trạng thái
-            <select
-              className={selectClassName}
-              value={status}
-              onChange={(event) =>
-                setStatus(event.target.value as ShipmentStatus | "")
-              }
+        <FilterGrid collapsed={collapsed}>
+          <FilterField label="Mã vận đơn / tham chiếu">
+            <FilterInput
+              value={draft.query}
+              onChange={(event) => setDraft((current) => ({ ...current, query: event.target.value }))}
+              placeholder="Nhập mã để tra cứu"
+              maxLength={120}
+            />
+          </FilterField>
+          <FilterField label="Trạng thái">
+            <FilterSelect
+              value={draft.status}
+              onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as ShipmentStatus | "" }))}
             >
-              <option value="">Tất cả trạng thái</option>
+              <option value="">Tất cả</option>
               {SHIPMENT_STATUSES.map((value) => (
                 <option key={value} value={value}>
                   {shipmentStatusLabel(value)}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-xs font-bold">
-            Vòng đời
-            <select
-              className={selectClassName}
-              value={lifecycleStatus}
+            </FilterSelect>
+          </FilterField>
+          <FilterField label="Vòng đời">
+            <FilterSelect
+              value={draft.lifecycleStatus}
               onChange={(event) =>
-                setLifecycleStatus(
-                  event.target.value as ShipmentLifecycleStatus | "",
-                )
+                setDraft((current) => ({ ...current, lifecycleStatus: event.target.value as ShipmentLifecycleStatus | "" }))
               }
             >
-              <option value="">Tất cả vòng đời</option>
+              <option value="">Tất cả</option>
               {SHIPMENT_LIFECYCLE_STATUSES.map((value) => (
                 <option key={value} value={value}>
                   {lifecycleLabel(value)}
                 </option>
               ))}
-            </select>
-          </label>
-          <div className="flex items-end gap-2">
-            <Button type="submit" disabled={loading}>
-              <FilterIcon className="size-3.5" />
-              Lọc
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={clearFilters}
-              disabled={loading}
-            >
-              Xóa lọc
-            </Button>
-          </div>
-        </form>
-      </Card>
+            </FilterSelect>
+          </FilterField>
+        </FilterGrid>
+      </form>
 
       {error ? (
-        <div
-          role="alert"
-          className="flex flex-col gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-xs sm:flex-row sm:items-center sm:justify-between"
-        >
-          <span className="font-bold text-destructive">{error}</span>
-          <Button variant="outline" size="sm" onClick={() => void load()}>
-            <RefreshCwIcon className="size-3.5" /> Thử lại
-          </Button>
-        </div>
+        <p role="alert" className="rounded border border-brand/25 bg-brand/5 px-3 py-2 text-xs text-brand">
+          {error}
+        </p>
       ) : null}
 
-      {loading ? (
-        <Card className="grid min-h-72 place-items-center p-6 text-xs font-bold text-muted-foreground">
-          <span className="flex items-center gap-2">
-            <RefreshCwIcon className="size-4 animate-spin" /> Đang tải vận đơn...
-          </span>
-        </Card>
-      ) : items.length === 0 ? (
-        <Card className="grid min-h-72 place-items-center p-6 text-center">
-          <div>
-            <BoxIcon className="mx-auto size-9 text-muted-foreground" />
-            <p className="mt-3 text-sm font-black">Không có vận đơn phù hợp</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Thử thay đổi từ khóa hoặc bộ lọc.
-            </p>
-          </div>
-        </Card>
-      ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1020px] text-left text-xs">
-              <thead className="bg-muted/35 text-[0.62rem] uppercase tracking-[0.08em] text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Vận đơn</th>
-                  <th className="px-4 py-3">Trạng thái</th>
-                  <th className="px-4 py-3">Hành trình</th>
-                  <th className="px-4 py-3">Điểm nhận</th>
-                  <th className="px-4 py-3">Cước / Thu hộ</th>
-                  <th className="px-4 py-3">Tạo lúc</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {items.map((shipment) => (
-                  <tr
-                    key={shipment.id}
-                    className="align-top transition hover:bg-muted/20"
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/shipments/${encodeURIComponent(shipment.trackingCode)}`}
-                        className="font-mono text-xs font-black text-brand hover:underline"
-                      >
-                        {shipment.trackingCode}
-                      </Link>
-                      <p className="mt-1 max-w-52 truncate text-[0.66rem] text-muted-foreground">
-                        {shipment.merchantReference
-                          ? `Tham chiếu: ${shipment.merchantReference}`
-                          : "Không có mã tham chiếu"}
-                      </p>
-                      <p className="mt-1 text-[0.62rem] font-bold text-muted-foreground">
-                        {serviceLevelLabel(shipment.serviceLevel)} · {shipment.parcelCount} kiện
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={shipment.status} />
-                      <p className="mt-2 text-[0.64rem] font-bold text-muted-foreground">
-                        {lifecycleLabel(shipment.lifecycleStatus)}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 font-bold">
-                        <TruckIcon className="size-3.5 text-brand" />
-                        {shipment.originHubName} → {shipment.destinationHubName}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-bold">{shipment.destinationProvinceName}</p>
-                      <p className="mt-1 text-[0.64rem] text-muted-foreground">
-                        {shipment.destinationWardName}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">
-                      <p className="font-black">{money(shipment.shippingFee)}</p>
-                      <p className="mt-1 text-[0.64rem] text-muted-foreground">
-                        Thu người nhận {money(shipment.amountToCollect)}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 text-[0.68rem] font-bold">
-                      {formatDateTime(shipment.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/shipments/${encodeURIComponent(shipment.trackingCode)}`}
-                        className="inline-flex items-center gap-1 text-[0.68rem] font-black text-brand hover:underline"
-                      >
-                        Chi tiết <ArrowRightIcon className="size-3.5" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex flex-col gap-2 border-t bg-muted/15 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[0.66rem] font-bold text-muted-foreground">
-              Đã tải {items.length.toLocaleString("vi-VN")} / {totalCount.toLocaleString("vi-VN")} vận đơn
-            </p>
-            {nextCursor ? (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={loadingMore}
-                onClick={() => void loadMore()}
-              >
-                {loadingMore ? (
-                  <RefreshCwIcon className="size-3.5 animate-spin" />
-                ) : null}
-                Tải thêm
-              </Button>
-            ) : null}
-          </div>
-        </Card>
-      )}
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        loading={loading}
+        startIndex={(page - 1) * pageSize}
+        emptyText={applied.query || applied.status || applied.lifecycleStatus ? "Không có vận đơn phù hợp bộ lọc" : "Chưa có vận đơn"}
+        actionsWidth={130}
+        actions={(row) => (
+          <>
+            <Link href={`/shipments/${encodeURIComponent(row.trackingCode)}`} className="text-xs text-brand hover:underline">
+              Chi tiết
+            </Link>
+            <Link href={`/shipments/tracking?codes=${encodeURIComponent(row.trackingCode)}`} className="text-xs text-brand hover:underline">
+              Hành trình
+            </Link>
+          </>
+        )}
+      />
+
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        disabled={loading}
+        onPageChange={(target) => void load(target, pageSize, applied, cursors)}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          void load(1, size, applied, [null]);
+        }}
+      />
     </div>
   );
 }

@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Building2Icon,
-  CircleDollarSignIcon,
-  CircleGaugeIcon,
-  ShieldCheckIcon,
-  TruckIcon,
-  UserRoundCogIcon,
-  XIcon,
-} from "lucide-react";
+import { XIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -71,27 +63,15 @@ function tabTitle(pathname: string) {
   if (pathname.startsWith("/shipments/cases")) return "Hồ sơ sự cố";
   if (pathname.startsWith("/control-tower")) return "Control Tower";
   if (pathname === "/fleet") return "Xe trung chuyển";
+  if (pathname === "/deliveries") return "Giao hàng";
+  if (pathname === "/support") return "Yêu cầu hỗ trợ";
+  if (pathname === "/shipments/tracking") return "Tra hành trình";
   if (/^\/shipments\/[^/]+$/.test(pathname)) return "Chi tiết vận đơn";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);
   return segment
     ? decodeURIComponent(segment).replaceAll("-", " ")
     : "PAVEX";
-}
-
-function tabIcon(path: string) {
-  if (path === "/dashboard") return CircleGaugeIcon;
-  if (path.startsWith("/identity/roles")) return ShieldCheckIcon;
-  if (path.startsWith("/identity")) return UserRoundCogIcon;
-  if (path.startsWith("/partners/merchants")) return Building2Icon;
-  if (path.startsWith("/network/hubs")) return Building2Icon;
-  if (path.startsWith("/network")) return CircleGaugeIcon;
-  if (path.startsWith("/pricing") || path.startsWith("/finance")) return CircleDollarSignIcon;
-  if (path.startsWith("/operations")) return CircleGaugeIcon;
-  if (path.startsWith("/control-tower")) return CircleGaugeIcon;
-  if (path.startsWith("/shipments") || path.startsWith("/fleet")) return TruckIcon;
-  if (path === "/account") return UserRoundCogIcon;
-  return CircleGaugeIcon;
 }
 
 function pathFromHref(href: string) {
@@ -257,50 +237,48 @@ export function WorkspaceTabs() {
   }
 
   return (
-    <div className="border-t bg-muted/25">
+    <div className="border-b bg-card">
       <div
-        className="scrollbar-none hidden min-h-11 items-end gap-1 overflow-x-auto px-2 pt-1.5 sm:flex lg:px-4"
+        className="scrollbar-none hidden h-9 items-stretch overflow-x-auto sm:flex"
         role="tablist"
-        aria-label="Workspace đang mở"
+        aria-label="Trang đang mở"
       >
         {tabs.map((tab, index) => {
           const active = tab.path === pathname;
-          const Icon = tabIcon(tab.path);
 
           return (
             <div
               key={tab.path}
               className={cn(
-                "group relative flex h-9 shrink-0 items-center rounded-t-lg border border-b-0 transition-colors",
-                active
-                  ? "border-border bg-background text-foreground shadow-[0_-1px_0_rgba(0,0,0,0.025)]"
-                  : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-background/70 hover:text-foreground",
+                "group relative flex shrink-0 items-center border-r transition-colors",
+                active ? "bg-background text-brand" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
               )}
               role="presentation"
             >
-              {active ? (
-                <span
-                  className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-brand"
-                  aria-hidden="true"
-                />
-              ) : null}
+              {active ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand" aria-hidden="true" /> : null}
               <Link
                 href={tab.href}
-                className="flex h-full max-w-56 items-center gap-2 px-3 text-[0.7rem] font-bold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/35"
+                className={cn(
+                  "flex h-full max-w-56 items-center px-3.5 text-[0.72rem] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/35",
+                  active ? "font-semibold" : "",
+                  !tab.pinned && "pr-1.5",
+                )}
                 aria-current={active ? "page" : undefined}
                 role="tab"
                 aria-selected={active}
                 tabIndex={active ? 0 : -1}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
               >
-                <Icon className="size-3.5 shrink-0" />
                 <span className="truncate">{tab.title}</span>
               </Link>
               {!tab.pinned ? (
                 <button
                   type="button"
                   aria-label={`Đóng ${tab.title}`}
-                  className="mr-1 grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground/70 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+                  className={cn(
+                    "mr-1.5 grid size-5 shrink-0 place-items-center rounded-sm transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35",
+                    active ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                  )}
                   onClick={() => closeTab(tab.path)}
                 >
                   <XIcon className="size-3" />
@@ -311,12 +289,12 @@ export function WorkspaceTabs() {
         })}
       </div>
 
-      <div className="flex h-12 items-center gap-2 border-t border-border/60 px-3 sm:hidden">
-        <span className="shrink-0 text-[0.62rem] font-black tracking-[0.12em] text-muted-foreground uppercase">
-          Workspace
+      <div className="flex h-11 items-center gap-2 px-2.5 sm:hidden">
+        <span className="shrink-0 text-[0.68rem] font-semibold text-muted-foreground">
+          Đang mở
         </span>
         <select
-          aria-label="Chuyển workspace"
+          aria-label="Chuyển trang đang mở"
           value={activeIndex >= 0 ? tabs[activeIndex]?.path : pathname}
           onChange={(event) => switchWorkspace(event.target.value)}
           className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2.5 text-xs font-bold shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
@@ -332,7 +310,7 @@ export function WorkspaceTabs() {
             type="button"
             className="grid size-9 place-items-center rounded-lg border bg-background text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
             onClick={() => closeTab(pathname)}
-            aria-label="Đóng workspace hiện tại"
+            aria-label="Đóng trang hiện tại"
           >
             <XIcon className="size-3.5" />
           </button>

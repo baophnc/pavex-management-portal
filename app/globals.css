@@ -4,17 +4,18 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.98 0.002 250);
-  --foreground: oklch(0.17 0.006 255);
+  /* Light grey page behind white work areas, hairline grey rules, red for what is active. */
+  --background: oklch(0.955 0.005 255);
+  --foreground: oklch(0.2 0.008 255);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0 0 0);
+  --card-foreground: oklch(0.2 0.008 255);
   --primary: oklch(0 0 0);
   --primary-foreground: oklch(0.99 0 0);
-  --muted: oklch(0.95 0.004 250);
-  --muted-foreground: oklch(0.5 0.012 255);
+  --muted: oklch(0.968 0.003 255);
+  --muted-foreground: oklch(0.52 0.012 255);
   --brand: oklch(0.55 0.23 27);
   --destructive: oklch(0.55 0.23 27);
-  --border: oklch(100% 0.00011 271.152);
+  --border: oklch(0.915 0.005 255);
 }
 
 .dark {

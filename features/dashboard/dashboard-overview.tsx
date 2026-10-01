@@ -1,81 +1,43 @@
 "use client";
 
-import {
-  ActivityIcon,
-  ArrowUpRightIcon,
-  Building2Icon,
-  CircleDollarSignIcon,
-  InboxIcon,
-  CircleGaugeIcon,
-  CircleUserRoundIcon,
-  ClipboardListIcon,
-  RefreshCwIcon,
-  ShieldAlertIcon,
-  ShieldCheckIcon,
-  TruckIcon,
-  UsersRoundIcon,
-} from "lucide-react";
+import { ChevronRightIcon, RotateCcwIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { visibleModules } from "@/components/layout/navigation";
+import { ToolbarButton } from "@/components/workspace/filters";
+import { Panel, StatGrid, StatTile } from "@/components/workspace/panel";
 import { useAccess } from "@/features/auth/access-context";
+import { getMyHubScope } from "@/features/operations/hub-scope";
 import {
   canAccessControlTower,
-  canAccessCourierDeliveries,
-  canAccessSupportRequests,
-  canAccessOperations,
   canAccessOperationsAssignments,
   canAccessOperationsWorkforce,
   canAccessShipmentCases,
   canAccessShipmentExceptionQueue,
   canAccessShipmentList,
-  hasAnyPermission,
+  canAccessSupportRequests,
   hasPermission,
+  seesAllHubs,
 } from "@/lib/auth/access";
 import { apiRequest } from "@/lib/api/client";
 import type { CurrentUser } from "@/lib/auth/contracts";
 
-type MetricKey =
-  | "users"
-  | "pendingMerchants"
-  | "newSupportRequests"
-  | "activeShipments"
-  | "deliveryFailed"
-  | "pendingExceptionApprovals"
-  | "activeWorkforce"
-  | "pendingAssignments"
-  | "highRiskCases"
-  | "criticalAlerts"
-  | "deadLetters";
-
 type Metric = {
-  key: MetricKey;
+  key: string;
   label: string;
-  href: string;
   hint: string;
-  icon: typeof UsersRoundIcon;
+  href: string;
+  /** Counts that need someone to act, listed under "Cần xử lý" when above zero. */
+  attention?: string;
   canAccess: (user: CurrentUser | null) => boolean;
   load: () => Promise<number | null>;
 };
 
-type Capability = {
-  label: string;
-  description: string;
-  href: string;
-  icon: typeof UsersRoundIcon;
-  canAccess: (user: CurrentUser | null) => boolean;
-};
-
-function record(value: unknown) {
-  return typeof value === "object" && value !== null
-    ? (value as Record<string, unknown>)
-    : null;
-}
+type Section = { title: string; metrics: Metric[] };
 
 function numberField(value: unknown, field: string) {
-  const candidate = record(value)?.[field];
+  const candidate = typeof value === "object" && value !== null ? (value as Record<string, unknown>)[field] : null;
   return typeof candidate === "number" ? candidate : null;
 }
 
@@ -84,15 +46,11 @@ function countPayload(value: unknown) {
   return numberField(value, "totalCount") ?? numberField(value, "totalElements");
 }
 
-async function loadCount(path: string) {
-  return countPayload(await apiRequest(path));
-}
+const loadCount = async (path: string) => countPayload(await apiRequest(path));
+const loadField = async (path: string, field: string) => numberField(await apiRequest(path), field);
+const shipmentCount = (query: string) => () => loadCount(`admin/shipments?limit=1&${query}`);
 
-async function loadField(path: string, field: string) {
-  return numberField(await apiRequest(path), field);
-}
-
-async function loadPendingAssignments() {
+async function loadWaitingAssignments() {
   const [pending, rejected] = await Promise.all([
     apiRequest<unknown[]>("admin/operations/assignments?status=PENDING"),
     apiRequest<unknown[]>("admin/operations/assignments?status=REJECTED"),
@@ -100,411 +58,235 @@ async function loadPendingAssignments() {
   return pending.length + rejected.length;
 }
 
-const metrics: Metric[] = [
+const sections: Section[] = [
   {
-    key: "users",
-    label: "Tài khoản Identity",
-    href: "/identity/users",
-    hint: "Người dùng trong phạm vi quản trị",
-    icon: UsersRoundIcon,
-    canAccess: (user) => hasPermission(user, "identity.users.read"),
-    load: () => loadCount("users?page=1&pageSize=1"),
+    title: "Vận đơn",
+    metrics: [
+      { key: "active", label: "Đang hoạt động", hint: "Vận đơn chưa kết thúc", href: "/shipments?lifecycleStatus=ACTIVE", canAccess: canAccessShipmentList, load: shipmentCount("lifecycleStatus=ACTIVE") },
+      { key: "awaitingPickup", label: "Chờ lấy hàng", hint: "Bưu tá chưa lấy", href: "/shipments?status=AWAITING_PICKUP", canAccess: canAccessShipmentList, load: shipmentCount("status=AWAITING_PICKUP") },
+      { key: "inTransit", label: "Đang trung chuyển", hint: "Đang trên xe giữa các kho", href: "/shipments?status=IN_TRANSIT", canAccess: canAccessShipmentList, load: shipmentCount("status=IN_TRANSIT") },
+      { key: "outForDelivery", label: "Đang giao", hint: "Bưu tá đang đi giao", href: "/shipments?status=OUT_FOR_DELIVERY", canAccess: canAccessShipmentList, load: shipmentCount("status=OUT_FOR_DELIVERY") },
+      { key: "deliveryFailed", label: "Giao thất bại", hint: "Cần hẹn giao lại hoặc hoàn", href: "/shipments?status=DELIVERY_FAILED", attention: "vận đơn giao thất bại", canAccess: canAccessShipmentList, load: shipmentCount("status=DELIVERY_FAILED") },
+      { key: "delivered", label: "Đã giao", hint: "Giao thành công", href: "/shipments?status=DELIVERED", canAccess: canAccessShipmentList, load: shipmentCount("status=DELIVERED") },
+      { key: "returning", label: "Đang hoàn", hint: "Đang trả về người gửi", href: "/shipments?status=RETURNING", canAccess: canAccessShipmentList, load: shipmentCount("status=RETURNING") },
+      { key: "cancelled", label: "Đã huỷ", hint: "Huỷ trước hoặc sau khi lấy hàng", href: "/shipments?status=CANCELLED", canAccess: canAccessShipmentList, load: shipmentCount("status=CANCELLED") },
+    ],
   },
   {
-    key: "pendingMerchants",
-    label: "Merchant chờ duyệt",
-    href: "/partners/merchants?status=PENDING_VERIFICATION",
-    hint: "Hồ sơ cần xét duyệt",
-    icon: Building2Icon,
-    canAccess: (user) => hasPermission(user, "partners.merchants.read"),
-    load: () =>
-      loadCount("admin/merchants?page=1&pageSize=1&status=PENDING_VERIFICATION"),
+    title: "Điều phối và sự cố",
+    metrics: [
+      { key: "waitingAssignments", label: "Việc chờ điều phối", hint: "Chưa có người nhận hoặc bị từ chối", href: "/operations/assignments?status=PENDING", attention: "việc chờ điều phối", canAccess: canAccessOperationsAssignments, load: loadWaitingAssignments },
+      { key: "exceptions", label: "Ngoại lệ chờ duyệt", hint: "Huỷ, hoàn, chuyển tiếp chờ cấp duyệt", href: "/shipments/exceptions?status=PENDING_APPROVAL", attention: "yêu cầu ngoại lệ chờ duyệt", canAccess: canAccessShipmentExceptionQueue, load: () => loadField("admin/shipments/exception-queue/summary", "pendingApproval") },
+      { key: "cases", label: "Sự cố mức cao", hint: "Hồ sơ sự cố mức Cao hoặc Nghiêm trọng", href: "/shipments/cases", attention: "hồ sơ sự cố mức cao", canAccess: canAccessShipmentCases, load: () => loadField("admin/shipment-cases/summary", "highOrCritical") },
+      { key: "alerts", label: "Cảnh báo nghiêm trọng", hint: "Đơn trễ hạn, lệch tuyến, kẹt lâu", href: "/control-tower?severity=CRITICAL", attention: "cảnh báo nghiêm trọng", canAccess: canAccessControlTower, load: () => loadField("admin/shipments/control-tower/summary", "critical") },
+      { key: "deadLetters", label: "Sự kiện gửi lỗi", hint: "Sự kiện giữa các hệ thống cần gửi lại", href: "/operations/dispatch", attention: "sự kiện gửi lỗi", canAccess: (user) => hasPermission(user, "operations.assignments.manage"), load: () => loadField("admin/operations/outbox/summary", "deadLetteredCount") },
+      { key: "workforce", label: "Nhân sự đang làm", hint: "Trong phạm vi bưu cục bạn được xem", href: "/operations/workforce?status=ACTIVE", canAccess: canAccessOperationsWorkforce, load: () => loadCount("admin/operations/workforce?page=1&pageSize=1&status=ACTIVE") },
+    ],
   },
   {
-    key: "newSupportRequests",
-    label: "Yêu cầu hỗ trợ mới",
-    href: "/support",
-    hint: "Khách đang chờ phản hồi",
-    icon: InboxIcon,
-    canAccess: canAccessSupportRequests,
-    load: () => loadField("admin/support/requests/counts", "new"),
-  },
-  {
-    key: "activeShipments",
-    label: "Vận đơn đang hoạt động",
-    href: "/shipments?lifecycleStatus=ACTIVE",
-    hint: "Shipment lifecycle ACTIVE",
-    icon: TruckIcon,
-    canAccess: canAccessShipmentList,
-    load: () => loadCount("admin/shipments?limit=1&lifecycleStatus=ACTIVE"),
-  },
-  {
-    key: "deliveryFailed",
-    label: "Giao thất bại",
-    href: "/shipments?status=DELIVERY_FAILED",
-    hint: "Ưu tiên xử lý ngoại lệ giao",
-    icon: ShieldAlertIcon,
-    canAccess: canAccessShipmentList,
-    load: () => loadCount("admin/shipments?limit=1&status=DELIVERY_FAILED"),
-  },
-  {
-    key: "pendingExceptionApprovals",
-    label: "Ngoại lệ chờ duyệt",
-    href: "/shipments/exceptions?status=PENDING_APPROVAL",
-    hint: "Huỷ / hoàn / chuyển tiếp cần cấp duyệt",
-    icon: ShieldCheckIcon,
-    canAccess: canAccessShipmentExceptionQueue,
-    load: () => loadField("admin/shipments/exception-queue/summary", "pendingApproval"),
-  },
-  {
-    key: "activeWorkforce",
-    label: "Workforce active",
-    href: "/operations/workforce?status=ACTIVE",
-    hint: "Theo phạm vi bưu cục bạn được xem",
-    icon: UsersRoundIcon,
-    canAccess: canAccessOperationsWorkforce,
-    load: () =>
-      loadCount("admin/operations/workforce?page=1&pageSize=1&status=ACTIVE"),
-  },
-  {
-    key: "pendingAssignments",
-    label: "Assignment chờ điều phối",
-    href: "/operations/assignments?status=PENDING",
-    hint: "PENDING + REJECTED cần redispatch",
-    icon: ClipboardListIcon,
-    canAccess: canAccessOperationsAssignments,
-    load: loadPendingAssignments,
-  },
-  {
-    key: "highRiskCases",
-    label: "Case High / Critical",
-    href: "/shipments/cases",
-    hint: "Case active cần ưu tiên điều tra",
-    icon: ShieldAlertIcon,
-    canAccess: canAccessShipmentCases,
-    load: () => loadField("admin/shipment-cases/summary", "highOrCritical"),
-  },
-  {
-    key: "criticalAlerts",
-    label: "Control Tower critical",
-    href: "/control-tower?severity=CRITICAL",
-    hint: "Alert operational mức CRITICAL",
-    icon: ActivityIcon,
-    canAccess: canAccessControlTower,
-    load: () => loadField("admin/shipments/control-tower/summary", "critical"),
-  },
-  {
-    key: "deadLetters",
-    label: "Outbox dead-letter",
-    href: "/operations/dispatch",
-    hint: "Integration event cần retry/discard",
-    icon: ShieldAlertIcon,
-    canAccess: (user) => hasPermission(user, "operations.assignments.manage"),
-    load: () => loadField("admin/operations/outbox/summary", "deadLetteredCount"),
+    title: "Khách hàng và tài khoản",
+    metrics: [
+      { key: "merchants", label: "Shop chờ duyệt", hint: "Hồ sơ shop cần xét duyệt", href: "/partners/merchants?status=PENDING_VERIFICATION", attention: "shop chờ duyệt", canAccess: (user) => hasPermission(user, "partners.merchants.read"), load: () => loadCount("admin/merchants?page=1&pageSize=1&status=PENDING_VERIFICATION") },
+      { key: "support", label: "Yêu cầu hỗ trợ mới", hint: "Khách đang chờ phản hồi", href: "/support", attention: "yêu cầu hỗ trợ mới", canAccess: canAccessSupportRequests, load: () => loadField("admin/support/requests/counts", "new") },
+      { key: "users", label: "Tài khoản", hint: "Người dùng trong phạm vi quản trị", href: "/identity/users", canAccess: (user) => hasPermission(user, "identity.users.read"), load: () => loadCount("users?page=1&pageSize=1") },
+    ],
   },
 ];
 
-const capabilities: Capability[] = [
-  {
-    label: "Yêu cầu hỗ trợ",
-    description: "Liên hệ, hỗ trợ, khiếu nại và hồ sơ ứng tuyển khách gửi từ website.",
-    href: "/support",
-    icon: InboxIcon,
-    canAccess: canAccessSupportRequests,
-  },
-  {
-    label: "Giao hàng",
-    description: "Kiện đang giao, tiền cần thu của người nhận và nộp tiền về bưu cục.",
-    href: "/deliveries",
-    icon: TruckIcon,
-    canAccess: canAccessCourierDeliveries,
-  },
-  {
-    label: "Identity & Access",
-    description: "Users, role catalog và permission matrix.",
-    href: "/identity/users",
-    icon: ShieldCheckIcon,
-    canAccess: (user) =>
-      hasAnyPermission(user, ["identity.users.read", "identity.roles.read"]),
-  },
-  {
-    label: "Partners",
-    description: "Merchant verification và trạng thái đối tác.",
-    href: "/partners/merchants",
-    icon: Building2Icon,
-    canAccess: (user) => hasPermission(user, "partners.merchants.read"),
-  },
-  {
-    label: "Network",
-    description: "Hub, coverage, route, capacity và audit.",
-    href: "/network",
-    icon: CircleGaugeIcon,
-    canAccess: (user) => hasAnyPermission(user, ["network.read", "network.manage"]),
-  },
-  {
-    label: "Pricing",
-    description: "Rate plan, quote inspection và pricing audit.",
-    href: "/pricing",
-    icon: CircleDollarSignIcon,
-    canAccess: (user) => hasAnyPermission(user, ["pricing.read", "pricing.manage"]),
-  },
-  {
-    label: "Operations",
-    description: "Workforce, shifts, assignments và dispatch reliability.",
-    href: "/operations",
-    icon: ClipboardListIcon,
-    canAccess: canAccessOperations,
-  },
-  {
-    label: "Shipment",
-    description: "Vận đơn, delivery, exception và weight review.",
-    href: "/shipments",
-    icon: TruckIcon,
-    canAccess: canAccessShipmentList,
-  },
-  {
-    label: "Duyệt ngoại lệ",
-    description: "Huỷ, hoàn, chuyển tiếp và review cân lại theo cấp duyệt.",
-    href: "/shipments/exceptions",
-    icon: ShieldCheckIcon,
-    canAccess: canAccessShipmentExceptionQueue,
-  },
-  {
-    label: "Shipment Cases",
-    description: "Problem parcel và unidentified parcel investigation.",
-    href: "/shipments/cases",
-    icon: ShieldAlertIcon,
-    canAccess: canAccessShipmentCases,
-  },
-  {
-    label: "Control Tower",
-    description: "SLA, route deviation, stuck shipment và proof anomaly.",
-    href: "/control-tower",
-    icon: ActivityIcon,
-    canAccess: canAccessControlTower,
-  },
+/** Pages people open most, offered as shortcuts when they may open them. */
+const SHORTCUTS = [
+  "/shipments/tracking",
+  "/shipments",
+  "/operations/assignments",
+  "/operations/shifts",
+  "/fleet",
+  "/deliveries",
+  "/finance/cash",
+  "/partners/merchants",
+  "/support",
+  "/network/hubs",
 ];
 
-function MetricSkeleton() {
+function Banner({ name, scope }: { name: string; scope: string }) {
+  const today = new Intl.DateTimeFormat("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
   return (
-    <span
-      className="inline-block h-9 w-16 animate-pulse rounded-lg bg-muted"
-      aria-label="Đang tải"
-    />
+    <section className="relative overflow-hidden rounded-md bg-brand text-white">
+      <svg className="absolute inset-y-0 right-0 h-full w-2/3 opacity-25" viewBox="0 0 600 140" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+        <path d="M-10 110 C 90 110 120 40 220 40 S 360 100 450 70 560 20 620 30" fill="none" stroke="white" strokeWidth="3" strokeDasharray="10 8" />
+        <path d="M40 140 C 140 120 200 90 300 96 S 480 130 620 90" fill="none" stroke="white" strokeWidth="1.5" />
+        {[[220, 40], [450, 70], [300, 96], [120, 84]].map(([x, y]) => (
+          <g key={`${x}-${y}`}>
+            <circle cx={x} cy={y} r="9" fill="white" opacity="0.35" />
+            <circle cx={x} cy={y} r="4" fill="white" />
+          </g>
+        ))}
+        <rect x="500" y="84" width="54" height="30" rx="4" fill="white" opacity="0.9" />
+        <rect x="554" y="94" width="20" height="20" rx="3" fill="white" opacity="0.9" />
+        <circle cx="516" cy="118" r="6" fill="white" />
+        <circle cx="560" cy="118" r="6" fill="white" />
+      </svg>
+      <div className="relative px-5 py-5 sm:px-7">
+        <p className="text-2xl font-black tracking-tight italic sm:text-3xl">PAVEX</p>
+        <p className="mt-1 text-sm font-semibold">Xin chào, {name}</p>
+        <p className="mt-0.5 text-xs text-white/80">
+          {today.charAt(0).toUpperCase() + today.slice(1)} · {scope}
+        </p>
+      </div>
+    </section>
   );
 }
 
 export function DashboardOverview() {
   const { user } = useAccess();
-  const [values, setValues] = useState<Partial<Record<MetricKey, number | null>>>({});
+  const [values, setValues] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState<MetricKey[]>([]);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [scope, setScope] = useState<string | null>(null);
 
-  const visibleMetrics: Metric[] = useMemo(
-    () => metrics.filter((metric: Metric) => metric.canAccess(user)),
+  const visibleSections = useMemo(
+    () =>
+      sections
+        .map((section) => ({ ...section, metrics: section.metrics.filter((metric) => metric.canAccess(user)) }))
+        .filter((section) => section.metrics.length > 0),
     [user],
   );
-  const visibleCapabilities: Capability[] = useMemo(
-    () => capabilities.filter((item: Capability) => item.canAccess(user)),
-    [user],
-  );
+  const shortcuts = useMemo(() => {
+    const items = visibleModules(user).flatMap((area) => area.groups.flatMap((group) => group.items));
+    return SHORTCUTS.map((href) => items.find((item) => item.href === href)).filter((item) => item !== undefined);
+  }, [user]);
+  const limitedToHubs = Boolean(user && !seesAllHubs(user) && hasPermission(user, "operations.hub.read"));
 
   const load = useCallback(async () => {
     setLoading(true);
-    const next: Partial<Record<MetricKey, number | null>> = {};
-    const failures: MetricKey[] = [];
-
+    const next: Record<string, number | null> = {};
     await Promise.all(
-      visibleMetrics.map(async (metric: Metric) => {
-        try {
-          next[metric.key] = await metric.load();
-        } catch {
-          next[metric.key] = null;
-          failures.push(metric.key);
-        }
-      }),
+      visibleSections.flatMap((section) =>
+        section.metrics.map(async (metric) => {
+          try {
+            next[metric.key] = await metric.load();
+          } catch {
+            next[metric.key] = null;
+          }
+        }),
+      ),
     );
-
     setValues(next);
-    setFailed(failures);
+    setUpdatedAt(new Date());
     setLoading(false);
-  }, [visibleMetrics]);
+  }, [visibleSections]);
 
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(task);
   }, [load]);
 
-  const priority = (() => {
-    if (loading) {
-      return {
-        text: "Đang tải các việc cần ưu tiên trong phạm vi bạn được xem.",
-        href: null as string | null,
-        label: null as string | null,
-      };
-    }
-
-    const candidates: Array<[MetricKey, string, string, string]> = [
-      ["pendingExceptionApprovals", "Duyệt ngoại lệ", "/shipments/exceptions?status=PENDING_APPROVAL", "yêu cầu huỷ/hoàn/chuyển tiếp chờ duyệt"],
-      ["criticalAlerts", "Control Tower", "/control-tower?severity=CRITICAL", "cảnh báo critical"],
-      ["deadLetters", "Dispatch & outbox", "/operations/dispatch", "dead-letter integration"],
-      ["deliveryFailed", "Vận đơn giao thất bại", "/shipments?status=DELIVERY_FAILED", "vận đơn giao thất bại"],
-      ["pendingAssignments", "Assignment chờ điều phối", "/operations/assignments?status=PENDING", "assignment cần điều phối/redispatch"],
-      ["highRiskCases", "Shipment cases", "/shipments/cases", "case High/Critical"],
-      ["pendingMerchants", "Merchant chờ duyệt", "/partners/merchants?status=PENDING_VERIFICATION", "merchant chờ xét duyệt"],
-    ];
-
-    for (const [key, label, href, noun] of candidates) {
-      const value = values[key];
-      if (typeof value === "number" && value > 0) {
-        return {
-          text: `Có ${value.toLocaleString("vi-VN")} ${noun} cần chú ý.`,
-          href,
-          label,
-        };
-      }
-    }
-
-    if (failed.length > 0) {
-      return {
-        text: "Một số chỉ số chưa tải được; các workspace còn lại vẫn hoạt động độc lập.",
-        href: null,
-        label: null,
-      };
-    }
-
-    return {
-      text: "Không có tín hiệu ưu tiên từ các module bạn được phép xem.",
-      href: null,
-      label: null,
+  useEffect(() => {
+    if (!limitedToHubs) return;
+    let active = true;
+    getMyHubScope()
+      .then((result) => {
+        if (active) setScope(result.hubs.map((hub) => hub.name).join(", ") || "Chưa được phân bưu cục");
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
     };
-  })();
+  }, [limitedToHubs]);
+
+  const attention = visibleSections
+    .flatMap((section) => section.metrics)
+    .filter((metric) => metric.attention && (values[metric.key] ?? 0) > 0);
+  const unreadable = Object.values(values).filter((value) => value === null).length;
+  const scopeLabel = limitedToHubs ? `Bưu cục: ${scope ?? "đang tải…"}` : "Toàn mạng lưới";
+
+  function display(key: string) {
+    if (loading) return <span className="inline-block h-7 w-12 animate-pulse rounded bg-muted align-middle" aria-label="Đang tải" />;
+    const value = values[key];
+    return typeof value === "number" ? value.toLocaleString("vi-VN") : "—";
+  }
 
   return (
-    <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-2xl border bg-card px-5 py-6 shadow-sm sm:px-7 sm:py-8">
-        <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-brand/10 blur-3xl" aria-hidden="true" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-primary/5 blur-3xl" aria-hidden="true" />
+    <div className="space-y-2.5">
+      <Banner name={user?.displayName || user?.email || "bạn"} scope={scopeLabel} />
 
-        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-end">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em] text-brand uppercase">
-                Pavex Management Portal
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-2.5 py-1 text-[0.6rem] font-bold text-muted-foreground">
-                <ShieldCheckIcon className="size-3 text-emerald-600" />
-                Backend authorization là source of truth
-              </span>
-            </div>
-            <h1 className="mt-4 max-w-3xl text-2xl font-black tracking-[-0.035em] sm:text-3xl lg:text-4xl">
-              Điều hành luồng logistics Pavex từ một workspace theo capability.
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Identity, Partners, Network, Pricing, Operations và Shipment đã nối API quản trị thật. Dashboard chỉ gọi endpoint mà JWT hiện tại được phép sử dụng và không suy diễn quyền từ role ở frontend.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border bg-background/75 p-4 shadow-sm backdrop-blur">
-            <p className="text-[0.62rem] font-black tracking-[0.14em] text-muted-foreground uppercase">
-              Ưu tiên hiện tại
-            </p>
-            <p className="mt-2 text-sm font-black leading-5">{priority.text}</p>
-            {priority.href ? (
-              <Link href={priority.href} className="mt-4 inline-flex items-center gap-1 text-xs font-black text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35">
-                Mở {priority.label}
-                <ArrowUpRightIcon className="size-3.5" />
-              </Link>
-            ) : null}
-          </div>
+      <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card px-3 py-2.5">
+        <p className="text-xs">
+          <span className="text-muted-foreground">Phạm vi thống kê : </span>
+          <span className="font-semibold">{scopeLabel}</span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {updatedAt ? `Cập nhật lúc ${updatedAt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}` : "Đang tải số liệu…"}
+        </p>
+        <div className="ml-auto">
+          <ToolbarButton tone="primary" icon={<RotateCcwIcon className={loading ? "animate-spin" : ""} />} onClick={() => void load()} disabled={loading}>
+            Làm mới
+          </ToolbarButton>
         </div>
-      </section>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[0.62rem] font-black tracking-[0.14em] text-brand uppercase">Số liệu trực tiếp</p>
-          <h2 className="mt-1 text-xl font-black">Xin chào, {user?.displayName ?? user?.email ?? "Pavex operator"}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {visibleCapabilities.length} workspace khả dụng · {visibleMetrics.length} chỉ số được phép tải với JWT hiện tại.
-          </p>
-        </div>
-        <Button variant="outline" onClick={() => void load()} disabled={loading} className="self-start sm:self-auto">
-          <RefreshCwIcon className={loading ? "animate-spin" : ""} />
-          Làm mới dữ liệu
-        </Button>
       </div>
 
-      {failed.length > 0 && !loading ? (
-        <div role="status" className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs font-bold text-amber-800 dark:text-amber-200">
-          Có {failed.length} chỉ số chưa tải được. Dashboard không chặn truy cập các workspace đã được cấp quyền.
-        </div>
-      ) : null}
-
-      {visibleMetrics.length ? (
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5" aria-label="Chỉ số quản trị">
-          {visibleMetrics.map((metric: Metric) => {
-            const Icon = metric.icon;
-            const value = values[metric.key];
-            const metricFailed = failed.includes(metric.key);
-            return (
-              <Link key={metric.key} href={metric.href} className="group rounded-2xl border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 motion-reduce:transform-none">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="grid size-9 place-items-center rounded-xl bg-brand/10 text-brand"><Icon className="size-4" /></span>
-                  <ArrowUpRightIcon className="size-3.5 text-muted-foreground/55" />
-                </div>
-                <p className="mt-4 text-xs font-bold text-muted-foreground">{metric.label}</p>
-                <div className="mt-1 min-h-10 text-3xl font-black tracking-tight tabular-nums">
-                  {loading ? <MetricSkeleton /> : !metricFailed && typeof value === "number" ? value.toLocaleString("vi-VN") : "—"}
-                </div>
-                <p className="mt-2 text-[0.65rem] font-bold leading-4 text-muted-foreground">
-                  {metricFailed ? "Không đọc được dữ liệu lúc này" : metric.hint}
-                </p>
-              </Link>
-            );
-          })}
-        </section>
-      ) : null}
-
-      <section className="grid gap-3 lg:grid-cols-[1.45fr_0.75fr]">
-        <Card className="overflow-hidden rounded-2xl">
-          <CardHeader>
-            <p className="text-sm font-black">Workspace theo capability</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Chỉ hiện module mà permission hiện tại thực sự cho phép mở.
+      <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="space-y-2.5">
+          {visibleSections.map((section) => (
+            <Panel key={section.title} title={section.title}>
+              <StatGrid>
+                {section.metrics.map((metric) => (
+                  <StatTile
+                    key={metric.key}
+                    label={metric.label}
+                    hint={metric.hint}
+                    href={metric.href}
+                    value={display(metric.key)}
+                    tone={metric.attention && (values[metric.key] ?? 0) > 0 ? "warning" : "default"}
+                  />
+                ))}
+              </StatGrid>
+            </Panel>
+          ))}
+          {!loading && unreadable > 0 ? (
+            <p className="px-1 text-[0.68rem] text-muted-foreground">
+              {unreadable} chỉ số chưa đọc được lúc này (hiện “—”). Các trang vẫn dùng bình thường.
             </p>
-          </CardHeader>
-          <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {visibleCapabilities.map((item: Capability) => {
-              const Icon = item.icon;
-              return (
-                <Link key={item.href} href={item.href} className="group rounded-xl border bg-background p-3 transition hover:border-brand/30 hover:bg-muted/35">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="grid size-8 place-items-center rounded-lg bg-brand/10 text-brand"><Icon className="size-4" /></span>
-                    <ArrowUpRightIcon className="size-3.5 text-muted-foreground/55" />
-                  </div>
-                  <p className="mt-3 text-xs font-black">{item.label}</p>
-                  <p className="mt-1 text-[0.66rem] leading-4 text-muted-foreground">{item.description}</p>
-                </Link>
-              );
-            })}
-          </CardContent>
-        </Card>
+          ) : null}
+        </div>
 
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <p className="text-sm font-black">Integration guardrails</p>
-          </CardHeader>
-          <CardContent className="space-y-3 text-xs leading-5 text-muted-foreground">
-            <p><span className="font-black text-foreground">RBAC:</span> route guard, sidebar và dashboard dùng chung capability helpers.</p>
-            <p><span className="font-black text-foreground">Phạm vi:</span> Bạn chỉ thấy số liệu của các bưu cục được phân công, trừ khi tài khoản xem toàn mạng lưới.</p>
-            <p><span className="font-black text-foreground">Reliability:</span> outbox/dead-letter chỉ hiện cho global assignment manager.</p>
-            <p><span className="font-black text-foreground">Alerts:</span> Control Tower là computed read-only view; Management không tạo lifecycle giả.</p>
-            <Link href="/account" className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-black text-foreground hover:bg-muted">
-              <CircleUserRoundIcon className="size-4 text-brand" /> Tài khoản của tôi
-            </Link>
-          </CardContent>
-        </Card>
-      </section>
+        <div className="space-y-2.5">
+          <Panel title="Cần xử lý" bodyClassName="p-0">
+            {loading ? (
+              <p className="px-3 py-4 text-xs text-muted-foreground">Đang tải…</p>
+            ) : attention.length ? (
+              <ul className="divide-y">
+                {attention.map((metric) => (
+                  <li key={metric.key}>
+                    <Link href={metric.href} className="flex items-center gap-2 px-3 py-2.5 text-xs transition hover:bg-muted">
+                      <span className="rounded-sm bg-brand px-1.5 py-0.5 text-[0.62rem] font-bold text-white tabular-nums">
+                        {(values[metric.key] ?? 0).toLocaleString("vi-VN")}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{metric.attention}</span>
+                      <ChevronRightIcon className="size-3.5 text-muted-foreground" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-3 py-4 text-xs text-muted-foreground">Không có việc tồn cần xử lý trong phạm vi của bạn.</p>
+            )}
+          </Panel>
+
+          {shortcuts.length ? (
+            <Panel title="Lối tắt" bodyClassName="grid grid-cols-2 gap-1.5">
+              {shortcuts.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="truncate rounded border px-2.5 py-2 text-xs transition hover:border-brand/40 hover:text-brand"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </Panel>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
