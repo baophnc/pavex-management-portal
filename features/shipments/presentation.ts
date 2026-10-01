@@ -189,7 +189,16 @@ export function shipmentErrorMessage(reason: unknown, fallback: string) {
   if (reason.code === "invalid_admin_shipment_query") {
     return "Từ khóa tìm kiếm quá dài.";
   }
-  if (reason.status === 403) return "Tài khoản không có quyền xem vận đơn toàn hệ thống.";
+  const known: Record<string, string> = {
+    hub_outside_scope: "Bưu cục này nằm ngoài phạm vi bạn được phân công.",
+    invalid_date_range: "Ngày bắt đầu phải trước ngày kết thúc.",
+    shipment_closed: "Vận đơn đã kết thúc hoặc đã huỷ nên không sửa được.",
+    shipment_finished: "Mọi kiện đã giao, đã hoàn hoặc đã huỷ nên không sửa được.",
+    shipment_changed: "Vận đơn vừa thay đổi. Hãy tải lại rồi sửa lại.",
+    invalid_shipment_update: "Thông tin sửa chưa hợp lệ (kiểm tra số điện thoại và độ dài các ô).",
+  };
+  if (reason.code && known[reason.code]) return known[reason.code];
+  if (reason.status === 403) return "Tài khoản không có quyền thực hiện thao tác này với vận đơn.";
   return reason.message || fallback;
 }
 

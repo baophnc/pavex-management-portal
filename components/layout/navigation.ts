@@ -74,6 +74,7 @@ export const navigationModules: NavigationModule[] = [
         icon: PackageIcon,
         items: [
           { href: "/shipments", label: "Vận đơn", access: canAccessShipmentList },
+          { href: "/shipments/cancelled", label: "Vận đơn đã huỷ", access: canAccessShipmentList },
           { href: "/shipments/tracking", label: "Tra hành trình", access: canAccessShipmentList },
           { href: "/control-tower", label: "Giám sát vận đơn", access: canAccessControlTower },
           { href: "/shipments/exceptions", label: "Duyệt ngoại lệ", access: canAccessShipmentExceptionQueue },

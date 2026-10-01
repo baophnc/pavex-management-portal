@@ -163,6 +163,10 @@ export type AdminShipmentSummary = {
   parcelCount: number;
   createdAt: string;
   updatedAt: string;
+  cancellationReason: string | null;
+  cancelledAt: string | null;
+  /** Cancelled after Pavex had the parcels, so they were brought back. */
+  cancelledAfterPickup: boolean;
 };
 
 export type AdminShipmentPage = {

@@ -33,6 +33,7 @@ import {
 } from "@/features/shipments/detail-context";
 import { getAdminShipment } from "@/features/shipments/api";
 import { ShipmentExceptionsPanel } from "@/features/shipments/exceptions-panel";
+import { ShipmentEditCard } from "@/features/shipments/shipment-edit-card";
 import type {
   AdminShipmentDetail,
   AdminShipmentEvent,
@@ -373,9 +374,15 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
   const canManageExceptions = hasPermission("shipments.exceptions.manage");
   const canAdjustWeight = hasPermission("shipments.weight.adjust");
   const canManageCases = hasPermission("shipments.cases.manage");
+  const finishedStages = ["DELIVERED", "RETURNED", "CANCELLED"];
+  const canEdit =
+    hasPermission("shipments.admin.update") &&
+    shipment.lifecycleStatus === "ACTIVE" &&
+    shipment.parcels.some((parcel) => !finishedStages.includes(parcel.status));
+  // Same rule as the backend: head office, or hub staff for their own hubs.
   const canViewControlTower =
     hasPermission("shipments.control-tower.read") &&
-    hasAnyPermission(["operations.assignments.manage", "operations.hub.manage"]);
+    hasAnyPermission(["scope.all-hubs", "operations.hub.read", "operations.hub.manage"]);
   const originHubName =
     context.network.originHub?.publicName ||
     context.network.originHub?.name ||
@@ -676,6 +683,16 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
           </table>
         </div>
       </Card>
+
+      {canEdit ? (
+        <ShipmentEditCard
+          data={data}
+          onUpdated={(detail) => {
+            setData(detail);
+            void loadContext(detail);
+          }}
+        />
+      ) : null}
 
       {canManageExceptions ? (
         <ShipmentExceptionsPanel
