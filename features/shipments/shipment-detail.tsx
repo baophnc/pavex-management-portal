@@ -130,8 +130,19 @@ function RelatedPeopleCard({
       <div className="mt-3">
         <p className="text-[0.62rem] font-bold text-muted-foreground">Đối tác gửi hàng</p>
         <p className="mt-1 text-sm font-black">
-          {merchant?.businessName ?? "Thông tin đối tác chưa tải được"}
+          {data.channel === "COUNTER"
+            ? `Khách gửi tại quầy ${data.shipment.routing.originHubName}`
+            : merchant?.businessName ?? "Thông tin đối tác chưa tải được"}
         </p>
+        {data.channel === "COUNTER" ? (
+          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+            <p className="font-bold text-foreground">{data.shipment.sender.contactName}</p>
+            <p className="flex items-center gap-1.5">
+              <PhoneIcon className="size-3" /> {data.shipment.sender.contactPhone}
+            </p>
+            <p>Cước đã thu tại quầy: {money(data.counterFeePaidAmount ?? 0)}</p>
+          </div>
+        ) : null}
         {merchant ? (
           <div className="mt-2 space-y-1 text-xs text-muted-foreground">
             <p className="font-bold text-foreground">{merchant.contactName}</p>

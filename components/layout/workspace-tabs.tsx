@@ -67,6 +67,9 @@ function tabTitle(pathname: string) {
   if (pathname === "/support") return "Yêu cầu hỗ trợ";
   if (pathname === "/shipments/tracking") return "Tra hành trình";
   if (pathname === "/shipments/cancelled") return "Vận đơn đã huỷ";
+  if (pathname === "/counter/new") return "Gửi hàng tại quầy";
+  if (pathname === "/counter/settlements") return "Trả thu hộ tại quầy";
+  if (/^\/counter\/[^/]+\/print$/.test(pathname)) return "In nhãn tại quầy";
   if (/^\/shipments\/[^/]+$/.test(pathname)) return "Chi tiết vận đơn";
 
   const segment = pathname.split("/").filter(Boolean).at(-1);

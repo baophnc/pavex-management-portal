@@ -5,6 +5,7 @@ import {
   CircleGaugeIcon,
   CircleUserRoundIcon,
   ClipboardListIcon,
+  HandCoinsIcon,
   InboxIcon,
   LandmarkIcon,
   MapPinnedIcon,
@@ -17,6 +18,8 @@ import {
 
 import {
   canAccessControlTower,
+  canAccessCounterBooking,
+  canAccessCounterSettlements,
   canAccessCourierDeliveries,
   canAccessDispatchReliability,
   canAccessFleetTrips,
@@ -79,6 +82,14 @@ export const navigationModules: NavigationModule[] = [
           { href: "/control-tower", label: "Giám sát vận đơn", access: canAccessControlTower },
           { href: "/shipments/exceptions", label: "Duyệt ngoại lệ", access: canAccessShipmentExceptionQueue },
           { href: "/shipments/cases", label: "Hồ sơ sự cố", access: canAccessShipmentCases },
+        ],
+      },
+      {
+        label: "Quầy gửi hàng",
+        icon: HandCoinsIcon,
+        items: [
+          { href: "/counter/new", label: "Gửi hàng tại quầy", access: canAccessCounterBooking },
+          { href: "/counter/settlements", label: "Trả thu hộ tại quầy", access: canAccessCounterSettlements },
         ],
       },
       {
