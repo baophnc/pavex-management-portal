@@ -124,6 +124,8 @@ export const permissionLabels: Record<string, string> = {
   "shipments.exceptions.manage": "Xử lý ngoại lệ vận đơn",
   "shipments.weight.adjust": "Điều chỉnh khối lượng kiện hàng",
   "shipments.admin.update": "Sửa thông tin người nhận và ghi chú vận đơn",
+  "shipments.counter.create": "Nhận gửi hàng tại quầy bưu cục",
+  "billing.counter.settle": "Trả thu hộ, thu cước hoàn tại quầy",
   "shipments.cases.read": "Xem hồ sơ sự cố vận đơn",
   "shipments.cases.manage": "Quản lý hồ sơ sự cố vận đơn",
   "shipments.control-tower.read": "Theo dõi cảnh báo vận đơn",

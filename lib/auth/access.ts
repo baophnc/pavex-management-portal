@@ -26,6 +26,8 @@ export const MANAGEMENT_PERMISSIONS = [
   "shipments.cases.read",
   "shipments.cases.manage",
   "shipments.control-tower.read",
+  "shipments.counter.create",
+  "billing.counter.settle",
   "operations.workforce.manage",
   "operations.workforce.read",
   "operations.assignments.manage",
@@ -154,6 +156,16 @@ export function canAccessCourierDeliveries(user: CurrentUser | null | undefined)
   return hasPermission(user, "deliveries.complete-own");
 }
 
+/** Hub staff book walk-in customers' shipments at their hub's counter. */
+export function canAccessCounterBooking(user: CurrentUser | null | undefined) {
+  return hasPermission(user, "shipments.counter.create");
+}
+
+/** Hub staff pay walk-in senders their COD and take unpaid return fees at the counter. */
+export function canAccessCounterSettlements(user: CurrentUser | null | undefined) {
+  return hasPermission(user, "billing.counter.settle");
+}
+
 export function canAccessManagement(user: CurrentUser | null | undefined) {
   return hasAnyPermission(user, MANAGEMENT_PERMISSIONS) || canAccessCourierDeliveries(user);
 }
@@ -193,6 +205,12 @@ export function canAccessManagementPath(
   }
   if (pathname.startsWith("/fleet")) {
     return canAccessFleetTrips(user);
+  }
+  if (pathname.startsWith("/counter/settlements")) {
+    return canAccessCounterSettlements(user);
+  }
+  if (pathname.startsWith("/counter")) {
+    return canAccessCounterBooking(user);
   }
   if (pathname.startsWith("/finance/cash")) {
     return hasPermission(user, "billing.cash.approve");

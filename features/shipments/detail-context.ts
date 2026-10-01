@@ -137,7 +137,8 @@ export async function loadShipmentDetailContext(
   capabilities: ShipmentContextCapabilities,
 ): Promise<ShipmentDetailContext> {
   const [merchantResult, usersResult, networkResult] = await Promise.allSettled([
-    capabilities.canReadPartners
+    // A walk-in (counter) shipment has no merchant.
+    capabilities.canReadPartners && detail.merchantId
       ? getMerchant(detail.merchantId).then((response) => response.merchant)
       : Promise.resolve(null),
     capabilities.canReadIdentity ? loadUsers(detail) : Promise.resolve({}),

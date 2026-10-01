@@ -160,12 +160,18 @@ export function CashReview() {
 
           {resubmitted.length ? (
             <section className="grid gap-2">
-              <h2 className="mt-2 text-sm font-black">Bưu cục gửi duyệt lại ({resubmitted.length})</h2>
+              <h2 className="mt-2 text-sm font-black">Bưu cục nộp trực tiếp ({resubmitted.length})</h2>
+              <p className="text-[0.68rem] text-muted-foreground">Tiền cước khách trả tại quầy, và tiền kế toán đã từ chối được bưu cục kiểm lại rồi gửi duyệt lại.</p>
               <Card className="divide-y">
                 {resubmitted.map((collection) => (
                   <div key={collection.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
                     <div>
-                      <p className="font-mono font-black">{collection.trackingCode}</p>
+                      <p className="font-mono font-black">
+                        {collection.trackingCode}
+                        {collection.source === "COUNTER" ? (
+                          <span className="ml-2 rounded-sm border border-brand/30 px-1.5 py-0.5 font-sans text-[0.62rem] font-bold text-brand">Tại quầy</span>
+                        ) : null}
+                      </p>
                       <p className="mt-1 text-[0.68rem] text-muted-foreground">
                         Bưu cục <span title={collection.currentHubId ?? ""}>{collection.currentHubId ? shortId(collection.currentHubId) : "—"}</span>
                         {collection.lastRejectionReason ? ` · lần trước bị từ chối: ${collection.lastRejectionReason}` : ""}
@@ -188,7 +194,7 @@ export function CashReview() {
         open={action !== null}
         title={approving ? "Xác nhận đã nhận đủ tiền?" : "Từ chối khoản tiền này?"}
         description={approving
-          ? `Xác nhận bưu cục đã nhận đủ ${money(actionAmount)}. Phần tiền thu hộ sẽ được đưa vào kỳ đối soát kế tiếp của cửa hàng.`
+          ? `Xác nhận đã nhận đủ ${money(actionAmount)}. Tiền thu hộ của cửa hàng vào kỳ đối soát kế tiếp; tiền thu hộ của khách gửi tại quầy được trả lại họ tại bưu cục gửi.`
           : "Tiền được giữ lại tại bưu cục. Bưu cục kiểm đếm lại rồi gửi duyệt lại."}
         confirmLabel={approving ? "Duyệt" : "Từ chối"}
         destructive={!approving}

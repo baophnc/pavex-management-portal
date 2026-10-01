@@ -78,7 +78,12 @@ export type CashCollection = {
   id: string;
   shipmentId: string;
   trackingCode: string;
-  merchantId: string;
+  /** Null for a walk-in (counter) shipment. */
+  merchantId: string | null;
+  /** DELIVERY: a courier took it on delivery; COUNTER: a walk-in sender paid it at the hub counter. */
+  source: "DELIVERY" | "COUNTER";
+  /** Who the COD belongs to: a merchant (settled) or the walk-in sender (paid back at the counter). */
+  codPayee: "MERCHANT" | "SENDER";
   status: CashCollectionStatus;
   amount: number;
   codAmount: number;

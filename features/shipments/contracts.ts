@@ -140,10 +140,15 @@ export type ShipmentDetail = {
   updatedAt: string;
 };
 
+/** How a shipment was booked: by a shop on the web, or for a walk-in customer at a hub counter. */
+export type ShipmentChannel = "MERCHANT_WEB" | "COUNTER";
+
 export type AdminShipmentSummary = {
   id: string;
   trackingCode: string;
-  merchantId: string;
+  /** Null for a walk-in (counter) shipment. */
+  merchantId: string | null;
+  channel: ShipmentChannel;
   createdByUserId: string;
   merchantReference: string | null;
   status: ShipmentStatus;
@@ -220,7 +225,10 @@ export type AdminDeliveryAttempt = {
 
 export type AdminShipmentDetail = {
   id: string;
-  merchantId: string;
+  merchantId: string | null;
+  channel: ShipmentChannel;
+  /** Cash the walk-in sender paid at the counter for the shipping fee. */
+  counterFeePaidAmount: number | null;
   createdByUserId: string;
   quoteId: string;
   quoteRequestId: string;

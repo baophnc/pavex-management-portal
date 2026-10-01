@@ -147,3 +147,19 @@ a {
     font-size: 16px;
   }
 }
+
+/* Counter labels and receipt: print only the printable sheets, not the console around them. */
+@media print {
+  body:has(.counter-print) * {
+    visibility: hidden;
+  }
+  body:has(.counter-print) .counter-print,
+  body:has(.counter-print) .counter-print * {
+    visibility: visible;
+  }
+  body:has(.counter-print) .counter-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+}
