@@ -24,10 +24,7 @@ import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
-import {
-  getShipmentControlTowerAlerts,
-  getShipmentControlTowerSummary,
-} from "@/features/shipments/api";
+import { getShipmentControlTowerOverview } from "@/features/shipments/api";
 import {
   SHIPMENT_CONTROL_ALERT_SEVERITIES,
   SHIPMENT_CONTROL_ALERT_TYPES,
@@ -140,9 +137,9 @@ export function ShipmentControlTower() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const globalScope = hasPermission("operations.assignments.manage");
-  const hubScope = hasPermission("operations.hub.manage");
-  const canReadNetwork = hasAnyPermission(["network.read", "network.manage"]);
+  // Same rule as the backend: head office sees every hub, hub staff their assigned hubs.
+  const globalScope = hasPermission("scope.all-hubs");
+  const hubScope = hasAnyPermission(["operations.hub.read", "operations.hub.manage"]);
   const canOpenShipments = hasAnyPermission(["shipments.admin.read", "shipments.read-hub"]);
   const canOpenCases = hasPermission("shipments.cases.manage");
 
@@ -157,7 +154,7 @@ export function ShipmentControlTower() {
   }, [hubId]);
 
   useEffect(() => {
-    if (!canReadNetwork) return;
+    // Hub staff get their assigned hubs from Operations, so no network permission is needed.
     let cancelled = false;
     void getScopedHubs()
       .then((items) => {
@@ -169,7 +166,7 @@ export function ShipmentControlTower() {
     return () => {
       cancelled = true;
     };
-  }, [canReadNetwork]);
+  }, []);
 
   const alertQuery = useMemo(() => {
     const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
@@ -184,12 +181,9 @@ export function ShipmentControlTower() {
     setLoading(true);
     setError(null);
     try {
-      const [nextPage, nextSummary] = await Promise.all([
-        getShipmentControlTowerAlerts(alertQuery),
-        getShipmentControlTowerSummary(hubId || null),
-      ]);
-      setData(nextPage);
-      setSummary(nextSummary);
+      const overview = await getShipmentControlTowerOverview(alertQuery);
+      setData(overview.alerts);
+      setSummary(overview.summary);
     } catch (cause) {
       const text = message(cause, "Không thể tải dữ liệu giám sát.");
       setError(text);
@@ -197,7 +191,7 @@ export function ShipmentControlTower() {
     } finally {
       setLoading(false);
     }
-  }, [alertQuery, hubId]);
+  }, [alertQuery]);
 
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
@@ -325,7 +319,7 @@ export function ShipmentControlTower() {
                 <option key={value} value={value}>{shipmentControlAlertSeverityLabel(value)}</option>
               ))}
             </select>
-            {canReadNetwork && hubs.length ? (
+            {hubs.length ? (
               <select
                 value={hubDraft}
                 onChange={(event) => setHubDraft(event.target.value)}
@@ -388,18 +382,17 @@ export function ShipmentControlTower() {
                       {alert.trackingCode ? (
                         <p className="flex items-center gap-1 text-xs font-black"><TruckIcon className="size-3.5 text-brand" /> {alert.trackingCode}</p>
                       ) : null}
-                      {alert.parcelCode ? <p className="mt-1 font-mono text-[0.66rem] text-muted-foreground">Parcel {alert.parcelCode}</p> : null}
-                      {alert.caseNumber ? <p className="mt-1 text-[0.68rem] font-bold">Case {alert.caseNumber}</p> : null}
+                      {alert.parcelCode ? <p className="mt-1 font-mono text-[0.66rem] text-muted-foreground">Kiện {alert.parcelCode}</p> : null}
+                      {alert.caseNumber ? <p className="mt-1 text-[0.68rem] font-bold">Hồ sơ {alert.caseNumber}</p> : null}
                       {!alert.trackingCode && !alert.caseNumber ? <span className="text-xs text-muted-foreground">—</span> : null}
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-xs font-bold">{hubName(alert.hubId)}</p>
-                      <p className="mt-1 font-mono text-[0.62rem] text-muted-foreground">{shortId(alert.hubId)}</p>
-                      {alert.routeLegId ? <p className="mt-1 font-mono text-[0.62rem] text-muted-foreground">leg {shortId(alert.routeLegId)}</p> : null}
+                      {alert.routeLegId ? <p className="mt-1 font-mono text-[0.62rem] text-muted-foreground">chặng {shortId(alert.routeLegId)}</p> : null}
                     </td>
                     <td className="px-4 py-3 text-[0.68rem] leading-5 text-muted-foreground">
                       <p>Phát hiện: {formatDateTime(alert.detectedAt)}</p>
-                      <p>Due: {alert.dueAt ? formatDateTime(alert.dueAt) : "—"}</p>
+                      <p>Hạn: {alert.dueAt ? formatDateTime(alert.dueAt) : "—"}</p>
                       <p>Hoạt động cuối: {alert.lastActivityAt ? formatDateTime(alert.lastActivityAt) : "—"}</p>
                     </td>
                     <td className="px-4 py-3">

@@ -241,9 +241,7 @@ export function shipmentControlAlertTypeLabel(
     case "ARRIVED_NOT_OUT_FOR_DELIVERY": return "Đến bưu cục nhưng chưa phát giao";
     case "ROUTE_DEVIATION": return "Sai lệch tuyến";
     case "SHIPMENT_STUCK": return "Vận đơn đứng yên";
-    case "ESTIMATED_DELIVERY_OVERDUE": return "Quá thời gian giao dự kiến";
     case "CASE_OVERDUE": return "Hồ sơ sự cố quá hạn xử lý";
-    case "EXCEPTION_OVERDUE": return "Ngoại lệ quá hạn xử lý";
     case "SIGNATURE_WITHOUT_DELIVERY": return "Có chữ ký nhưng chưa ghi nhận đã giao";
     case "DELIVERED_WITHOUT_SIGNATURE": return "Đã giao nhưng thiếu chữ ký";
   }
@@ -255,6 +253,6 @@ export function shipmentControlAlertSeverityLabel(
   switch (severity) {
     case "INFO": return "Thông tin";
     case "WARNING": return "Cảnh báo";
-    case "CRITICAL": return "Khẩn cấp";
+    case "CRITICAL": return "Nghiêm trọng";
   }
 }

@@ -505,9 +505,7 @@ export type ShipmentControlAlertType =
   | "ARRIVED_NOT_OUT_FOR_DELIVERY"
   | "ROUTE_DEVIATION"
   | "SHIPMENT_STUCK"
-  | "ESTIMATED_DELIVERY_OVERDUE"
   | "CASE_OVERDUE"
-  | "EXCEPTION_OVERDUE"
   | "SIGNATURE_WITHOUT_DELIVERY"
   | "DELIVERED_WITHOUT_SIGNATURE";
 
@@ -551,15 +549,19 @@ export type ShipmentControlTowerSummary = {
   byType: Record<ShipmentControlAlertType, number>;
 };
 
+/** The summary and one page of alerts, computed from a single scan. */
+export type ShipmentControlTowerOverview = {
+  summary: ShipmentControlTowerSummary;
+  alerts: ShipmentControlTowerPage;
+};
+
 export const SHIPMENT_CONTROL_ALERT_TYPES: ShipmentControlAlertType[] = [
   "SENT_BUT_NOT_ARRIVED",
   "MISSING_ARRIVAL_SCAN",
   "ARRIVED_NOT_OUT_FOR_DELIVERY",
   "ROUTE_DEVIATION",
   "SHIPMENT_STUCK",
-  "ESTIMATED_DELIVERY_OVERDUE",
   "CASE_OVERDUE",
-  "EXCEPTION_OVERDUE",
   "SIGNATURE_WITHOUT_DELIVERY",
   "DELIVERED_WITHOUT_SIGNATURE",
 ];
