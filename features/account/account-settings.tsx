@@ -25,6 +25,7 @@ import type {
   CurrentAccountProfile,
   SessionListItem,
 } from "@/features/account/contracts";
+import { AvatarPicker } from "@/features/account/avatar-picker";
 import { ApiError, apiRequest } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
@@ -507,21 +508,20 @@ export function AccountSettings() {
                 </label>
               </div>
 
-              <label className="grid gap-1.5 text-xs font-bold">
-                Đường dẫn ảnh đại diện
-                <Input
-                  type="url"
-                  maxLength={2048}
-                  placeholder="https://..."
-                  value={profileDraft.avatarUrl}
-                  onChange={(event) =>
-                    setProfileDraft((current) => ({
-                      ...current,
-                      avatarUrl: event.target.value,
-                    }))
-                  }
+              <div className="grid gap-1.5 text-xs font-bold">
+                Ảnh đại diện
+                <AvatarPicker<CurrentAccountProfile>
+                  avatarUrl={profile?.avatarUrl}
+                  initials={initials(profile)}
+                  uploadPath="auth/me/avatar"
+                  onUploaded={(value) => {
+                    setProfile(value);
+                    // Keep unsaved edits to the other fields; only the photo changed.
+                    setProfileDraft((current) => ({ ...current, avatarUrl: value.avatarUrl ?? "" }));
+                    window.dispatchEvent(new Event("pavex-management:user-updated"));
+                  }}
                 />
-              </label>
+              </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
                 <p className="text-[0.68rem] text-muted-foreground">
