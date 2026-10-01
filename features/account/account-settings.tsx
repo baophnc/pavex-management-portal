@@ -27,6 +27,7 @@ import type {
 } from "@/features/account/contracts";
 import { AvatarPicker } from "@/features/account/avatar-picker";
 import { ApiError, apiRequest } from "@/lib/api/client";
+import { passwordProblem } from "@/lib/auth/password-policy";
 import { cn } from "@/lib/utils";
 
 const genders: Array<{ value: AccountGender; label: string }> = [
@@ -266,8 +267,9 @@ export function AccountSettings() {
       toast.error("Nhập mật khẩu hiện tại.");
       return;
     }
-    if (newPassword.length < 8 || newPassword.length > 128) {
-      toast.error("Mật khẩu mới phải từ 8 đến 128 ký tự.");
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+      toast.error(problem);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -546,7 +548,7 @@ export function AccountSettings() {
               icon={KeyRoundIcon}
               eyebrow="Bảo mật"
               title="Đổi mật khẩu"
-              description="Mật khẩu mới dài 8–128 ký tự. Sau khi đổi, mọi phiên đăng nhập khác sẽ bị đăng xuất."
+              description="Mật khẩu mới dài 8–128 ký tự, có cả chữ và số. Sau khi đổi, mọi phiên đăng nhập khác sẽ bị đăng xuất."
             />
           </CardHeader>
           <CardContent>

@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ApiError, apiRequest } from "@/lib/api/client";
+import { passwordProblem } from "@/lib/auth/password-policy";
 
 function message(reason: unknown) {
   if (reason instanceof ApiError) {
@@ -31,7 +32,8 @@ export function FirstPasswordForm() {
     const form = new FormData(event.currentTarget);
     const currentPassword = String(form.get("currentPassword") ?? "");
     const newPassword = String(form.get("newPassword") ?? "");
-    if (newPassword.length < 8 || newPassword.length > 128) return setError("Mật khẩu mới phải từ 8 đến 128 ký tự.");
+    const problem = passwordProblem(newPassword);
+    if (problem) return setError(problem);
     if (newPassword !== String(form.get("confirmation") ?? "")) return setError("Hai mật khẩu mới chưa trùng nhau.");
     if (newPassword === currentPassword) return setError("Mật khẩu mới phải khác mật khẩu tạm.");
 
@@ -65,7 +67,7 @@ export function FirstPasswordForm() {
       <label className="grid gap-2 text-sm font-semibold">Nhập lại mật khẩu mới
         <Input name="confirmation" type="password" autoComplete="new-password" minLength={8} maxLength={128} required disabled={pending} />
       </label>
-      <p className="text-sm text-muted-foreground">Dùng 8–128 ký tự và không dùng lại mật khẩu tạm. Sau khi lưu, bạn đăng nhập lại bằng mật khẩu mới.</p>
+      <p className="text-sm text-muted-foreground">Dùng 8–128 ký tự, có cả chữ và số, và không dùng lại mật khẩu tạm. Sau khi lưu, bạn đăng nhập lại bằng mật khẩu mới.</p>
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
       <Button type="submit" className="w-full" disabled={pending}>{pending ? "Đang lưu…" : "Lưu mật khẩu mới"}</Button>
       <button type="button" onClick={() => void signOut()} className="block text-sm font-semibold underline">Đăng xuất</button>

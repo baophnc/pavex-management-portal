@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/auth/password-policy";
 
 export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-password" | "reset-password"; token?: string }) {
   const [pending, setPending] = useState(false);
@@ -17,6 +18,11 @@ export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-passw
     if (pending || missingToken) return;
     const form = new FormData(event.currentTarget);
     const newPassword = String(form.get("newPassword") ?? "");
+    const problem = reset ? passwordProblem(newPassword) : null;
+    if (problem) {
+      setError(problem);
+      return;
+    }
     if (reset && newPassword !== String(form.get("confirmation") ?? "")) {
       setError("Hai mật khẩu chưa trùng nhau.");
       return;
@@ -51,7 +57,7 @@ export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-passw
               <label className="grid gap-2 text-sm font-semibold">Nhập lại mật khẩu mới
                 <Input name="confirmation" type="password" autoComplete="new-password" minLength={8} maxLength={128} required disabled={pending} />
               </label>
-              <p className="text-sm text-muted-foreground">Dùng 8–128 ký tự. Không chia sẻ mật khẩu hoặc liên kết này.</p>
+              <p className="text-sm text-muted-foreground">{PASSWORD_HINT} Không chia sẻ mật khẩu hoặc liên kết này.</p>
             </>
           ) : (
             <label className="grid gap-2 text-sm font-semibold">Email được quản trị viên cấp
