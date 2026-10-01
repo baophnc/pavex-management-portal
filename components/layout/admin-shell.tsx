@@ -321,7 +321,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     setBrowse({ path: pathname, moduleKey: activeModule.key, groupLabel: label });
   }
 
-  const sidebarWidth = "15.5rem";
+  const sidebarWidth = "17rem";
 
   return (
     <AccessProvider user={user}>
@@ -335,7 +335,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Top bar: brand, modules, quick tracking, account. */}
         <header className="fixed inset-x-0 top-0 z-40 flex h-12 items-center border-b bg-card">
-          <div className="flex h-full shrink-0 items-center gap-2 px-3 lg:w-[15.5rem] lg:px-4">
+          <div className="flex h-full shrink-0 items-center gap-2 px-3 lg:w-[17rem] lg:px-4">
             <Button
               variant="ghost"
               size="icon"
@@ -363,12 +363,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   onClick={() => pickModule(area.key)}
                   aria-current={current ? "page" : undefined}
                   className={cn(
-                    "relative shrink-0 px-3 text-[0.8rem] font-semibold whitespace-nowrap transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/35",
+                    "relative shrink-0 px-2.5 text-[0.8rem] font-semibold whitespace-nowrap transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/35",
                     shown ? "text-brand" : "text-foreground/80",
                   )}
                 >
                   {area.label}
-                  {shown ? <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand" aria-hidden="true" /> : null}
+                  {shown ? <span className="absolute inset-x-2.5 bottom-0 h-0.5 rounded-full bg-brand" aria-hidden="true" /> : null}
                 </button>
               );
             })}
@@ -406,13 +406,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     title={connectionError ? "Mất kết nối" : loaded ? "Đã kết nối" : "Đang kết nối"}
                   />
                 </span>
-                <span className="hidden min-w-0 text-left md:block">
+                <span className="hidden min-w-0 text-left xl:block">
                   <span className="block max-w-48 truncate text-[0.72rem] font-bold">{hubScope ?? primaryRole(user)}</span>
                   <span className="block max-w-48 truncate text-[0.68rem] text-muted-foreground">
                     {user?.displayName || user?.email || "Đang xác thực..."}
                   </span>
                 </span>
-                <ChevronDownIcon className="hidden size-3.5 text-muted-foreground md:block" />
+                <ChevronDownIcon className="hidden size-3.5 text-muted-foreground xl:block" />
               </button>
 
               {userMenuOpen ? (
@@ -475,7 +475,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   {activeModule.label}
                 </p>
                 <div className="flex min-h-0 flex-1">
-                  <ul className="scrollbar-thin w-[6.75rem] shrink-0 space-y-1 overflow-y-auto border-r px-1.5 pb-3">
+                  <ul className="scrollbar-thin w-[7.5rem] shrink-0 space-y-1 overflow-y-auto border-r px-1.5 pb-3">
                     {activeModule.groups.map((group) => {
                       const Icon = group.icon;
                       const active = group.label === activeGroup?.label;
@@ -608,7 +608,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         <div
           className="pt-12 transition-[padding] duration-200 lg:pl-[var(--sidebar-width)]"
-          style={{ ["--sidebar-width" as string]: sidebarCollapsed ? "0px" : sidebarWidth }}
+          // Collapsed, keep room for the reopen handle so it never covers the page.
+          style={{ ["--sidebar-width" as string]: sidebarCollapsed ? "0.875rem" : sidebarWidth }}
         >
           <div className="sticky top-12 z-20">
             <Suspense fallback={<div className="h-9 border-b bg-card" aria-hidden="true" />}>
