@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
+import { accountLabels, profileLabels, roleLabel } from "@/features/identity/presentation";
 import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
 import {
@@ -74,12 +75,12 @@ function HubCard({ membership, onRemove, removing }: { membership: WorkforceHubM
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xs font-black">{membership.hubCode ?? membership.hubId}</p>
-            {membership.isPrimary ? <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[0.58rem] font-black text-brand">PRIMARY</span> : null}
+            {membership.isPrimary ? <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[0.58rem] font-black text-brand">CHÍNH</span> : null}
             <span className={cn("rounded-full px-2 py-0.5 text-[0.58rem] font-black", membership.isActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground")}>
               {membership.isActive ? "ACTIVE" : "INACTIVE"}
             </span>
           </div>
-          <p className="mt-1 text-[0.68rem] text-muted-foreground">{membership.hubName ?? "Chưa có snapshot tên hub"}</p>
+          <p className="mt-1 text-[0.68rem] text-muted-foreground">{membership.hubName ?? "Chưa có tên bưu cục"}</p>
           <p className="mt-1 font-mono text-[0.58rem] text-muted-foreground">{membership.hubId}</p>
           <p className="mt-2 text-[0.62rem] text-muted-foreground">Gán {formatDateTime(membership.assignedAt)}{membership.unassignedAt ? ` · Gỡ ${formatDateTime(membership.unassignedAt)}` : ""}</p>
         </div>
@@ -125,7 +126,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
       setStatus(nextMember.status);
       setCapacity(String(nextMember.availability?.maxConcurrentAssignments ?? 1));
     } catch (requestError) {
-      setError(apiMessage(requestError, "Không thể tải chi tiết workforce."));
+      setError(apiMessage(requestError, "Không thể tải chi tiết nhân sự."));
     } finally {
       setLoading(false);
     }
@@ -154,7 +155,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
       setAudit(await getWorkforceAudit(workforceId));
       toast.success(success);
     } catch (requestError) {
-      toast.error(apiMessage(requestError, "Thao tác workforce thất bại."));
+      toast.error(apiMessage(requestError, "Thao tác nhân sự thất bại."));
     } finally {
       setSaving(null);
     }
@@ -165,16 +166,16 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
       toast.error("Vui lòng nhập lý do khi tạm ngưng hoặc cho nghỉ việc nhân sự.");
       return;
     }
-    void mutate("status", () => setWorkforceStatus(workforceId, { status, reason: statusReason.trim() || null }), "Đã cập nhật trạng thái workforce.");
+    void mutate("status", () => setWorkforceStatus(workforceId, { status, reason: statusReason.trim() || null }), "Đã cập nhật trạng thái nhân sự.");
   };
 
   const saveCapacity = () => {
     const value = Number(capacity);
     if (!Number.isInteger(value) || value < 1 || value > 100) {
-      toast.error("Capacity phải là số nguyên từ 1 đến 100.");
+      toast.error("Số việc tối đa phải là số nguyên từ 1 đến 100.");
       return;
     }
-    void mutate("capacity", () => setWorkforceCapacity(workforceId, { maxConcurrentAssignments: value, reason: capacityReason.trim() || null }), "Đã cập nhật capacity.");
+    void mutate("capacity", () => setWorkforceCapacity(workforceId, { maxConcurrentAssignments: value, reason: capacityReason.trim() || null }), "Đã cập nhật sức chứa.");
   };
 
   const assignHub = () => {
@@ -182,25 +183,25 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
       toast.error("Chọn bưu cục cần gán.");
       return;
     }
-    void mutate("assign-hub", () => assignWorkforceHub(workforceId, { hubId: hubId.trim(), isPrimary: globalManager && hubPrimary, reason: hubReason.trim() || null }), "Đã gán hub cho workforce.").then(() => {
+    void mutate("assign-hub", () => assignWorkforceHub(workforceId, { hubId: hubId.trim(), isPrimary: globalManager && hubPrimary, reason: hubReason.trim() || null }), "Đã gán bưu cục cho nhân sự.").then(() => {
       setHubId(""); setHubPrimary(false); setHubReason("");
     });
   };
 
   const removeHub = (membership: WorkforceHubMembership) => {
     const reason = removeReason[membership.hubId]?.trim();
-    void mutate(`remove-${membership.hubId}`, () => unassignWorkforceHub(workforceId, membership.hubId, reason), "Đã gỡ hub khỏi workforce.");
+    void mutate(`remove-${membership.hubId}`, () => unassignWorkforceHub(workforceId, membership.hubId, reason), "Đã gỡ bưu cục khỏi nhân sự.");
   };
 
   if (loading && !member) {
-    return <div className="grid min-h-[55vh] place-items-center text-sm text-muted-foreground"><div className="flex items-center gap-2"><LoaderCircleIcon className="size-4 animate-spin" /> Đang tải workforce...</div></div>;
+    return <div className="grid min-h-[55vh] place-items-center text-sm text-muted-foreground"><div className="flex items-center gap-2"><LoaderCircleIcon className="size-4 animate-spin" /> Đang tải nhân sự...</div></div>;
   }
 
   if (error || !member) {
     return (
       <div className="space-y-4">
-        <Link href="/operations/workforce" className="inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-xs font-bold hover:bg-muted"><ArrowLeftIcon className="size-4" /> Quay lại Workforce</Link>
-        <Card className="border-destructive/30"><CardContent className="flex gap-3 text-sm text-destructive"><AlertTriangleIcon className="size-4" /><div><p className="font-black">Không mở được workforce</p><p className="mt-1 text-xs">{error ?? "Không tìm thấy workforce."}</p></div></CardContent></Card>
+        <Link href="/operations/workforce" className="inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-xs font-bold hover:bg-muted"><ArrowLeftIcon className="size-4" /> Quay lại nhân sự</Link>
+        <Card className="border-destructive/30"><CardContent className="flex gap-3 text-sm text-destructive"><AlertTriangleIcon className="size-4" /><div><p className="font-black">Không mở được nhân sự</p><p className="mt-1 text-xs">{error ?? "Không tìm thấy nhân sự."}</p></div></CardContent></Card>
       </div>
     );
   }
@@ -210,7 +211,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-4 border-b bg-gradient-to-br from-brand/[0.08] via-card to-card p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
           <div>
-            <Link href="/operations/workforce" className="-ml-2 mb-2 inline-flex h-7 items-center gap-2 rounded-md px-2.5 text-[0.68rem] font-bold hover:bg-muted"><ArrowLeftIcon className="size-4" /> Workforce</Link>
+            <Link href="/operations/workforce" className="-ml-2 mb-2 inline-flex h-7 items-center gap-2 rounded-md px-2.5 text-[0.68rem] font-bold hover:bg-muted"><ArrowLeftIcon className="size-4" /> Nhân sự</Link>
             <div className="flex items-start gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-brand/15 bg-brand/10 text-brand"><UserRoundCogIcon className="size-5" /></span>
               <div>
@@ -230,39 +231,39 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
       {!member.identityAccessValid ? (
         <div className="flex items-start gap-3 rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-xs leading-5 text-destructive">
           <ShieldAlertIcon className="mt-0.5 size-4 shrink-0" />
-          <div><p className="font-black">Identity access không còn hợp lệ</p><p className="mt-1">Account có thể không ACTIVE hoặc role không còn tương thích với workforce kind. Planner sẽ không chọn member này.</p></div>
+          <div><p className="font-black">Quyền tài khoản không còn hợp lệ</p><p className="mt-1">Tài khoản có thể đã bị khóa hoặc vai trò không còn phù hợp với loại nhân sự. Hệ thống sẽ không giao việc cho người này.</p></div>
         </div>
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
         <div className="space-y-4">
           <Card>
-            <CardHeader><div><p className="text-sm font-black">Identity & workforce</p><p className="mt-1 text-xs text-muted-foreground">Snapshot do Operations đọc từ Identity; Management không join database.</p></div></CardHeader>
+            <CardHeader><div><p className="text-sm font-black">Tài khoản & nhân sự</p><p className="mt-1 text-xs text-muted-foreground">Thông tin tài khoản được đồng bộ từ hệ thống tài khoản.</p></div></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Fact label="Employee code" value={member.employeeCode} mono />
-              <Fact label="Workforce kind" value={workforceKindLabel(member.kind)} />
-              <Fact label="Workforce status" value={workforceStatusLabel(member.status)} />
-              <Fact label="Identity user ID" value={member.userId} mono />
-              <Fact label="Account status" value={member.identity?.accountStatus ?? "Không đọc được"} />
-              <Fact label="Profile status" value={member.identity?.profileStatus ?? "Không đọc được"} />
-              <Fact label="Roles" value={member.identity?.roles.join(", ") || "—"} />
+              <Fact label="Mã nhân viên" value={member.employeeCode} mono />
+              <Fact label="Loại nhân sự" value={workforceKindLabel(member.kind)} />
+              <Fact label="Trạng thái nhân sự" value={workforceStatusLabel(member.status)} />
+              <Fact label="Mã tài khoản" value={member.userId} mono />
+              <Fact label="Trạng thái tài khoản" value={member.identity ? accountLabels[member.identity.accountStatus as keyof typeof accountLabels] ?? member.identity.accountStatus : "Không đọc được"} />
+              <Fact label="Trạng thái hồ sơ" value={member.identity ? profileLabels[member.identity.profileStatus as keyof typeof profileLabels] ?? member.identity.profileStatus : "Không đọc được"} />
+              <Fact label="Vai trò" value={member.identity?.roles.map(roleLabel).join(", ") || "—"} />
               <Fact label="Email verified" value={member.identity?.emailVerified ? "Đã xác minh" : "Chưa xác minh"} />
               <Fact label="Cập nhật" value={formatDateTime(member.updatedAt)} />
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><div className="flex items-center gap-2"><Building2Icon className="size-4 text-brand" /><p className="text-sm font-black">Hub memberships</p></div></CardHeader>
+            <CardHeader><div className="flex items-center gap-2"><Building2Icon className="size-4 text-brand" /><p className="text-sm font-black">Bưu cục trực thuộc</p></div></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_auto]">
                 <div>
                   {canReadNetwork && hubs.length ? (
                     <select value={hubId} onChange={(event) => setHubId(event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-xs font-bold">
-                      <option value="">Chọn hub từ Network</option>
+                      <option value="">Chọn bưu cục từ mạng lưới</option>
                       {hubs.filter((hub) => hub.status === "ACTIVE").map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}
                     </select>
                   ) : (
-                    <div className="flex h-10 items-center rounded-md border bg-muted/20 px-3 text-xs text-muted-foreground">Cần quyền đọc Network để chọn bưu cục.</div>
+                    <div className="flex h-10 items-center rounded-md border bg-muted/20 px-3 text-xs text-muted-foreground">Cần quyền xem mạng lưới để chọn bưu cục.</div>
                   )}
                 </div>
                 <Button type="button" onClick={assignHub} disabled={saving === "assign-hub" || !hubId.trim()}>
@@ -273,7 +274,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                 <label className={cn("flex items-center gap-2 text-xs font-bold", !globalManager && "opacity-60")}>
                   <input type="checkbox" checked={hubPrimary} disabled={!globalManager} onChange={(event) => setHubPrimary(event.target.checked)} /> Đặt primary hub
                 </label>
-                <Input value={hubReason} onChange={(event) => setHubReason(event.target.value)} placeholder="Lý do gán hub (tùy chọn)" />
+                <Input value={hubReason} onChange={(event) => setHubReason(event.target.value)} placeholder="Lý do gán bưu cục (tùy chọn)" />
               </div>
               {!globalManager ? <p className="text-[0.66rem] text-muted-foreground">Quản lý bưu cục gán được nhân sự vào bưu cục mình quản lý nhưng không đặt được bưu cục chính.</p> : null}
 
@@ -281,15 +282,15 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                 {activeMemberships.map((membership) => (
                   <div key={membership.id} className="space-y-2">
                     <HubCard membership={membership} onRemove={() => removeHub(membership)} removing={saving === `remove-${membership.hubId}`} />
-                    <Input value={removeReason[membership.hubId] ?? ""} onChange={(event) => setRemoveReason((value) => ({ ...value, [membership.hubId]: event.target.value }))} placeholder="Lý do gỡ hub (tùy chọn)" className="h-9 text-xs" />
+                    <Input value={removeReason[membership.hubId] ?? ""} onChange={(event) => setRemoveReason((value) => ({ ...value, [membership.hubId]: event.target.value }))} placeholder="Lý do gỡ bưu cục (tùy chọn)" className="h-9 text-xs" />
                   </div>
                 ))}
               </div>
-              {!activeMemberships.length ? <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">Member chưa thuộc hub nào trong phạm vi bạn có thể xem.</p> : null}
+              {!activeMemberships.length ? <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">Nhân sự chưa thuộc bưu cục nào trong phạm vi bạn có thể xem.</p> : null}
 
               {inactiveMemberships.length ? (
                 <details className="rounded-lg border bg-muted/10 p-3">
-                  <summary className="cursor-pointer text-xs font-black">Lịch sử hub đã gỡ ({inactiveMemberships.length})</summary>
+                  <summary className="cursor-pointer text-xs font-black">Bưu cục đã gỡ ({inactiveMemberships.length})</summary>
                   <div className="mt-3 grid gap-2 lg:grid-cols-2">{inactiveMemberships.map((membership) => <HubCard key={membership.id} membership={membership} onRemove={() => undefined} removing={false} />)}</div>
                 </details>
               ) : null}
@@ -297,7 +298,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
           </Card>
 
           <Card>
-            <CardHeader><div className="flex items-center gap-2"><HistoryIcon className="size-4 text-brand" /><p className="text-sm font-black">Audit timeline</p></div></CardHeader>
+            <CardHeader><div className="flex items-center gap-2"><HistoryIcon className="size-4 text-brand" /><p className="text-sm font-black">Nhật ký thay đổi</p></div></CardHeader>
             <CardContent>
               {audit.length ? (
                 <div className="space-y-3">
@@ -308,32 +309,32 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                     </div>
                   ))}
                 </div>
-              ) : <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">Chưa có audit event trong phạm vi hiện tại.</p>}
+              ) : <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">Chưa có thay đổi nào trong phạm vi hiện tại.</p>}
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-4">
           <Card>
-            <CardHeader><div className="flex items-center gap-2"><ActivityIcon className="size-4 text-brand" /><p className="text-sm font-black">Availability & load</p></div></CardHeader>
+            <CardHeader><div className="flex items-center gap-2"><ActivityIcon className="size-4 text-brand" /><p className="text-sm font-black">Trạng thái & tải việc</p></div></CardHeader>
             <CardContent className="space-y-3">
               {member.availability ? (
                 <>
-                  <Fact label="Availability" value={availabilityLabel(member.availability.status)} />
+                  <Fact label="Trạng thái sẵn sàng" value={availabilityLabel(member.availability.status)} />
                   <div className="grid grid-cols-3 gap-2">
-                    <Fact label="Active" value={member.availability.activeAssignments} />
-                    <Fact label="Maximum" value={member.availability.maxConcurrentAssignments} />
+                    <Fact label="Đang làm" value={member.availability.activeAssignments} />
+                    <Fact label="Tối đa" value={member.availability.maxConcurrentAssignments} />
                     <Fact label="Còn lại" value={member.availability.remainingCapacity} />
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-brand" style={{ width: `${Math.min(100, member.availability.maxConcurrentAssignments ? member.availability.activeAssignments / member.availability.maxConcurrentAssignments * 100 : 0)}%` }} /></div>
                 </>
-              ) : <p className="text-xs text-muted-foreground">Availability chưa được cấu hình.</p>}
+              ) : <p className="text-xs text-muted-foreground">Chưa cấu hình trạng thái sẵn sàng.</p>}
             </CardContent>
           </Card>
 
           {globalManager ? (
             <Card>
-              <CardHeader><p className="text-sm font-black">Quản trị workforce</p></CardHeader>
+              <CardHeader><p className="text-sm font-black">Quản trị nhân sự</p></CardHeader>
               <CardContent className="space-y-5">
                 <div className="space-y-2">
                   <p className="text-xs font-black">Trạng thái</p>
@@ -347,13 +348,13 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                 </div>
 
                 <div className="border-t pt-5">
-                  <p className="text-xs font-black">Maximum concurrent assignments</p>
+                  <p className="text-xs font-black">Số việc làm cùng lúc tối đa</p>
                   <div className="mt-2 flex gap-2"><Input type="number" min={1} max={100} value={capacity} onChange={(event) => setCapacity(event.target.value)} /><Button type="button" variant="outline" onClick={saveCapacity} disabled={saving === "capacity"}><SaveIcon className="size-4" /></Button></div>
-                  <Input className="mt-2" value={capacityReason} onChange={(event) => setCapacityReason(event.target.value)} placeholder="Lý do thay đổi capacity (tùy chọn)" />
+                  <Input className="mt-2" value={capacityReason} onChange={(event) => setCapacityReason(event.target.value)} placeholder="Lý do thay đổi (tùy chọn)" />
                 </div>
 
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-[0.68rem] leading-5 text-amber-800 dark:text-amber-200">
-                  <p className="font-black">Operational safety</p>
+                  <p className="font-black">Lưu ý an toàn vận hành</p>
                   <p className="mt-1">Không tạm ngưng, cho nghỉ hoặc gỡ bưu cục được khi nhân sự còn việc đang làm. Việc đã giao hoặc đã nhận nhưng chưa làm sẽ được đưa lại hàng chờ.</p>
                 </div>
               </CardContent>

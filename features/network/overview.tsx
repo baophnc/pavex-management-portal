@@ -93,7 +93,7 @@ export function NetworkOverview() {
           <Metric
             label="Vùng phục vụ"
             value={loading && !snapshot ? "…" : snapshot?.areas.totalItems ?? 0}
-            note="Vùng phục vụ logic"
+            note="Vùng phục vụ theo cấu hình"
           />
           <Metric
             label="Địa bàn đã phủ"

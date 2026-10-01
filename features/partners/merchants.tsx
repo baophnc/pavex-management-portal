@@ -179,7 +179,7 @@ export function MerchantManagement() {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Không thể tải danh sách Merchant.",
+          : "Không thể tải danh sách cửa hàng.",
       );
     } finally {
       setLoading(false);
@@ -250,16 +250,16 @@ export function MerchantManagement() {
               </span>
               <div>
                 <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">
-                  Partners control
+                  Quản lý đối tác
                 </p>
                 <h1 className="mt-0.5 text-xl font-black tracking-tight sm:text-2xl">
-                  Quản lý Merchant
+                  Quản lý cửa hàng
                 </h1>
               </div>
             </div>
             <p className="mt-3 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
               Xem hồ sơ doanh nghiệp, xét duyệt và quản lý trạng thái
-              Merchant. Tìm theo mã Merchant, tên doanh nghiệp, mã số thuế
+              cửa hàng. Tìm theo mã cửa hàng, tên doanh nghiệp, mã số thuế
               hoặc email liên hệ.
             </p>
           </div>
@@ -313,14 +313,14 @@ export function MerchantManagement() {
           >
             <div className="flex min-w-0 gap-2">
               <label className="relative min-w-0 flex-1">
-                <span className="sr-only">Tìm Merchant</span>
+                <span className="sr-only">Tìm cửa hàng</span>
                 <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   key={query}
                   name="search"
                   defaultValue={query}
                   className="h-11 pl-9 sm:h-10"
-                  placeholder="Mã Merchant, doanh nghiệp, MST, email..."
+                  placeholder="Mã cửa hàng, doanh nghiệp, MST, email..."
                   autoComplete="off"
                 />
               </label>
@@ -335,7 +335,7 @@ export function MerchantManagement() {
                 updateQuery({ status: event.target.value, page: 1 })
               }
               className="h-11 rounded-md border bg-background px-3 text-xs font-bold outline-none focus-visible:ring-2 focus-visible:ring-brand/35 sm:h-10"
-              aria-label="Lọc trạng thái Merchant"
+              aria-label="Lọc trạng thái cửa hàng"
             >
               <option value="">Tất cả trạng thái</option>
               {merchantStatuses.map((item) => (
@@ -355,7 +355,7 @@ export function MerchantManagement() {
             )}
           </form>
 
-          <div className="mt-3 flex flex-wrap gap-2" aria-label="Lọc nhanh Merchant">
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Lọc nhanh cửa hàng">
             <QuickStatusFilter
               active={!status}
               label="Tất cả"
@@ -397,7 +397,7 @@ export function MerchantManagement() {
             <div>
               <RefreshCwIcon className="mx-auto size-5 animate-spin text-brand" />
               <p className="mt-3 text-xs font-bold text-muted-foreground">
-                Đang tải Merchant...
+                Đang tải cửa hàng...
               </p>
             </div>
           </div>
@@ -413,7 +413,7 @@ export function MerchantManagement() {
               <table className="w-full min-w-[72rem] text-left text-xs">
                 <thead className="border-b bg-muted/35 text-[0.62rem] font-black uppercase tracking-[0.08em] text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Merchant</th>
+                    <th className="px-4 py-3">Cửa hàng</th>
                     <th className="px-4 py-3">Doanh nghiệp</th>
                     <th className="px-4 py-3">Liên hệ</th>
                     <th className="px-4 py-3">Mã số thuế</th>
@@ -483,7 +483,7 @@ export function MerchantManagement() {
           <div className="grid min-h-64 place-items-center px-5 text-center">
             <div className="max-w-md">
               <ShieldCheckIcon className="mx-auto size-7 text-muted-foreground" />
-              <p className="mt-3 text-sm font-black">Không có Merchant phù hợp</p>
+              <p className="mt-3 text-sm font-black">Không có cửa hàng phù hợp</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Thử đổi bộ lọc hoặc từ khóa tìm kiếm.
               </p>
@@ -494,7 +494,7 @@ export function MerchantManagement() {
         <div className="flex flex-col gap-3 border-t bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="flex items-center gap-2 text-[0.68rem] font-bold text-muted-foreground">
             <Clock3Icon className="size-3.5" />
-            Trang {result?.page ?? page}/{pages} · {result?.totalElements ?? 0} Merchant
+            Trang {result?.page ?? page}/{pages} · {result?.totalElements ?? 0} cửa hàng
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button

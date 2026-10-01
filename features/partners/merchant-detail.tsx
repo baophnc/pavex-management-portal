@@ -87,13 +87,13 @@ function statusClass(status: MerchantStatus) {
 function statusDescription(status: MerchantStatus) {
   switch (status) {
     case "PENDING_VERIFICATION":
-      return "Hồ sơ đang chờ quản trị viên kiểm tra trước khi kích hoạt quyền Merchant.";
+      return "Hồ sơ đang chờ quản trị viên kiểm tra trước khi kích hoạt quyền cửa hàng.";
     case "ACTIVE":
-      return "Merchant đã được xác minh và được tạo vận đơn khi đủ điều kiện ở tab “Sẵn sàng tạo đơn”.";
+      return "Cửa hàng đã được xác minh và được tạo vận đơn khi đủ điều kiện ở tab “Sẵn sàng tạo đơn”.";
     case "SUSPENDED":
-      return "Merchant đang tạm ngưng nên không tạo được vận đơn mới. Tài khoản đăng nhập của họ vẫn hoạt động bình thường.";
+      return "Cửa hàng đang tạm ngưng nên không tạo được vận đơn mới. Tài khoản đăng nhập của họ vẫn hoạt động bình thường.";
     case "REJECTED":
-      return "Hồ sơ đã bị từ chối. Merchant có thể sửa và gửi lại hồ sơ; khi đó hồ sơ quay về “Chờ xét duyệt”.";
+      return "Hồ sơ đã bị từ chối. Cửa hàng có thể sửa và gửi lại hồ sơ; khi đó hồ sơ quay về “Chờ xét duyệt”.";
   }
 }
 
@@ -103,16 +103,16 @@ function decisionsFor(status: MerchantStatus): Decision[] {
       return [
         {
           status: "ACTIVE",
-          label: "Phê duyệt Merchant",
+          label: "Phê duyệt cửa hàng",
           description:
-            "Xác nhận hồ sơ hợp lệ. Tài khoản được cấp quyền Merchant tự động.",
+            "Xác nhận hồ sơ hợp lệ. Tài khoản được cấp quyền cửa hàng tự động.",
           requiresReason: false,
         },
         {
           status: "REJECTED",
           label: "Từ chối hồ sơ",
           description:
-            "Từ chối hồ sơ hiện tại. Merchant thấy lý do và có thể sửa rồi gửi lại.",
+            "Từ chối hồ sơ hiện tại. Cửa hàng thấy lý do và có thể sửa rồi gửi lại.",
           requiresReason: true,
           destructive: true,
         },
@@ -121,9 +121,9 @@ function decisionsFor(status: MerchantStatus): Decision[] {
       return [
         {
           status: "SUSPENDED",
-          label: "Tạm ngưng Merchant",
+          label: "Tạm ngưng cửa hàng",
           description:
-            "Chặn tạo vận đơn mới. Các vận đơn đang giao vẫn tiếp tục; quyền Merchant được gỡ tự động.",
+            "Chặn tạo vận đơn mới. Các vận đơn đang giao vẫn tiếp tục; quyền cửa hàng được gỡ tự động.",
           requiresReason: true,
           destructive: true,
         },
@@ -134,14 +134,14 @@ function decisionsFor(status: MerchantStatus): Decision[] {
           status: "ACTIVE",
           label: "Kích hoạt lại",
           description:
-            "Cho phép Merchant tạo vận đơn trở lại. Quyền Merchant được cấp lại tự động.",
+            "Cho phép cửa hàng tạo vận đơn trở lại. Quyền cửa hàng được cấp lại tự động.",
           requiresReason: false,
         },
         {
           status: "REJECTED",
-          label: "Từ chối Merchant",
+          label: "Từ chối cửa hàng",
           description:
-            "Chuyển Merchant sang “Đã từ chối”. Merchant có thể sửa và gửi lại hồ sơ.",
+            "Chuyển cửa hàng sang “Đã từ chối”. Cửa hàng có thể sửa và gửi lại hồ sơ.",
           requiresReason: true,
           destructive: true,
         },
@@ -258,11 +258,11 @@ function ReadinessVerdict({
   }
   return readiness.canCreateOrder ? (
     <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] p-3 text-xs font-bold leading-5 text-emerald-800 dark:text-emerald-200">
-      Merchant đang tạo được vận đơn.
+      Cửa hàng đang tạo được vận đơn.
     </p>
   ) : (
     <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs leading-5 text-destructive">
-      <p className="font-bold">Merchant chưa tạo được vận đơn vì:</p>
+      <p className="font-bold">Cửa hàng chưa tạo được vận đơn vì:</p>
       <ul className="mt-1 list-disc pl-4">
         {readiness.restrictions.map((code) => (
           <li key={code}>{orderRestrictionLabel(code)}</li>
@@ -314,7 +314,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
         setIdentityError(
           reason instanceof Error
             ? reason.message
-            : "Không thể tải trạng thái Identity của Merchant.",
+            : "Không thể tải trạng thái tài khoản của cửa hàng.",
         );
       } finally {
         setIdentityLoading(false);
@@ -348,7 +348,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Không thể tải hồ sơ Merchant.",
+          : "Không thể tải hồ sơ cửa hàng.",
       );
     } finally {
       setLoading(false);
@@ -475,11 +475,11 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
       setDecision(null);
       setReasonCode("");
       setReasonDetail("");
-      toast.success("Đã cập nhật trạng thái Merchant.");
+      toast.success("Đã cập nhật trạng thái cửa hàng.");
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 409) {
         toast.error(
-          "Trạng thái Merchant vừa được thay đổi ở nơi khác. Dữ liệu sẽ được tải lại.",
+          "Trạng thái cửa hàng vừa được thay đổi ở nơi khác. Dữ liệu sẽ được tải lại.",
         );
         setDecision(null);
         setReasonCode("");
@@ -489,7 +489,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
         toast.error(
           reason instanceof Error
             ? reason.message
-            : "Không thể cập nhật Merchant.",
+            : "Không thể cập nhật cửa hàng.",
         );
       }
     } finally {
@@ -503,7 +503,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
         <div className="text-center">
           <LoaderCircleIcon className="mx-auto size-6 animate-spin text-brand" />
           <p className="mt-3 text-xs font-bold text-muted-foreground">
-            Đang tải hồ sơ Merchant...
+            Đang tải hồ sơ cửa hàng...
           </p>
         </div>
       </div>
@@ -544,7 +544,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
               className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
             >
               <ArrowLeftIcon className="size-3.5" />
-              Merchant
+              Cửa hàng
             </Link>
             <div className="mt-4 flex items-start gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-brand/15 bg-brand/10 text-brand">
@@ -649,12 +649,12 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
               </div>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
-              <Fact label="Mã Merchant" value={merchant.merchantCode} mono />
+              <Fact label="Mã cửa hàng" value={merchant.merchantCode} mono />
               <Fact label="Tên doanh nghiệp" value={merchant.businessName} />
               <Fact label="Mã số thuế" value={merchant.taxCode} mono />
               <Fact label="Người liên hệ" value={merchant.contactName} />
-              <Fact label="Merchant ID" value={merchant.id} mono />
-              <Fact label="User ID" value={merchant.userId} mono />
+              <Fact label="Mã định danh cửa hàng" value={merchant.id} mono />
+              <Fact label="Mã tài khoản" value={merchant.userId} mono />
               <Fact label="Ngày tạo" value={formatDateTime(merchant.createdAt)} />
               <Fact
                 label="Cập nhật gần nhất"
@@ -701,12 +701,12 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <UserRoundIcon className="size-4 text-brand" />
-                  <h2 className="text-sm font-black">Tài khoản Identity</h2>
+                  <h2 className="text-sm font-black">Tài khoản đăng nhập</h2>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-xs leading-5 text-muted-foreground">
-                  Quyền Merchant của tài khoản được cấp hoặc gỡ tự động theo
+                  Quyền cửa hàng của tài khoản được cấp hoặc gỡ tự động theo
                   trạng thái hồ sơ; không cần gán thủ công.
                 </p>
                 <p className="mt-3 break-all font-mono text-[0.68rem] font-bold">
@@ -722,7 +722,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                   </Link>
                 ) : (
                   <p className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
-                    Bạn không có quyền đọc tài khoản Identity.
+                    Bạn không có quyền xem tài khoản đăng nhập.
                   </p>
                 )}
               </CardContent>
@@ -739,7 +739,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                 <div>
                   <h2 className="text-sm font-black">Sẵn sàng tạo vận đơn</h2>
                   <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
-                    Cùng các điều kiện hệ thống kiểm tra khi Merchant bấm “Tạo vận đơn”.
+                    Cùng các điều kiện hệ thống kiểm tra khi cửa hàng bấm “Tạo vận đơn”.
                   </p>
                 </div>
                 <Button
@@ -762,7 +762,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
               <ReadinessVerdict readiness={readiness} error={readinessError} />
               <ReadinessRow
                 state={merchant.status === "ACTIVE" ? "ok" : "blocked"}
-                title="Trạng thái Merchant"
+                title="Trạng thái cửa hàng"
                 detail={
                   merchant.status === "ACTIVE"
                     ? "Đang hoạt động."
@@ -808,7 +808,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                         ? "ok"
                         : "pending"
                 }
-                title="Quyền Merchant trên tài khoản"
+                title="Quyền cửa hàng trên tài khoản"
                 detail={
                   !canReadIdentity
                     ? "Bạn không có quyền xem tài khoản người dùng nên chưa kiểm tra được."
@@ -818,11 +818,11 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                         ? "Đang kiểm tra…"
                         : roleSyncHealthy
                           ? merchantRolePresent
-                            ? "Tài khoản đã có quyền Merchant."
-                            : "Merchant không hoạt động và tài khoản không còn quyền Merchant."
+                            ? "Tài khoản đã có quyền cửa hàng."
+                            : "Cửa hàng không hoạt động và tài khoản không còn quyền cửa hàng."
                           : merchantRoleExpected
-                            ? "Merchant đã được duyệt nhưng tài khoản chưa có quyền Merchant. Hệ thống đang cập nhật; bấm “Kiểm tra lại” sau vài giây."
-                            : "Merchant không hoạt động nhưng tài khoản vẫn còn quyền Merchant. Hệ thống đang gỡ quyền; bấm “Kiểm tra lại” sau vài giây."
+                            ? "Cửa hàng đã được duyệt nhưng tài khoản chưa có quyền cửa hàng. Hệ thống đang cập nhật; bấm “Kiểm tra lại” sau vài giây."
+                            : "Cửa hàng không hoạt động nhưng tài khoản vẫn còn quyền cửa hàng. Hệ thống đang gỡ quyền; bấm “Kiểm tra lại” sau vài giây."
                 }
               />
               <ReadinessRow
@@ -840,9 +840,9 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                   !readiness
                     ? readinessError ?? "Đang kiểm tra…"
                     : readiness.restrictions.includes("DEFAULT_PICKUP_REQUIRED")
-                      ? "Merchant chưa đặt điểm lấy hàng mặc định."
+                      ? "Cửa hàng chưa đặt điểm lấy hàng mặc định."
                       : defaultPickup && !defaultPickup.usableAsSender
-                        ? `“${defaultPickup.name}” chưa dùng được làm người gửi (số điện thoại hoặc địa chỉ không hợp lệ). Merchant cần cập nhật trước khi tạo đơn.`
+                        ? `“${defaultPickup.name}” chưa dùng được làm người gửi (số điện thoại hoặc địa chỉ không hợp lệ). Cửa hàng cần cập nhật trước khi tạo đơn.`
                         : defaultPickup
                           ? `“${defaultPickup.name}”.`
                           : "Đã thiết lập."
@@ -892,7 +892,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                   ))
                 ) : (
                   <p className="rounded-lg bg-muted p-3 text-xs leading-5 text-muted-foreground">
-                    Merchant chưa thêm điểm lấy hàng nào.
+                    Cửa hàng chưa thêm điểm lấy hàng nào.
                   </p>
                 )}
               </CardContent>
@@ -977,20 +977,20 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                 <li>Chờ xét duyệt → Phê duyệt hoặc Từ chối.</li>
                 <li>Đang hoạt động → Tạm ngưng.</li>
                 <li>Tạm ngưng → Kích hoạt lại hoặc Từ chối.</li>
-                <li>Đã từ chối → Merchant tự sửa và gửi lại hồ sơ để được xét duyệt lại.</li>
+                <li>Đã từ chối → cửa hàng tự sửa và gửi lại hồ sơ để được xét duyệt lại.</li>
               </ul>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-black">Quyết định Merchant</h2>
+              <h2 className="text-sm font-black">Quyết định cửa hàng</h2>
             </CardHeader>
             <CardContent className="space-y-3">
               {!canManageStatus ? (
                 <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
                   Bạn có quyền xem nhưng không có quyền thay đổi trạng thái
-                  Merchant.
+                  cửa hàng.
                 </p>
               ) : decisions.length ? (
                 decisions.map((item) => (
@@ -1031,7 +1031,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                 ))
               ) : (
                 <p className="rounded-md bg-muted p-4 text-xs leading-5 text-muted-foreground">
-                  Không cần thao tác thêm. Khi Merchant sửa và gửi lại hồ sơ,
+                  Không cần thao tác thêm. Khi cửa hàng sửa và gửi lại hồ sơ,
                   hồ sơ sẽ quay về “Chờ xét duyệt” để bạn xét lại.
                 </p>
               )}
@@ -1094,7 +1094,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                         <p className="mt-1 max-w-60 break-all font-mono text-[0.62rem] text-muted-foreground">
                           {item.changedByUserId
                             ? item.changedByUserId === merchant.userId
-                              ? "Merchant tự thao tác"
+                              ? "Cửa hàng tự thao tác"
                               : `Người thực hiện: ${item.changedByUserId}`
                             : "Hệ thống"}
                         </p>
@@ -1176,7 +1176,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                     rows={4}
                     maxLength={500}
                     className="resize-y rounded-md border bg-background p-3 text-sm font-normal outline-none focus:border-brand focus:ring-2 focus:ring-brand/15"
-                    placeholder="Thông tin bổ sung phục vụ audit và hỗ trợ Merchant..."
+                    placeholder="Thông tin bổ sung phục vụ nhật ký và hỗ trợ cửa hàng..."
                   />
                   <span className="text-right text-[0.65rem] font-normal text-muted-foreground">
                     {reasonDetail.length}/500

@@ -201,7 +201,7 @@ export function FleetTrips() {
           bullets: [
             "Trễ: đã quá giờ tới dự kiến mà xe chưa tới.",
             "Mất tín hiệu: quá 5 phút không nhận được vị trí.",
-            "Chuyến tự kết thúc khi hub đến nhập đủ kiện, hoặc khi tài xế bấm Đã tới.",
+            "Chuyến tự kết thúc khi bưu cục đến nhập đủ kiện, hoặc khi tài xế bấm Đã tới.",
           ],
         }}
       />

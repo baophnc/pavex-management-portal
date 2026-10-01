@@ -3,12 +3,12 @@ import { Suspense } from "react";
 
 import { MerchantDetail } from "@/features/partners/merchant-detail";
 
-export const metadata: Metadata = { title: "Hồ sơ Merchant" };
+export const metadata: Metadata = { title: "Hồ sơ cửa hàng" };
 
 function Fallback() {
   return (
     <div className="grid min-h-[50vh] place-items-center rounded-xl border bg-card text-xs font-bold text-muted-foreground">
-      Đang tải hồ sơ Merchant...
+      Đang tải hồ sơ cửa hàng...
     </div>
   );
 }

@@ -18,7 +18,7 @@ const messages: Record<string, string> = {
   coverage_not_found: "Không tìm thấy phạm vi phục vụ. Hãy tải lại dữ liệu và thử lại.",
   coverage_unavailable: "Địa bàn này chưa có phạm vi phục vụ đang hoạt động.",
   invalid_location: "Tỉnh/thành hoặc phường/xã không hợp lệ theo danh mục địa chỉ hiện tại.",
-  location_catalog_unavailable: "Không thể kiểm tra danh mục địa chỉ từ Partners. Hãy kiểm tra Partners service rồi thử lại.",
+  location_catalog_unavailable: "Không thể kiểm tra danh mục địa chỉ từ dịch vụ đối tác. Hãy thử lại sau.",
   lane_code_exists: "Mã tuyến đã tồn tại. Hãy chọn mã kỹ thuật khác.",
   lane_same_hub: "Điểm đi và điểm đến phải là hai điểm trung chuyển khác nhau.",
   lane_hub_inactive: "Chưa thể kích hoạt tuyến vì điểm đi hoặc điểm đến đang ngừng hoạt động.",
@@ -54,23 +54,23 @@ const messages: Record<string, string> = {
   active_route_template_delete: "Không thể xóa hành trình đang hoạt động. Hãy ngừng hành trình trước.",
   invalid_route_template_priority: "Mức ưu tiên phải nằm trong khoảng từ 1 đến 10.000.",
   invalid_delete_reason: "Lý do xóa không được dài quá 500 ký tự.",
-  audit_log_not_found: "Không tìm thấy bản ghi nhật ký Network.",
-  capacity_lane_changed: "Tuyến vận chuyển đã thay đổi sau khi reservation được tạo. Hãy kiểm tra lại Shipment và Network.",
+  audit_log_not_found: "Không tìm thấy bản ghi nhật ký mạng lưới.",
+  capacity_lane_changed: "Tuyến vận chuyển đã thay đổi sau khi giữ chỗ. Hãy kiểm tra lại vận đơn và mạng lưới.",
   invalid_route_revision: "Phiên bản tuyến phải là số nguyên dương.",
   invalid_shipment_weight: "Khối lượng vận đơn phải lớn hơn 0 kg.",
   lane_not_found: "Không tìm thấy tuyến vận chuyển. Hãy tải lại dữ liệu và thử lại.",
-  parent_hub_not_found: "Không tìm thấy điểm trung chuyển cha đã chọn. Hãy tải lại danh sách Hub.",
+  parent_hub_not_found: "Không tìm thấy điểm trung chuyển cha đã chọn. Hãy tải lại danh sách điểm trung chuyển.",
   route_template_not_found: "Không tìm thấy hành trình ưu tiên. Hãy tải lại dữ liệu và thử lại.",
   route_template_same_hub: "Điểm đầu và điểm cuối của hành trình phải khác nhau.",
-  shipment_id_required: "Shipment ID là bắt buộc khi thao tác reservation.",
+  shipment_id_required: "Cần có mã vận đơn khi thao tác giữ chỗ.",
   capacity_reservation_not_found: "Không tìm thấy dữ liệu giữ chỗ sức chứa cho vận đơn và phiên bản tuyến này.",
   network_capacity_unavailable: "Không còn đủ sức chứa trên các chuyến phù hợp. Hãy thử thời điểm hoặc tuyến khác.",
   network_capacity_race: "Sức chứa vừa thay đổi do một thao tác khác. Hệ thống đã thử lại nhưng chưa thể giữ chỗ.",
   capacity_leg_not_found: "Không tìm thấy chặng giữ chỗ cần thao tác.",
   capacity_already_released: "Chặng này đã được giải phóng nên không thể ghi nhận sử dụng tải.",
-  capacity_leg_out_of_order: "Phải ghi nhận các chặng trước theo đúng thứ tự trước khi consume chặng này.",
-  capacity_route_changed: "Cấu hình tuyến đã thay đổi sau khi reservation được tạo. Hãy kiểm tra lại Shipment và Network.",
-  capacity_schedule_changed: "Lịch chạy đã thay đổi sau khi reservation được tạo. Hãy kiểm tra lại lịch và Shipment.",
+  capacity_leg_out_of_order: "Phải ghi nhận các chặng trước theo đúng thứ tự trước khi xác nhận đã dùng tải chặng này.",
+  capacity_route_changed: "Cấu hình tuyến đã thay đổi sau khi giữ chỗ. Hãy kiểm tra lại vận đơn và mạng lưới.",
+  capacity_schedule_changed: "Lịch chạy đã thay đổi sau khi giữ chỗ. Hãy kiểm tra lại lịch và vận đơn.",
   invalid_leg_sequence: "Số thứ tự chặng không hợp lệ.",
   route_not_found: "Không tìm thấy đường vận chuyển phù hợp với địa chỉ, thời gian và khối lượng đã chọn.",
 };
@@ -126,7 +126,7 @@ export function networkErrorMessage(reason: unknown, fallback: string) {
         ? `Quá nhiều yêu cầu. Hãy thử lại sau khoảng ${reason.retryAfterSeconds} giây.`
         : "Quá nhiều yêu cầu. Hãy chờ một lúc rồi thử lại.";
     }
-    if (reason.status >= 500) return "Dịch vụ Network tạm thời không khả dụng. Hãy thử lại sau.";
+    if (reason.status >= 500) return "Dịch vụ mạng lưới tạm thời không khả dụng. Hãy thử lại sau.";
     return reason.message || fallback;
   }
 

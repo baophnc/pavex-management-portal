@@ -11,7 +11,7 @@ export default function NotFound() {
           Không tìm thấy trang
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Đường dẫn này không thuộc các module Management Portal hiện đang hỗ trợ.
+          Đường dẫn này không thuộc các phân hệ của trang quản trị.
         </p>
         <Link
           href="/dashboard"

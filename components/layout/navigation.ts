@@ -150,9 +150,9 @@ export const navigationModules: NavigationModule[] = [
     label: "Khách hàng",
     groups: [
       {
-        label: "Shop",
+        label: "Cửa hàng",
         icon: Building2Icon,
-        items: [{ href: "/partners/merchants", label: "Shop", permission: "partners.merchants.read" }],
+        items: [{ href: "/partners/merchants", label: "Cửa hàng", permission: "partners.merchants.read" }],
       },
       {
         label: "Hỗ trợ",
@@ -174,7 +174,7 @@ export const navigationModules: NavigationModule[] = [
         label: "Đối soát",
         icon: ReceiptTextIcon,
         items: [
-          { href: "/finance/settlements", label: "Đối soát shop", permission: "billing.manage" },
+          { href: "/finance/settlements", label: "Đối soát cửa hàng", permission: "billing.manage" },
           { href: "/finance/invoices", label: "Hoá đơn", permission: "billing.manage" },
         ],
       },

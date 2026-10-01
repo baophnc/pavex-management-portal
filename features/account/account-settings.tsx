@@ -147,7 +147,7 @@ function SectionTitle({
 
 function SessionDevice({ userAgent }: { userAgent: string | null }) {
   const value = userAgent?.trim();
-  if (!value) return "Không có User-Agent";
+  if (!value) return "Không rõ thiết bị";
   if (/mobile|android|iphone|ipad/i.test(value)) return "Thiết bị di động";
   if (/macintosh|mac os/i.test(value)) return "macOS";
   if (/windows/i.test(value)) return "Windows";
@@ -219,7 +219,7 @@ export function AccountSettings() {
         !profileDraft.dateOfBirth)
     ) {
       toast.error(
-        "Profile đã COMPLETED nên không thể xóa tên, họ, giới tính hoặc ngày sinh bắt buộc.",
+        "Hồ sơ đã hoàn tất nên không thể xóa tên, họ, giới tính hoặc ngày sinh bắt buộc.",
       );
       return;
     }
@@ -299,7 +299,7 @@ export function AccountSettings() {
   }
 
   async function revokeSession(sessionId: string) {
-    if (!window.confirm("Thu hồi refresh session này?")) return;
+    if (!window.confirm("Đăng xuất phiên đăng nhập này?")) return;
 
     setSaving(`session:${sessionId}`);
     try {
@@ -316,7 +316,7 @@ export function AccountSettings() {
   async function logoutAll() {
     if (
       !window.confirm(
-        "Thu hồi toàn bộ refresh session và đăng xuất thiết bị hiện tại?",
+        "Đăng xuất mọi phiên đăng nhập, kể cả thiết bị hiện tại?",
       )
     ) {
       return;
@@ -351,11 +351,11 @@ export function AccountSettings() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-black tracking-[0.18em] text-brand uppercase">
-            Self service
+            Tự quản lý
           </p>
           <h1 className="mt-1 text-2xl font-black">Tài khoản của tôi</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Quản lý hồ sơ cá nhân, mật khẩu và các refresh session của chính tài
+            Quản lý hồ sơ cá nhân, mật khẩu và các phiên đăng nhập của chính tài
             khoản đang đăng nhập.
           </p>
         </div>
@@ -379,9 +379,9 @@ export function AccountSettings() {
           <CardHeader>
             <SectionTitle
               icon={UserRoundCogIcon}
-              eyebrow="Identity"
+              eyebrow="Hồ sơ"
               title="Hồ sơ cá nhân"
-              description="Đọc và cập nhật đúng contract /api/v1/auth/me, không cần quyền quản trị user khác."
+              description="Xem và cập nhật thông tin của chính bạn, không cần quyền quản trị người dùng khác."
             />
           </CardHeader>
           <CardContent className="space-y-5">
@@ -420,7 +420,7 @@ export function AccountSettings() {
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-[0.6rem] font-bold text-muted-foreground">
                       <MailCheckIcon className="size-3" />
-                      {profile.emailVerified ? "Email verified" : "Email chưa verified"}
+                      {profile.emailVerified ? "Email đã xác minh" : "Email chưa xác minh"}
                     </span>
                   </div>
                 </div>
@@ -508,7 +508,7 @@ export function AccountSettings() {
               </div>
 
               <label className="grid gap-1.5 text-xs font-bold">
-                Avatar URL
+                Đường dẫn ảnh đại diện
                 <Input
                   type="url"
                   maxLength={2048}
@@ -544,7 +544,7 @@ export function AccountSettings() {
           <CardHeader>
             <SectionTitle
               icon={KeyRoundIcon}
-              eyebrow="Security"
+              eyebrow="Bảo mật"
               title="Đổi mật khẩu"
               description="Mật khẩu mới dài 8–128 ký tự. Sau khi đổi, mọi phiên đăng nhập khác sẽ bị đăng xuất."
             />
@@ -590,8 +590,8 @@ export function AccountSettings() {
               <div className="rounded-lg border bg-muted/25 p-3 text-[0.68rem] leading-5 text-muted-foreground">
                 <p className="flex items-start gap-2">
                   <ShieldCheckIcon className="mt-0.5 size-3.5 shrink-0 text-brand" />
-                  Sau khi đổi mật khẩu, backend revoke mọi refresh session cũ.
-                  Management Portal sẽ xóa cookie local và chuyển về trang đăng nhập.
+                  Sau khi đổi mật khẩu, mọi phiên đăng nhập cũ sẽ bị đăng xuất.
+                  Trang quản trị sẽ xóa phiên trên trình duyệt này và chuyển về trang đăng nhập.
                 </p>
               </div>
 
@@ -612,7 +612,7 @@ export function AccountSettings() {
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
           <SectionTitle
             icon={LaptopIcon}
-            eyebrow="Sessions"
+            eyebrow="Phiên đăng nhập"
             title="Phiên đăng nhập"
             description="Các phiên đăng nhập còn hiệu lực. Hệ thống chưa nhận biết được phiên nào là thiết bị bạn đang dùng."
           />
@@ -630,18 +630,18 @@ export function AccountSettings() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border bg-muted/25 p-3">
               <p className="text-[0.6rem] font-black tracking-[0.13em] text-muted-foreground uppercase">
-                Active sessions
+                Phiên đang hoạt động
               </p>
               <p className="mt-1 text-2xl font-black">{sessions.length}</p>
             </div>
             <div className="rounded-xl border bg-muted/25 p-3 sm:col-span-2">
               <p className="flex items-center gap-2 text-xs font-bold">
                 <Clock3Icon className="size-4 text-brand" />
-                Lưu ý về access token
+                Lưu ý khi đăng xuất từ xa
               </p>
               <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
-                Thu hồi refresh session ngăn phiên đó refresh token tiếp theo. Access
-                token đã phát hành có thể còn hiệu lực đến lúc hết hạn theo backend.
+                Đăng xuất một phiên sẽ chặn phiên đó gia hạn đăng nhập. Thiết bị đó vẫn
+                có thể dùng tiếp trong vài phút cho tới khi lượt đăng nhập hiện tại hết hạn.
               </p>
             </div>
           </div>
@@ -651,7 +651,7 @@ export function AccountSettings() {
               <div>
                 <CheckCircle2Icon className="mx-auto size-6 text-emerald-500" />
                 <p className="mt-2 text-xs font-black">
-                  Không có refresh session đang hoạt động
+                  Không có phiên đăng nhập nào đang hoạt động
                 </p>
               </div>
             </div>
@@ -697,7 +697,7 @@ export function AccountSettings() {
                       </dd>
                     </div>
                     <div className="min-w-0">
-                      <dt className="font-bold text-muted-foreground">Session ID</dt>
+                      <dt className="font-bold text-muted-foreground">Mã phiên</dt>
                       <dd className="mt-0.5 truncate font-mono" title={session.sessionId}>
                         {session.sessionId}
                       </dd>
@@ -708,7 +708,7 @@ export function AccountSettings() {
                     className="mt-3 break-all rounded-lg bg-muted/35 p-2.5 text-[0.62rem] leading-4 text-muted-foreground"
                     title={session.userAgent ?? undefined}
                   >
-                    {session.userAgent || "Không có User-Agent"}
+                    {session.userAgent || "Không rõ thiết bị"}
                   </p>
                 </article>
               ))}
@@ -721,15 +721,15 @@ export function AccountSettings() {
         <CardHeader>
           <SectionTitle
             icon={ShieldCheckIcon}
-            eyebrow="Authorization"
+            eyebrow="Phân quyền"
             title="Vai trò & quyền hiện tại"
-            description="Thông tin read-only từ chính Identity context của tài khoản đang đăng nhập."
+            description="Chỉ xem: vai trò và quyền của tài khoản đang đăng nhập."
           />
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <div>
             <p className="text-[0.62rem] font-black tracking-[0.13em] text-muted-foreground uppercase">
-              Roles
+              Vai trò
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {profile?.roles.length ? (
@@ -742,14 +742,14 @@ export function AccountSettings() {
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground">Chưa có role.</span>
+                <span className="text-xs text-muted-foreground">Chưa có vai trò.</span>
               )}
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between gap-2">
               <p className="text-[0.62rem] font-black tracking-[0.13em] text-muted-foreground uppercase">
-                Permissions
+                Quyền
               </p>
               <span className="text-[0.65rem] font-bold text-muted-foreground">
                 {sortedPermissions.length} quyền
@@ -770,7 +770,7 @@ export function AccountSettings() {
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Tài khoản chưa có permission.
+                  Tài khoản chưa có quyền.
                 </p>
               )}
             </div>

@@ -86,14 +86,14 @@ export function Settlements() {
     <div className="grid gap-4">
       <PricingPageHeader
         eyebrow="Tài chính"
-        title="Đối soát Merchant"
-        description="Mỗi kỳ, tiền thu hộ đã được duyệt được cấn trừ vào cước vận chuyển của Merchant. Phần thu hộ còn dư được chuyển khoản cho Merchant; phần cước còn thiếu nằm trong hóa đơn để Merchant thanh toán."
+        title="Đối soát cửa hàng"
+        description="Mỗi kỳ, tiền thu hộ đã được duyệt được cấn trừ vào cước vận chuyển của cửa hàng. Phần thu hộ còn dư được chuyển khoản cho cửa hàng; phần cước còn thiếu nằm trong hóa đơn để cửa hàng thanh toán."
         help={{
-          description: "Bấm “Lập đối soát” và chọn thời điểm chốt số liệu. Mỗi Merchant có khoản chưa đối soát sẽ có một kỳ mới. Sau khi chuyển khoản, ghi lại mã giao dịch ngân hàng vào kỳ đó.",
+          description: "Bấm “Lập đối soát” và chọn thời điểm chốt số liệu. Mỗi cửa hàng có khoản chưa đối soát sẽ có một kỳ mới. Sau khi chuyển khoản, ghi lại mã giao dịch ngân hàng vào kỳ đó.",
           bullets: [
             "Chỉ tiền thu hộ đã được duyệt ở “Duyệt tiền nộp” mới vào đối soát.",
             "Mỗi vận đơn chỉ vào đối soát một lần; lập lại không tạo trùng.",
-            "Cước của đơn hoàn về luôn tính cho Merchant, kể cả đơn người nhận trả cước.",
+            "Cước của đơn hoàn về luôn tính cho cửa hàng, kể cả đơn người nhận trả cước.",
           ],
         }}
         actions={
@@ -120,11 +120,11 @@ export function Settlements() {
             <thead className="border-b bg-muted/25 text-[0.62rem] uppercase tracking-[0.08em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Kỳ</th>
-                <th className="px-4 py-3">Merchant</th>
+                <th className="px-4 py-3">Cửa hàng</th>
                 <th className="px-4 py-3 text-right">Thu hộ</th>
                 <th className="px-4 py-3 text-right">Cước</th>
-                <th className="px-4 py-3 text-right">Chuyển Merchant</th>
-                <th className="px-4 py-3 text-right">Merchant còn nợ</th>
+                <th className="px-4 py-3 text-right">Chuyển cửa hàng</th>
+                <th className="px-4 py-3 text-right">Cửa hàng còn nợ</th>
                 <th className="px-4 py-3">Trạng thái</th>
               </tr>
             </thead>
@@ -148,7 +148,7 @@ export function Settlements() {
       <FinanceDialog
         open={generateOpen}
         title="Lập đối soát"
-        description="Đối soát mọi tiền thu hộ đã duyệt và cước của đơn đã kết thúc tính đến thời điểm chốt. Để trống Merchant để lập cho tất cả."
+        description="Đối soát mọi tiền thu hộ đã duyệt và cước của đơn đã kết thúc tính đến thời điểm chốt. Để trống cửa hàng để lập cho tất cả."
         confirmLabel="Lập đối soát"
         loading={saving}
         onCancel={() => setGenerateOpen(false)}
@@ -157,8 +157,8 @@ export function Settlements() {
         <PricingField label="Chốt số liệu đến">
           <Input type="datetime-local" value={cutoff} max={maxCutoff} disabled={saving} onChange={(event) => setCutoff(event.target.value)} />
         </PricingField>
-        <PricingField label="Chỉ một Merchant (mã Merchant, không bắt buộc)">
-          <Input value={merchantFilter} disabled={saving} placeholder="UUID Merchant" onChange={(event) => setMerchantFilter(event.target.value)} />
+        <PricingField label="Chỉ một cửa hàng (mã cửa hàng, không bắt buộc)">
+          <Input value={merchantFilter} disabled={saving} placeholder="Mã định danh cửa hàng" onChange={(event) => setMerchantFilter(event.target.value)} />
         </PricingField>
       </FinanceDialog>
 
@@ -207,7 +207,7 @@ function StatementPanel({
     setSaving(true);
     try {
       const next = await financeApi.recordPayout(statement.id, reference);
-      toast.success("Đã ghi nhận chuyển khoản cho Merchant.");
+      toast.success("Đã ghi nhận chuyển khoản cho cửa hàng.");
       setPayoutOpen(false);
       onChanged(next);
     } catch (reason) {
@@ -226,7 +226,7 @@ function StatementPanel({
           <div>
             <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">Kỳ đối soát</p>
             <h2 className="mt-1 font-mono text-lg font-black">{current.statementNumber}</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Merchant <span className="font-mono">{current.merchantId}</span> · chốt {dateTime(current.cutoffAt)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Cửa hàng <span className="font-mono">{current.merchantId}</span> · chốt {dateTime(current.cutoffAt)}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Đóng"><XIcon className="size-4" /></Button>
         </div>
@@ -234,9 +234,9 @@ function StatementPanel({
         <div className="grid gap-4 p-5">
           <dl className="grid gap-2 rounded-lg border p-4 text-sm">
             <Row label="Tiền thu hộ đã duyệt" value={money(current.codTotal)} />
-            <Row label="Cước Merchant phải trả" value={`− ${money(current.feeTotal)}`} />
+            <Row label="Cước cửa hàng phải trả" value={`− ${money(current.feeTotal)}`} />
             <Row label="Cấn trừ" value={money(current.offsetAmount)} muted />
-            <div className="mt-1 flex justify-between border-t pt-2 font-black"><dt>Chuyển cho Merchant</dt><dd className="tabular-nums text-brand">{money(current.payoutAmount)}</dd></div>
+            <div className="mt-1 flex justify-between border-t pt-2 font-black"><dt>Chuyển cho cửa hàng</dt><dd className="tabular-nums text-brand">{money(current.payoutAmount)}</dd></div>
             {current.invoice ? (
               <div className="flex justify-between text-xs text-muted-foreground">
                 <dt>Hóa đơn {current.invoice.invoiceNumber} · {invoiceStatusLabels[current.invoice.status]}</dt>
@@ -264,7 +264,7 @@ function StatementPanel({
                   {canManage ? <Button size="sm" className="mt-3" onClick={() => setPayoutOpen(true)}>Ghi nhận đã chuyển khoản</Button> : null}
                 </>
               ) : (
-                <p className="mt-3 rounded-md bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200">Merchant chưa đăng ký tài khoản nhận tiền. Liên hệ Merchant cập nhật trong trang Đối soát trên cổng khách hàng.</p>
+                <p className="mt-3 rounded-md bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200">Cửa hàng chưa đăng ký tài khoản nhận tiền. Liên hệ cửa hàng cập nhật trong trang Đối soát trên cổng khách hàng.</p>
               )}
             </section>
           ) : null}
@@ -281,7 +281,7 @@ function StatementPanel({
       <FinanceDialog
         open={payoutOpen}
         title="Ghi nhận đã chuyển khoản?"
-        description={`Xác nhận đã chuyển ${money(current.payoutAmount)} cho Merchant. Thao tác này không hoàn tác được.`}
+        description={`Xác nhận đã chuyển ${money(current.payoutAmount)} cho cửa hàng. Thao tác này không hoàn tác được.`}
         confirmLabel="Ghi nhận"
         input={{ label: "Mã giao dịch ngân hàng", placeholder: "FT26268XXXXX", required: true }}
         loading={saving}

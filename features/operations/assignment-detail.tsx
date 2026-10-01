@@ -70,7 +70,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
     try {
       const candidates = await getOperationalAssignments(new URLSearchParams());
       const found = candidates.find((item) => item.id === assignmentId) ?? null;
-      if (!found) throw new Error("Assignment không nằm trong phạm vi truy cập hiện tại.");
+      if (!found) throw new Error("Phân công không nằm trong phạm vi truy cập hiện tại.");
 
       const [eventPage, workforcePages, visibleHubs] = await Promise.all([
         getOperationalAssignmentEvents(assignmentId, 1, 100),
@@ -96,7 +96,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
       setHubs(visibleHubs);
       setSelectedWorker(found.assigneeWorkforceMemberId ?? "");
     } catch (cause) {
-      const message = apiMessage(cause, cause instanceof Error ? cause.message : "Không thể tải assignment.");
+      const message = apiMessage(cause, cause instanceof Error ? cause.message : "Không thể tải phân công.");
       setError(message);
     } finally {
       setLoading(false);
@@ -135,10 +135,10 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
     try {
       const updated = await assignOperationalAssignment(assignment.id, selectedWorker);
       setAssignment(updated);
-      toast.success("Đã phân công assignment.");
+      toast.success("Đã giao việc.");
       await load();
     } catch (cause) {
-      toast.error(apiMessage(cause, "Không thể phân công assignment."));
+      toast.error(apiMessage(cause, "Không thể giao việc."));
     } finally {
       setSaving(false);
     }
@@ -151,27 +151,27 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
       const updated = await cancelOperationalAssignment(assignment.id, cancelReason.trim());
       setAssignment(updated);
       setCancelReason("");
-      toast.success("Đã hủy assignment.");
+      toast.success("Đã hủy phân công.");
       await load();
     } catch (cause) {
-      toast.error(apiMessage(cause, "Không thể hủy assignment."));
+      toast.error(apiMessage(cause, "Không thể hủy phân công."));
     } finally {
       setSaving(false);
     }
   };
 
   if (loading && !assignment) {
-    return <div className="grid min-h-72 place-items-center text-sm text-muted-foreground"><LoaderCircleIcon className="mr-2 inline size-4 animate-spin" />Đang tải assignment...</div>;
+    return <div className="grid min-h-72 place-items-center text-sm text-muted-foreground"><LoaderCircleIcon className="mr-2 inline size-4 animate-spin" />Đang tải phân công...</div>;
   }
 
   if (error || !assignment) {
     return (
       <div className="space-y-3">
         <Link href="/operations/assignments" className="inline-flex items-center gap-2 text-xs font-black text-brand hover:underline">
-          <ArrowLeftIcon className="size-4" /> Quay lại assignments
+          <ArrowLeftIcon className="size-4" /> Quay lại danh sách phân công
         </Link>
         <div className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-          <AlertTriangleIcon className="size-4 shrink-0" /> {error ?? "Không tìm thấy assignment."}
+          <AlertTriangleIcon className="size-4 shrink-0" /> {error ?? "Không tìm thấy phân công."}
         </div>
       </div>
     );
@@ -195,7 +195,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
       <section className="rounded-xl border bg-card p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Assignment detail</p>
+            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Chi tiết phân công</p>
             <h1 className="mt-1 text-xl font-black">{assignment.code}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{operationalAssignmentTypeLabel(assignment.type)} · {workforceKindLabel(assignment.requiredKind)}</p>
           </div>
@@ -218,16 +218,16 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
               <Info label="Người phân công" value={assigningUser ? workforceIdentityName(assigningUser.identity ?? {}) : assignment.assignedByUserId ? "Người điều phối được phân quyền" : "—"} />
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Time label="Assigned" value={assignment.assignedAt} />
-              <Time label="Accepted" value={assignment.acceptedAt} />
-              <Time label="Started" value={assignment.startedAt} />
-              <Time label="Completed" value={assignment.completedAt} />
-              <Time label="Cancelled" value={assignment.cancelledAt} />
-              <Time label="Updated" value={assignment.updatedAt} />
+              <Time label="Giao việc" value={assignment.assignedAt} />
+              <Time label="Nhận việc" value={assignment.acceptedAt} />
+              <Time label="Bắt đầu" value={assignment.startedAt} />
+              <Time label="Hoàn tất" value={assignment.completedAt} />
+              <Time label="Đã hủy" value={assignment.cancelledAt} />
+              <Time label="Cập nhật" value={assignment.updatedAt} />
             </div>
             {assignment.resolutionNote ? (
               <div className="rounded-lg border bg-muted/25 p-3 text-xs leading-5">
-                <p className="font-black">Resolution</p>
+                <p className="font-black">Kết quả xử lý</p>
                 <p className="mt-1 text-muted-foreground">{assignment.resolutionNote}</p>
               </div>
             ) : null}
@@ -238,9 +238,9 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
           <Card>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-sm font-black">Phân công worker</p>
+                <p className="text-sm font-black">Giao cho nhân viên</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Danh sách được lọc theo hub, kind, Identity access và remaining capacity. Backend vẫn xác thực lại khi submit.
+                  Danh sách đã lọc theo bưu cục, loại nhân sự, quyền tài khoản và số việc còn nhận được. Hệ thống vẫn kiểm tra lại khi bạn xác nhận.
                 </p>
               </div>
               <select
@@ -249,7 +249,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
                 disabled={!canAssign || saving}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
-                <option value="">Chọn workforce member</option>
+                <option value="">Chọn nhân viên</option>
                 {eligibleWorkers.map((member) => (
                   <option key={member.id} value={member.id}>
                     {member.employeeCode} · {workforceIdentityName(member.identity ?? {})}
@@ -267,7 +267,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
                 {assignment.status === "ASSIGNED" ? "Phân công lại" : "Phân công"}
               </Button>
               {canAssign && eligibleWorkers.length === 0 ? (
-                <p className="text-[0.68rem] text-amber-700 dark:text-amber-300">Không có candidate còn capacity trong projection hiện tại.</p>
+                <p className="text-[0.68rem] text-amber-700 dark:text-amber-300">Hiện không có nhân viên nào còn nhận thêm việc được.</p>
               ) : null}
             </CardContent>
           </Card>
@@ -275,8 +275,8 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
           <Card>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-sm font-black">Hủy assignment</p>
-                <p className="mt-1 text-xs text-muted-foreground">Completed assignment không thể hủy.</p>
+                <p className="text-sm font-black">Hủy phân công</p>
+                <p className="mt-1 text-xs text-muted-foreground">Phân công đã hoàn tất thì không thể hủy.</p>
               </div>
               <Input value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Lý do hủy..." disabled={!canCancel || saving} />
               <Button variant="destructive" onClick={() => void cancel()} disabled={!canCancel || saving || !cancelReason.trim()}>
@@ -291,8 +291,8 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
         <CardContent>
           <div className="mb-3 flex items-center justify-between gap-2">
             <div>
-              <p className="text-sm font-black">Event timeline</p>
-              <p className="mt-1 text-xs text-muted-foreground">Immutable dispatch history từ Operations event log.</p>
+              <p className="text-sm font-black">Diễn biến</p>
+              <p className="mt-1 text-xs text-muted-foreground">Lịch sử điều phối, không thể chỉnh sửa.</p>
             </div>
             <span className="text-xs font-black text-brand">{events.length} event</span>
           </div>
@@ -312,8 +312,8 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
                     <p className="text-[0.65rem] text-muted-foreground">{formatDateTime(event.occurredAt)}</p>
                   </div>
                   <div className="mt-2 grid gap-1 text-[0.65rem] text-muted-foreground sm:grid-cols-2">
-                    <p>Worker: <span className="font-mono">{shortId(event.workforceMemberId)}</span></p>
-                    <p>Actor: <span className="font-mono">{shortId(event.actorUserId)}</span></p>
+                    <p>Nhân viên: <span className="font-mono">{shortId(event.workforceMemberId)}</span></p>
+                    <p>Người thao tác: <span className="font-mono">{shortId(event.actorUserId)}</span></p>
                   </div>
                   {event.reason ? <p className="mt-2 text-xs leading-5">{event.reason}</p> : null}
                 </div>

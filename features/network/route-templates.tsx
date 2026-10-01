@@ -284,7 +284,7 @@ export function NetworkRouteTemplates({ embedded = false }: { embedded?: boolean
           pendingAction?.kind === "delete"
             ? `Hành trình ${pendingAction.template.name} sẽ bị xóa khỏi cấu hình. Nhật ký thay đổi vẫn được giữ. Thao tác này chỉ hợp lệ khi tuyến đang ngừng hoạt động.`
             : pendingAction?.template.status === "ACTIVE"
-              ? `Hành trình ${pendingAction?.template.name ?? "này"} sẽ không còn được planner ưu tiên.`
+              ? `Hành trình ${pendingAction?.template.name ?? "này"} sẽ không còn được ưu tiên khi tìm tuyến.`
               : `Hành trình ${pendingAction?.template.name ?? "này"} sẽ được đưa vào danh sách ưu tiên. Hệ thống sẽ kiểm tra các bưu cục, tuyến và lịch chạy trước khi kích hoạt.`
         }
         confirmLabel={

@@ -102,7 +102,7 @@ async function handle(request: NextRequest, context: Context) {
   const { path } = await context.params;
   if (!isSafePath(path)) {
     return NextResponse.json(
-      { code: "invalid_backend_path", message: "Đường dẫn backend không hợp lệ." },
+      { code: "invalid_backend_path", message: "Đường dẫn máy chủ không hợp lệ." },
       { status: 400 },
     );
   }
@@ -121,7 +121,7 @@ async function handle(request: NextRequest, context: Context) {
       const refresh = await refreshSessionTokens(session.refreshToken);
       if (!refresh.tokens) {
         return refresh.response.status >= 500
-          ? backendUnavailable("Auth tạm thời không khả dụng.")
+          ? backendUnavailable("Dịch vụ đăng nhập tạm thời không khả dụng.")
           : unauthenticated();
       }
       freshTokens = refresh.tokens;
@@ -142,7 +142,7 @@ async function handle(request: NextRequest, context: Context) {
         freshTokens = refresh.tokens;
         backend = await forward(request, path, freshTokens.accessToken, body);
       } else if (refresh.response.status >= 500) {
-        return backendUnavailable("Auth tạm thời không khả dụng.");
+        return backendUnavailable("Dịch vụ đăng nhập tạm thời không khả dụng.");
       }
     }
 

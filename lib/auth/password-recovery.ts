@@ -51,6 +51,6 @@ export async function recoverPassword(request: NextRequest, action: "forgot-pass
     if (retryAfter) result.headers.set("retry-after", retryAfter);
     return result;
   } catch {
-    return json({ message: "Không thể kết nối backend PAVEX. Vui lòng thử lại sau." }, 502);
+    return json({ message: "Không thể kết nối máy chủ PAVEX. Vui lòng thử lại sau." }, 502);
   }
 }

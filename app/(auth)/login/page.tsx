@@ -17,7 +17,7 @@ function loginNotice(reason: string | string[] | undefined) {
     return "Đã lưu mật khẩu mới. Hãy đăng nhập lại bằng mật khẩu vừa đặt.";
   }
   if (value === "management-access") {
-    return "Phiên trước không còn quyền truy cập Management Portal. Hãy đăng nhập bằng tài khoản quản trị phù hợp.";
+    return "Phiên trước không còn quyền truy cập trang quản trị. Hãy đăng nhập bằng tài khoản quản trị phù hợp.";
   }
   return null;
 }
@@ -42,8 +42,8 @@ export default async function LoginPage({
             P
           </span>
           <div>
-            <p className="text-lg font-black">PAVEX Management</p>
-            <p className="text-xs text-white/60">Control center</p>
+            <p className="text-lg font-black">PAVEX Quản trị</p>
+            <p className="text-xs text-white/60">Trung tâm điều hành</p>
           </div>
         </div>
         <div className="relative max-w-xl">
@@ -59,7 +59,7 @@ export default async function LoginPage({
             <span className="grid size-10 place-items-center rounded-lg bg-primary font-black italic text-white">
               P
             </span>
-            <p className="font-black">PAVEX Management</p>
+            <p className="font-black">PAVEX Quản trị</p>
           </div>
 
           <h1 className="mt-2 text-4xl font-black tracking-tight">Đăng nhập</h1>

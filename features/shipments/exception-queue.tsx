@@ -42,6 +42,7 @@ import {
   type ShipmentExceptionQueueStatus,
   type ShipmentExceptionQueueSummary,
 } from "@/features/shipments/contracts";
+import { shipmentStatusLabel } from "@/features/shipments/presentation";
 import { ApiError } from "@/lib/api/client";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -69,7 +70,7 @@ function statusLabel(status: ShipmentExceptionQueueStatus) {
     case "PENDING_APPROVAL":
       return "Chờ cấp duyệt";
     case "PENDING_REVIEW":
-      return "Chờ review khối lượng";
+      return "Chờ duyệt cân lại";
     case "APPROVED":
       return "Đã duyệt";
     case "PROCESSING":
@@ -138,17 +139,17 @@ function QueueItem({ item, currentUserId, canManage, canOpenShipment, onChanged 
 
   async function completeWeightReview() {
     if (!note.trim()) {
-      toast.error("Nhập ghi chú review capacity/routing trước khi xác nhận.");
+      toast.error("Nhập ghi chú kiểm tra sức chứa/định tuyến trước khi xác nhận.");
       return;
     }
     setSaving("review");
     try {
       await reviewShipmentWeight(item.shipmentId, item.id, note.trim());
-      toast.success("Đã hoàn tất review khối lượng.");
+      toast.success("Đã duyệt xong cân lại.");
       setNote("");
       onChanged();
     } catch (error) {
-      toast.error(message(error, "Không thể hoàn tất weight review."));
+      toast.error(message(error, "Không thể hoàn tất duyệt cân lại."));
     } finally {
       setSaving(null);
     }
@@ -186,8 +187,8 @@ function QueueItem({ item, currentUserId, canManage, canOpenShipment, onChanged 
 
           <div className="shrink-0 text-left text-[0.68rem] text-muted-foreground lg:text-right">
             <p>{formatDateTime(item.requestedAt)}</p>
-            <p className="mt-1">Shipment: <span className="font-bold text-foreground">{item.shipmentStatus}</span></p>
-            {item.isOnHold ? <p className="mt-1 font-bold text-amber-700 dark:text-amber-300">Đang hold</p> : null}
+            <p className="mt-1">Vận đơn: <span className="font-bold text-foreground">{shipmentStatusLabel(item.shipmentStatus)}</span></p>
+            {item.isOnHold ? <p className="mt-1 font-bold text-amber-700 dark:text-amber-300">Đang tạm giữ</p> : null}
           </div>
         </div>
 
@@ -195,16 +196,16 @@ function QueueItem({ item, currentUserId, canManage, canOpenShipment, onChanged 
           <div className="rounded-xl border bg-muted/10 p-3">
             {selfRequested ? (
               <div className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
-                Bạn là người tạo nghiệp vụ này. Theo nguyên tắc bốn mắt, một Operations Manager/Admin khác phải thực hiện bước duyệt.
+                Bạn là người tạo nghiệp vụ này. Theo nguyên tắc hai người kiểm tra, một quản lý vận hành hoặc quản trị viên khác phải thực hiện bước duyệt.
               </div>
             ) : null}
             <label className="grid gap-2 text-xs font-bold">
-              {pendingWeight ? "Ghi chú review capacity / routing" : "Ghi chú quyết định"}
+              {pendingWeight ? "Ghi chú kiểm tra sức chứa / định tuyến" : "Ghi chú quyết định"}
               <textarea
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 maxLength={500}
-                placeholder={pendingWeight ? "Xác nhận capacity và routing vẫn phù hợp..." : "Lý do duyệt hoặc từ chối (không bắt buộc)..."}
+                placeholder={pendingWeight ? "Xác nhận sức chứa và định tuyến vẫn phù hợp..." : "Lý do duyệt hoặc từ chối (không bắt buộc)..."}
                 className="min-h-20 resize-y rounded-md border bg-background px-3 py-2 text-sm"
                 disabled={saving !== null}
               />
@@ -224,7 +225,7 @@ function QueueItem({ item, currentUserId, canManage, canOpenShipment, onChanged 
               ) : (
                 <Button size="sm" onClick={() => void completeWeightReview()} disabled={saving !== null || !note.trim() || selfRequested}>
                   {saving === "review" ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : <PackageCheckIcon className="size-3.5" />}
-                  Hoàn tất review
+                  Hoàn tất duyệt
                 </Button>
               )}
             </div>
@@ -233,7 +234,7 @@ function QueueItem({ item, currentUserId, canManage, canOpenShipment, onChanged 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-500/20 bg-sky-500/5 p-3">
             <div>
               <p className="text-xs font-black text-sky-800 dark:text-sky-200">Đã qua bước duyệt</p>
-              <p className="mt-1 text-[0.68rem] text-muted-foreground">Mở vận đơn để theo dõi recovery/routing và hoàn tất workflow khi điều kiện nghiệp vụ đã đủ.</p>
+              <p className="mt-1 text-[0.68rem] text-muted-foreground">Mở vận đơn để theo dõi xử lý/định tuyến và hoàn tất quy trình khi đã đủ điều kiện.</p>
             </div>
             {canOpenShipment ? <Link href={`/shipments/${encodeURIComponent(item.trackingCode)}`} className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-xs font-black hover:bg-muted">
               Tiếp tục xử lý →
@@ -322,7 +323,7 @@ export function ShipmentExceptionQueue() {
     { label: "Huỷ đơn", value: summary.cancellationPending, kind: "CANCELLATION", status: "PENDING_APPROVAL", icon: BanIcon },
     { label: "Hoàn hàng", value: summary.returnPending, kind: "RETURN", status: "PENDING_APPROVAL", icon: RotateCcwIcon },
     { label: "Chuyển tiếp", value: summary.forwardPending, kind: "FORWARD", status: "PENDING_APPROVAL", icon: TruckIcon },
-    { label: "Review cân lại", value: summary.pendingWeightReview, kind: "WEIGHT_REVIEW", status: "PENDING_REVIEW", icon: ScaleIcon },
+    { label: "Duyệt cân lại", value: summary.pendingWeightReview, kind: "WEIGHT_REVIEW", status: "PENDING_REVIEW", icon: ScaleIcon },
     { label: "Đang xử lý", value: summary.approvedOrProcessing, kind: "", status: "PROCESSING", icon: PackageCheckIcon },
   ] : [];
 
@@ -330,12 +331,12 @@ export function ShipmentExceptionQueue() {
     <div className="space-y-4">
       <section className="overflow-hidden rounded-2xl border bg-card">
         <div className="bg-gradient-to-br from-brand/[0.08] via-card to-card p-5 sm:p-6">
-          <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Shipment oversight</p>
+          <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Giám sát vận đơn</p>
           <div className="mt-1 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="text-2xl font-black">Duyệt ngoại lệ & huỷ vận đơn</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Return, forward, cancellation và weight review được gom thành một hàng chờ nghiệp vụ. Quyền đọc chỉ theo dõi phạm vi hub; nút duyệt chỉ hiện với tài khoản có quyền xử lý ngoại lệ.
+                Yêu cầu hoàn hàng, chuyển tiếp, hủy và duyệt cân lại được gom vào một hàng chờ. Quyền xem chỉ theo dõi trong phạm vi bưu cục; nút duyệt chỉ hiện với tài khoản có quyền xử lý ngoại lệ.
               </p>
             </div>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
@@ -362,7 +363,7 @@ export function ShipmentExceptionQueue() {
       <Card>
         <CardContent className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_13rem_auto]">
           <div className="flex gap-2">
-            <Input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") update({ q: searchDraft.trim() }); }} placeholder="Tracking code, parcel code hoặc lý do..." />
+            <Input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") update({ q: searchDraft.trim() }); }} placeholder="Mã vận đơn, mã kiện hoặc lý do..." />
             <Button variant="outline" onClick={() => update({ q: searchDraft.trim() })}><SearchIcon className="size-4" /> Tìm</Button>
           </div>
           <select value={kind} onChange={(event) => update({ kind: event.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm">

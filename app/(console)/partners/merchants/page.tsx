@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { MerchantManagement } from "@/features/partners/merchants";
 
-export const metadata: Metadata = { title: "Merchant" };
+export const metadata: Metadata = { title: "Cửa hàng" };
 
 export default function MerchantsPage() {
   return (

@@ -191,14 +191,14 @@ function ExistingRequestCard({
 
       {canReview ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-          <div><p className="text-xs font-black">Đang chờ cấp duyệt độc lập</p><p className="mt-1 text-[0.66rem] text-muted-foreground">Người tạo yêu cầu không được tự duyệt. Operations Manager/Admin khác xử lý trong hàng chờ duyệt.</p></div>
+          <div><p className="text-xs font-black">Đang chờ cấp duyệt độc lập</p><p className="mt-1 text-[0.66rem] text-muted-foreground">Người tạo yêu cầu không được tự duyệt. Quản lý vận hành hoặc quản trị viên khác sẽ xử lý trong hàng chờ duyệt.</p></div>
           <Link href="/shipments/exceptions?status=PENDING_APPROVAL" className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-xs font-black hover:bg-muted">Mở hàng chờ duyệt →</Link>
         </div>
       ) : canComplete ? (
         <div className="mt-4 border-t pt-4">
-          <label className="grid gap-2 text-xs font-bold">Ghi chú hoàn tất<textarea className={textAreaClass()} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ghi chú khi hoàn tất recovery/routing workflow..." disabled={pending} /></label>
+          <label className="grid gap-2 text-xs font-bold">Ghi chú hoàn tất<textarea className={textAreaClass()} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ghi chú khi hoàn tất xử lý/định tuyến..." disabled={pending} /></label>
           <Button className="mt-3" type="button" size="sm" onClick={() => void actions.complete(note.trim() || null)} disabled={pending}>
-            {pending ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : <PackageCheckIcon className="size-3.5" />} Hoàn tất workflow
+            {pending ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : <PackageCheckIcon className="size-3.5" />} Hoàn tất quy trình
           </Button>
         </div>
       ) : null}
@@ -234,9 +234,9 @@ function NewRequestForms({
   if (activeRequest) {
     return (
       <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs leading-5">
-        <p className="font-black text-amber-700 dark:text-amber-300">Đang có workflow exception hoạt động</p>
+        <p className="font-black text-amber-700 dark:text-amber-300">Đang có một quy trình ngoại lệ chưa kết thúc</p>
         <p className="mt-1 text-muted-foreground">
-          Backend chỉ cho phép một return / forward / cancellation workflow hoạt động trên mỗi shipment. Hoàn tất hoặc kết thúc workflow hiện tại trước khi tạo yêu cầu khác.
+          Mỗi vận đơn chỉ có một quy trình hoàn hàng / chuyển tiếp / hủy tại một thời điểm. Hoàn tất hoặc kết thúc quy trình hiện tại trước khi tạo yêu cầu khác.
         </p>
       </div>
     );
@@ -279,7 +279,7 @@ function NewRequestForms({
         <div className="flex items-center gap-2"><RotateCcwIcon className="size-4 text-brand" /><p className="text-sm font-black">Yêu cầu hoàn hàng</p></div>
         <textarea className={cn(textAreaClass(), "mt-3")} value={returnReason} onChange={(event) => setReturnReason(event.target.value)} maxLength={1000} placeholder="Lý do hoàn hàng..." disabled={pending} />
         <Button className="mt-3" type="button" size="sm" variant="outline" onClick={() => void createReturn()} disabled={pending}>
-          Tạo return request
+          Tạo yêu cầu hoàn hàng
         </Button>
       </div>
 
@@ -290,11 +290,11 @@ function NewRequestForms({
           <Input placeholder="Tên người nhận" value={recipient.contactName} onChange={(event) => setRecipient((current) => ({ ...current, contactName: event.target.value }))} disabled={pending} />
           <Input placeholder="Số điện thoại" value={recipient.contactPhone} onChange={(event) => setRecipient((current) => ({ ...current, contactPhone: event.target.value }))} disabled={pending} />
           <Input className="sm:col-span-2" placeholder="Địa chỉ" value={recipient.addressLine} onChange={(event) => setRecipient((current) => ({ ...current, addressLine: event.target.value }))} disabled={pending} />
-          <Input placeholder="Province code" value={recipient.provinceCode} onChange={(event) => setRecipient((current) => ({ ...current, provinceCode: event.target.value }))} disabled={pending} />
-          <Input placeholder="Ward code" value={recipient.wardCode} onChange={(event) => setRecipient((current) => ({ ...current, wardCode: event.target.value }))} disabled={pending} />
+          <Input placeholder="Mã tỉnh/thành" value={recipient.provinceCode} onChange={(event) => setRecipient((current) => ({ ...current, provinceCode: event.target.value }))} disabled={pending} />
+          <Input placeholder="Mã phường/xã" value={recipient.wardCode} onChange={(event) => setRecipient((current) => ({ ...current, wardCode: event.target.value }))} disabled={pending} />
         </div>
         <Button className="mt-3" type="button" size="sm" variant="outline" onClick={() => void createForward()} disabled={pending}>
-          Tạo forward request
+          Tạo yêu cầu chuyển tiếp
         </Button>
       </div>
 
@@ -302,7 +302,7 @@ function NewRequestForms({
         <div className="flex items-center gap-2"><BanIcon className="size-4 text-destructive" /><p className="text-sm font-black">Yêu cầu hủy vận đơn</p></div>
         <textarea className={cn(textAreaClass(), "mt-3")} value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} maxLength={1000} placeholder="Lý do hủy vận đơn..." disabled={pending} />
         <Button className="mt-3" type="button" size="sm" variant="outline" onClick={() => void createCancellation()} disabled={pending}>
-          Tạo cancellation request
+          Tạo yêu cầu hủy
         </Button>
       </div>
     </div>
@@ -326,12 +326,12 @@ function HoldPanel({
   const [hubId, setHubId] = useState("");
 
   const submit = async () => {
-    if (!reason.trim()) return toast.error(state.isOnHold ? "Nhập lý do release hold." : "Nhập lý do hold shipment.");
+    if (!reason.trim()) return toast.error(state.isOnHold ? "Nhập lý do bỏ tạm giữ." : "Nhập lý do tạm giữ vận đơn.");
     const input = { reason: reason.trim(), hubId: hubId || null };
     if (state.isOnHold) {
-      await mutate("Đã release hold.", () => releaseShipmentHold(shipmentId, input));
+      await mutate("Đã bỏ tạm giữ.", () => releaseShipmentHold(shipmentId, input));
     } else {
-      await mutate("Đã hold shipment.", () => placeShipmentHold(shipmentId, input));
+      await mutate("Đã tạm giữ vận đơn.", () => placeShipmentHold(shipmentId, input));
     }
     setReason("");
   };
@@ -340,26 +340,26 @@ function HoldPanel({
     <div className="rounded-xl border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-black">Hold / Release shipment</p>
+          <p className="text-sm font-black">Tạm giữ / bỏ tạm giữ vận đơn</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {state.isOnHold ? `Đang hold: ${state.holdReason ?? "Không có lý do"}` : "Shipment hiện không bị hold."}
+            {state.isOnHold ? `Đang tạm giữ: ${state.holdReason ?? "Không có lý do"}` : "Vận đơn hiện không bị tạm giữ."}
           </p>
         </div>
-        <span className={cn("rounded-full border px-2.5 py-1 text-[0.62rem] font-black", state.isOnHold ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}>{state.isOnHold ? "ĐANG HOLD" : "BÌNH THƯỜNG"}</span>
+        <span className={cn("rounded-full border px-2.5 py-1 text-[0.62rem] font-black", state.isOnHold ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}>{state.isOnHold ? "ĐANG TẠM GIỮ" : "BÌNH THƯỜNG"}</span>
       </div>
       {state.heldAt ? <p className="mt-2 text-[0.64rem] text-muted-foreground">Hold từ {formatDateTime(state.heldAt)}</p> : null}
       <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
-        <textarea className={textAreaClass()} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} placeholder={state.isOnHold ? "Lý do release hold..." : "Lý do hold shipment..."} disabled={pending} />
+        <textarea className={textAreaClass()} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} placeholder={state.isOnHold ? "Lý do bỏ tạm giữ..." : "Lý do tạm giữ vận đơn..."} disabled={pending} />
         <div className="grid content-start gap-2">
           <label className="grid gap-1.5 text-xs font-bold">Hub context
             <select value={hubId} onChange={(event) => setHubId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" disabled={pending}>
-              <option value="">Không gắn hub</option>
+              <option value="">Không gắn bưu cục</option>
               {hubOptions.map((hub) => <option key={hub.id} value={hub.id}>{hub.label}</option>)}
             </select>
           </label>
           <Button type="button" size="sm" variant={state.isOnHold ? "default" : "outline"} onClick={() => void submit()} disabled={pending || (state.isOnHold && state.hasPendingWeightReview)}>
             {pending ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : state.isOnHold ? <ShieldCheckIcon className="size-3.5" /> : <ShieldAlertIcon className="size-3.5" />}
-            {state.isOnHold ? "Release hold" : "Hold shipment"}
+            {state.isOnHold ? "Bỏ tạm giữ" : "Tạm giữ vận đơn"}
           </Button>
           {state.isOnHold && state.hasPendingWeightReview ? (
             <p className="text-[0.62rem] font-bold text-amber-700 dark:text-amber-300">Đang chờ duyệt cân lại nên chưa thể gỡ tạm giữ.</p>
@@ -393,22 +393,22 @@ function WeightAdjustmentRow({
     <div className="rounded-xl border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black">Kiện {parcelCode ?? "không còn trong snapshot"}</p>
+          <p className="text-xs font-black">Kiện {parcelCode ?? "không còn trong dữ liệu hiện tại"}</p>
           <p className="mt-1 text-xs font-bold">{adjustment.oldActualWeightKg} kg → {adjustment.newActualWeightKg} kg thực tế</p>
           <p className="mt-1 text-[0.64rem] text-muted-foreground">Chargeable {adjustment.oldChargeableWeightKg} kg → {adjustment.newChargeableWeightKg} kg</p>
         </div>
-        <span className={cn("rounded-full border px-2.5 py-1 text-[0.62rem] font-black", adjustment.reviewCompleted ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300")}>{adjustment.reviewCompleted ? "ĐÃ REVIEW" : "CHỜ REVIEW"}</span>
+        <span className={cn("rounded-full border px-2.5 py-1 text-[0.62rem] font-black", adjustment.reviewCompleted ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300")}>{adjustment.reviewCompleted ? "ĐÃ DUYỆT" : "CHỜ DUYỆT"}</span>
       </div>
       <p className="mt-3 text-xs"><strong>Lý do:</strong> {adjustment.reason}</p>
       <p className="mt-1 text-[0.64rem] text-muted-foreground">Điều chỉnh {formatDateTime(adjustment.adjustedAt)}</p>
-      {adjustment.reviewNote ? <p className="mt-2 rounded-lg border bg-muted/15 p-2.5 text-xs"><strong>Review:</strong> {adjustment.reviewNote}</p> : null}
+      {adjustment.reviewNote ? <p className="mt-2 rounded-lg border bg-muted/15 p-2.5 text-xs"><strong>Ghi chú duyệt:</strong> {adjustment.reviewNote}</p> : null}
       {!adjustment.reviewCompleted && canReview ? (
         <div className="mt-3 border-t pt-3">
-          {selfReview ? <p className="mb-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-[0.68rem] font-bold text-amber-800 dark:text-amber-200">Bạn là người ghi nhận cân lại. Một Operations Manager/Admin khác phải review.</p> : null}
-          <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ghi chú review capacity/routing..." disabled={pending} />
+          {selfReview ? <p className="mb-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-[0.68rem] font-bold text-amber-800 dark:text-amber-200">Bạn là người ghi nhận cân lại. Một quản lý vận hành hoặc quản trị viên khác phải duyệt.</p> : null}
+          <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ghi chú kiểm tra sức chứa/định tuyến..." disabled={pending} />
           <Button className="mt-2" type="button" size="sm" onClick={() => {
             if (!note.trim()) return toast.error("Vui lòng nhập ghi chú khi duyệt cân lại.");
-            void mutate("Đã hoàn tất weight review.", () => reviewShipmentWeight(shipmentId, adjustment.adjustmentId, note.trim()));
+            void mutate("Đã duyệt xong cân lại.", () => reviewShipmentWeight(shipmentId, adjustment.adjustmentId, note.trim()));
           }} disabled={pending || selfReview}>
             <CheckCircle2Icon className="size-3.5" /> Hoàn tất review
           </Button>
@@ -449,7 +449,7 @@ function WeightPanel({
     const actualWeightKg = Number(weight);
     if (!Number.isFinite(actualWeightKg) || actualWeightKg <= 0) return toast.error("Khối lượng thực tế phải lớn hơn 0.");
     if (!reason.trim()) return toast.error("Nhập lý do điều chỉnh khối lượng.");
-    await mutate("Đã ghi nhận weight adjustment; shipment sẽ bị hold cho tới khi review xong.", () => adjustShipmentWeight(shipmentId, {
+    await mutate("Đã ghi nhận cân lại; vận đơn bị tạm giữ cho tới khi được duyệt.", () => adjustShipmentWeight(shipmentId, {
       parcelId: parcelId.trim(),
       actualWeightKg,
       reason: reason.trim(),
@@ -481,11 +481,11 @@ function WeightPanel({
             <label className="grid gap-1.5 text-xs font-bold">Khối lượng thực tế mới (kg)<Input type="number" min="0.001" step="0.001" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="1.250" disabled={pending || state.hasPendingWeightReview} /></label>
             <label className="grid gap-1.5 text-xs font-bold">Hub context
               <select value={hubId} onChange={(event) => setHubId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" disabled={pending || state.hasPendingWeightReview}>
-                <option value="">Không gắn hub</option>
+                <option value="">Không gắn bưu cục</option>
                 {hubOptions.map((hub) => <option key={hub.id} value={hub.id}>{hub.label}</option>)}
               </select>
             </label>
-            <label className="grid gap-1.5 text-xs font-bold md:col-span-2">Lý do<textarea className={textAreaClass()} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} placeholder="Sai số cân tại hub, cân lại bằng thiết bị chuẩn..." disabled={pending || state.hasPendingWeightReview} /></label>
+            <label className="grid gap-1.5 text-xs font-bold md:col-span-2">Lý do<textarea className={textAreaClass()} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} placeholder="Sai số cân tại bưu cục, cân lại bằng thiết bị chuẩn..." disabled={pending || state.hasPendingWeightReview} /></label>
           </div>
           <Button className="mt-3" type="button" size="sm" onClick={() => void submit()} disabled={pending || state.hasPendingWeightReview}>
             <ScaleIcon className="size-3.5" /> Ghi nhận weight adjustment
@@ -499,7 +499,7 @@ function WeightPanel({
           {state.weightAdjustments.map((adjustment) => <WeightAdjustmentRow key={adjustment.adjustmentId} adjustment={adjustment} parcelCode={parcels.find((parcel) => parcel.id === adjustment.parcelId)?.code ?? null} pending={pending} canReview={canReview} mutate={mutate} shipmentId={shipmentId} currentUserId={currentUserId} />)}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Chưa có weight adjustment.</div>
+        <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Chưa có lần cân lại nào.</div>
       )}
     </div>
   );
@@ -538,8 +538,8 @@ export function ShipmentExceptionsPanel({
 
   const hubOptions = useMemo(() => {
     const values = [
-      { id: originHubId, label: `Hub gửi · ${originHubName}` },
-      { id: destinationHubId, label: `Hub nhận · ${destinationHubName}` },
+      { id: originHubId, label: `Bưu cục gửi · ${originHubName}` },
+      { id: destinationHubId, label: `Bưu cục nhận · ${destinationHubName}` },
     ];
     return values.filter((item, index) => item.id && values.findIndex((candidate) => candidate.id === item.id) === index);
   }, [destinationHubId, destinationHubName, originHubId, originHubName]);
@@ -551,7 +551,7 @@ export function ShipmentExceptionsPanel({
       setState(await getShipmentExceptionState(shipmentId));
     } catch (reason) {
       setState(null);
-      setError(shipmentErrorMessage(reason, "Không tải được trạng thái exception của vận đơn."));
+      setError(shipmentErrorMessage(reason, "Không tải được trạng thái ngoại lệ của vận đơn."));
     } finally {
       setLoading(false);
     }
@@ -570,21 +570,21 @@ export function ShipmentExceptionsPanel({
       toast.success(success);
       onShipmentChanged?.();
     } catch (reason) {
-      toast.error(shipmentErrorMessage(reason, "Thao tác exception thất bại."));
+      toast.error(shipmentErrorMessage(reason, "Thao tác ngoại lệ thất bại."));
     } finally {
       setPending(false);
     }
   }, [onShipmentChanged]);
 
   if (loading) {
-    return <Card className="grid min-h-36 place-items-center text-xs font-bold text-muted-foreground"><span className="flex items-center gap-2"><LoaderCircleIcon className="size-4 animate-spin" /> Đang tải exception state...</span></Card>;
+    return <Card className="grid min-h-36 place-items-center text-xs font-bold text-muted-foreground"><span className="flex items-center gap-2"><LoaderCircleIcon className="size-4 animate-spin" /> Đang tải trạng thái ngoại lệ...</span></Card>;
   }
 
   if (error || !state) {
     return (
       <Card className="border-destructive/20">
         <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-3"><AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-destructive" /><div><p className="text-sm font-black">Không tải được Shipment Exceptions</p><p className="mt-1 text-xs text-muted-foreground">{error ?? "Không có dữ liệu exception."}</p></div></div>
+          <div className="flex gap-3"><AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-destructive" /><div><p className="text-sm font-black">Không tải được ngoại lệ của vận đơn</p><p className="mt-1 text-xs text-muted-foreground">{error ?? "Không có dữ liệu ngoại lệ."}</p></div></div>
           <Button type="button" size="sm" variant="outline" onClick={() => void load()}><RefreshCwIcon className="size-3.5" /> Thử lại</Button>
         </CardContent>
       </Card>
@@ -597,19 +597,19 @@ export function ShipmentExceptionsPanel({
   const requestActions = (request: ShipmentExceptionRequest): RequestActions => {
     if (request.kind === "RETURN") {
       return {
-        review: async (approve, note) => mutate(approve ? "Đã duyệt return request." : "Đã từ chối return request.", () => reviewShipmentReturn(shipmentId, request.requestId, { approve, note })),
-        complete: async (note) => mutate("Đã hoàn tất return workflow.", () => completeShipmentReturn(shipmentId, request.requestId, note)),
+        review: async (approve, note) => mutate(approve ? "Đã duyệt yêu cầu hoàn hàng." : "Đã từ chối yêu cầu hoàn hàng.", () => reviewShipmentReturn(shipmentId, request.requestId, { approve, note })),
+        complete: async (note) => mutate("Đã hoàn tất hoàn hàng.", () => completeShipmentReturn(shipmentId, request.requestId, note)),
       };
     }
     if (request.kind === "FORWARD") {
       return {
-        review: async (approve, note) => mutate(approve ? "Đã duyệt forward request." : "Đã từ chối forward request.", () => reviewShipmentForward(shipmentId, request.requestId, { approve, note })),
-        complete: async (note) => mutate("Đã hoàn tất forward workflow.", () => completeShipmentForward(shipmentId, request.requestId, note)),
+        review: async (approve, note) => mutate(approve ? "Đã duyệt yêu cầu chuyển tiếp." : "Đã từ chối yêu cầu chuyển tiếp.", () => reviewShipmentForward(shipmentId, request.requestId, { approve, note })),
+        complete: async (note) => mutate("Đã hoàn tất chuyển tiếp.", () => completeShipmentForward(shipmentId, request.requestId, note)),
       };
     }
     return {
-      review: async (approve, note) => mutate(approve ? "Đã duyệt cancellation request." : "Đã từ chối cancellation request.", () => reviewShipmentCancellation(shipmentId, request.requestId, { approve, note })),
-      complete: async (note) => mutate("Đã hoàn tất cancellation workflow.", () => completeShipmentCancellation(shipmentId, request.requestId, note)),
+      review: async (approve, note) => mutate(approve ? "Đã duyệt yêu cầu hủy." : "Đã từ chối yêu cầu hủy.", () => reviewShipmentCancellation(shipmentId, request.requestId, { approve, note })),
+      complete: async (note) => mutate("Đã hoàn tất hủy vận đơn.", () => completeShipmentCancellation(shipmentId, request.requestId, note)),
     };
   };
 
@@ -617,7 +617,7 @@ export function ShipmentExceptionsPanel({
     <Card className="overflow-hidden">
       <div className="flex flex-col gap-3 border-b bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2"><ShieldAlertIcon className="size-4 text-brand" /><p className="text-sm font-black">Shipment Exceptions & Weight Review</p></div>
+          <div className="flex items-center gap-2"><ShieldAlertIcon className="size-4 text-brand" /><p className="text-sm font-black">Ngoại lệ & duyệt cân lại</p></div>
           <p className="mt-1 text-[0.66rem] text-muted-foreground">{trackingCode} · tạm giữ, hoàn hàng, chuyển tiếp, huỷ và cân lại kiện hàng.</p>
         </div>
         <div className="flex gap-2"><Link href="/shipments/exceptions" className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-xs font-black hover:bg-muted">Hàng chờ duyệt</Link><Button type="button" size="sm" variant="outline" onClick={() => void load()} disabled={pending}><RefreshCwIcon className={cn("size-3.5", pending && "animate-spin")} /> Làm mới</Button></div>
@@ -625,25 +625,25 @@ export function ShipmentExceptionsPanel({
 
       <div className="space-y-5 p-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryTile icon={state.isOnHold ? ShieldAlertIcon : ShieldCheckIcon} label="Hold" value={state.isOnHold ? "Đang hold" : "Không hold"} hint={state.holdReason ?? "Không có hold reason."} tone={state.isOnHold ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"} />
-          <SummaryTile icon={ScaleIcon} label="Weight review" value={state.hasPendingWeightReview ? "Đang chờ" : "Không có"} hint={`${state.weightAdjustments.length} lần điều chỉnh khối lượng đã ghi nhận.`} tone={state.hasPendingWeightReview ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : undefined} />
-          <SummaryTile icon={CircleGaugeIcon} label="Exception workflow" value={activeCount ? `${activeCount} đang hoạt động` : "Không có active"} hint={`${requests.length} request trong state hiện tại.`} />
-          <SummaryTile icon={lifecycleStatus === "ACTIVE" ? CheckCircle2Icon : BanIcon} label="Lifecycle" value={lifecycleStatus === "ACTIVE" ? "Đang hoạt động" : lifecycleStatus === "COMPLETED" ? "Đã hoàn tất" : "Đã hủy"} hint={lifecycleStatus === "ACTIVE" ? "Có thể tạo yêu cầu xử lý mới nếu không trùng yêu cầu đang mở." : "Chỉ tạo được yêu cầu xử lý mới khi vận đơn còn hoạt động."} />
+          <SummaryTile icon={state.isOnHold ? ShieldAlertIcon : ShieldCheckIcon} label="Tạm giữ" value={state.isOnHold ? "Đang tạm giữ" : "Không tạm giữ"} hint={state.holdReason ?? "Không có lý do tạm giữ."} tone={state.isOnHold ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"} />
+          <SummaryTile icon={ScaleIcon} label="Duyệt cân lại" value={state.hasPendingWeightReview ? "Đang chờ" : "Không có"} hint={`${state.weightAdjustments.length} lần điều chỉnh khối lượng đã ghi nhận.`} tone={state.hasPendingWeightReview ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : undefined} />
+          <SummaryTile icon={CircleGaugeIcon} label="Quy trình ngoại lệ" value={activeCount ? `${activeCount} đang hoạt động` : "Không có"} hint={`${requests.length} yêu cầu đang ghi nhận.`} />
+          <SummaryTile icon={lifecycleStatus === "ACTIVE" ? CheckCircle2Icon : BanIcon} label="Vòng đời" value={lifecycleStatus === "ACTIVE" ? "Đang hoạt động" : lifecycleStatus === "COMPLETED" ? "Đã hoàn tất" : "Đã hủy"} hint={lifecycleStatus === "ACTIVE" ? "Có thể tạo yêu cầu xử lý mới nếu không trùng yêu cầu đang mở." : "Chỉ tạo được yêu cầu xử lý mới khi vận đơn còn hoạt động."} />
         </div>
 
         {canManage ? <HoldPanel shipmentId={shipmentId} state={state} pending={pending} hubOptions={hubOptions} mutate={mutate} /> : null}
 
         {canManage ? (
           <section className="space-y-3">
-            <div><p className="text-xs font-black uppercase tracking-[0.08em] text-muted-foreground">Return / Forward / Cancellation</p><p className="mt-1 text-xs text-muted-foreground">Khi duyệt, hệ thống có thể đổi hướng đi của kiện, huỷ phân công đang có và trả lại chỗ đã giữ trên tuyến.</p></div>
-            {requests.length ? <div className="grid gap-3 xl:grid-cols-2">{requests.map((request) => <ExistingRequestCard key={request.requestId} request={request} pending={pending} actions={requestActions(request)} />)}</div> : <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Chưa có exception request.</div>}
+            <div><p className="text-xs font-black uppercase tracking-[0.08em] text-muted-foreground">Hoàn hàng / Chuyển tiếp / Hủy</p><p className="mt-1 text-xs text-muted-foreground">Khi duyệt, hệ thống có thể đổi hướng đi của kiện, huỷ phân công đang có và trả lại chỗ đã giữ trên tuyến.</p></div>
+            {requests.length ? <div className="grid gap-3 xl:grid-cols-2">{requests.map((request) => <ExistingRequestCard key={request.requestId} request={request} pending={pending} actions={requestActions(request)} />)}</div> : <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Chưa có yêu cầu ngoại lệ.</div>}
             {lifecycleStatus === "ACTIVE" ? <NewRequestForms shipmentId={shipmentId} state={state} pending={pending} mutate={mutate} /> : null}
           </section>
         ) : null}
 
         {canAdjustWeight || (canManage && state.weightAdjustments.length > 0) ? (
           <section className="space-y-3 border-t pt-5">
-            <div><p className="text-xs font-black uppercase tracking-[0.08em] text-muted-foreground">Weight adjustment</p><p className="mt-1 text-xs text-muted-foreground">`shipments.weight.adjust` ghi cân lại; `shipments.exceptions.manage` hoàn tất review và sau đó mới có thể release hold.</p></div>
+            <div><p className="text-xs font-black uppercase tracking-[0.08em] text-muted-foreground">Cân lại</p><p className="mt-1 text-xs text-muted-foreground">Người có quyền cân lại ghi nhận khối lượng mới; người có quyền quản lý ngoại lệ duyệt, sau đó mới bỏ tạm giữ được.</p></div>
             <WeightPanel shipmentId={shipmentId} state={state} parcels={parcels} hubOptions={hubOptions} pending={pending} canAdjust={canAdjustWeight} canReview={canManage} mutate={mutate} currentUserId={user?.userId ?? null} />
           </section>
         ) : null}

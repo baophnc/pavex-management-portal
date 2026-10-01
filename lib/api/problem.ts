@@ -43,7 +43,7 @@ function parseFieldErrors(value: unknown): Record<string, string[]> {
 
 export function parseBackendProblem(
   value: unknown,
-  fallback = "Yêu cầu backend thất bại.",
+  fallback = "Yêu cầu tới máy chủ thất bại.",
 ): ParsedBackendProblem {
   const root = asRecord(value);
   const nested = asRecord(root?.error);

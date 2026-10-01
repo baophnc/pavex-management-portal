@@ -208,7 +208,7 @@ export function IdentityUsers() {
               </span>
               <div>
                 <p className="text-[0.62rem] font-black tracking-[0.16em] text-brand uppercase">
-                  Identity control
+                  Quản lý tài khoản
                 </p>
                 <h1 className="mt-0.5 text-xl font-black tracking-tight sm:text-2xl">
                   Tài khoản người dùng
@@ -217,8 +217,8 @@ export function IdentityUsers() {
             </div>
             <p className="mt-3 max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
               Tra cứu tài khoản, trạng thái hồ sơ, xác minh email và vai trò trực
-              tiếp từ Identity service. Bộ lọc được lưu trong URL để không mất
-              ngữ cảnh khi chuyển workspace.
+              tiếp từ hệ thống tài khoản. Bộ lọc được giữ trên đường dẫn nên không
+              bị mất khi chuyển sang trang khác.
             </p>
           </div>
 
@@ -542,7 +542,7 @@ function StateLoading() {
       <div className="text-center">
         <RefreshCwIcon className="mx-auto size-5 animate-spin text-brand" />
         <p className="mt-2 text-xs font-bold text-muted-foreground">
-          Đang đồng bộ Identity...
+          Đang tải danh sách tài khoản...
         </p>
       </div>
     </div>
@@ -560,7 +560,7 @@ function StateError({
     <div className="grid min-h-80 place-items-center p-6 text-center">
       <div className="max-w-sm">
         <p className="text-sm font-black text-destructive">
-          Không tải được Identity
+          Không tải được danh sách tài khoản
         </p>
         <p className="mt-2 text-xs leading-5 text-muted-foreground">
           {message}

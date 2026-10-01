@@ -64,5 +64,5 @@ export const fleetStartSourceLabels: Record<FleetTrip["startSource"], string> = 
 
 export const fleetEndSourceLabels: Record<NonNullable<FleetTrip["endSource"]>, string> = {
   DRIVER: "Tài xế bấm đã tới",
-  ALL_RECEIVED: "Hub đến đã nhập đủ kiện",
+  ALL_RECEIVED: "Bưu cục đến đã nhập đủ kiện",
 };

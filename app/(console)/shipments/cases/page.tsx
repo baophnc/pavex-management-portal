@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Hồ sơ sự cố" };
 
 export default function ShipmentCasesPage() {
   return (
-    <Suspense fallback={<div className="grid min-h-64 place-items-center text-sm text-muted-foreground">Đang tải shipment cases...</div>}>
+    <Suspense fallback={<div className="grid min-h-64 place-items-center text-sm text-muted-foreground">Đang tải hồ sơ sự cố...</div>}>
       <ShipmentCases />
     </Suspense>
   );

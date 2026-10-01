@@ -74,7 +74,7 @@ export function IdentityRoles() {
         getPermissions(),
       ]);
       if (!Array.isArray(roleResult) || !Array.isArray(permissionResult)) {
-        throw new Error("Dữ liệu vai trò hoặc permission không đúng định dạng.");
+        throw new Error("Dữ liệu vai trò hoặc quyền không đúng định dạng.");
       }
       setRoles(roleResult);
       setPermissions(permissionResult);
@@ -139,8 +139,8 @@ export function IdentityRoles() {
               </div>
             </div>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Permission là capability do backend định nghĩa và chỉ đọc. Management
-              chỉ cho phép tạo, chỉnh sửa và gán permission cho vai trò tùy chỉnh;
+              Danh sách quyền do hệ thống định nghĩa và chỉ được xem. Trang quản trị
+              chỉ cho phép tạo, chỉnh sửa và gán quyền cho vai trò tùy chỉnh;
               vai trò hệ thống luôn được khóa.
             </p>
           </div>
@@ -153,7 +153,7 @@ export function IdentityRoles() {
                 variant={showCreate ? "outline" : "default"}
               >
                 {showCreate ? <XIcon className="size-4" /> : <PlusIcon className="size-4" />}
-                {showCreate ? "Đóng form" : "Tạo vai trò"}
+                {showCreate ? "Đóng biểu mẫu" : "Tạo vai trò"}
               </Button>
             ) : null}
             {canSeeTechnical ? (
@@ -180,16 +180,16 @@ export function IdentityRoles() {
 
         <div className="grid gap-0 border-b md:grid-cols-3">
           <PolicyFact
-            title="Permission là read-only"
-            body="Frontend lấy catalog từ Identity; không có thao tác tạo, sửa hoặc xóa permission tùy ý."
+            title="Danh sách quyền chỉ được xem"
+            body="Danh sách quyền lấy từ hệ thống tài khoản; không thể tự tạo, sửa hoặc xóa quyền."
           />
           <PolicyFact
-            title="System role được khóa"
-            body="Các vai trò nền tảng không thể đổi metadata, permission matrix hoặc xóa khỏi Management."
+            title="Vai trò hệ thống được khóa"
+            body="Các vai trò nền tảng không thể đổi tên, mô tả, bộ quyền hoặc bị xóa."
           />
           <PolicyFact
-            title="Custom role quản trị được"
-            body="Người có identity.roles.manage có thể tạo role, chỉnh metadata, thay permission và xóa khi chưa được sử dụng."
+            title="Vai trò tùy chỉnh được quản trị"
+            body="Người có quyền “Quản lý vai trò” có thể tạo vai trò, đổi tên, mô tả, thay quyền và xóa khi vai trò chưa được gán."
           />
         </div>
       </section>
@@ -358,7 +358,7 @@ function CreateRoleCard({
       <div className="border-b bg-brand/[0.04] px-4 py-3">
         <p className="text-sm font-black">Tạo vai trò tùy chỉnh</p>
         <p className="mt-1 text-[0.68rem] text-muted-foreground">
-          Mã vai trò không đổi sau khi tạo. Permission được chọn từ catalog backend.
+          Mã vai trò không đổi sau khi tạo. Quyền được chọn từ danh sách quyền của hệ thống.
         </p>
       </div>
       <form onSubmit={submit}>
@@ -509,9 +509,9 @@ function RoleDetail({
     try {
       const updated = await replaceRolePermissions(role.id, selectedCodes.sort());
       onUpdated(updated);
-      toast.success("Đã cập nhật permission matrix. User đang giữ role sẽ cần token mới để nhận quyền mới.");
+      toast.success("Đã cập nhật bộ quyền. Người dùng đang giữ vai trò này cần đăng nhập lại để nhận quyền mới.");
     } catch (reason) {
-      toast.error(reasonMessage(reason, "Không thể cập nhật permission."));
+      toast.error(reasonMessage(reason, "Không thể cập nhật quyền."));
     } finally {
       setSavingPermissions(false);
     }
@@ -528,7 +528,7 @@ function RoleDetail({
       toast.success(`Đã xóa vai trò ${role.name}.`);
       await onDeleted();
     } catch (reason) {
-      toast.error(reasonMessage(reason, "Không thể xóa vai trò. Vai trò có thể vẫn đang được gán cho user."));
+      toast.error(reasonMessage(reason, "Không thể xóa vai trò. Vai trò có thể vẫn đang được gán cho người dùng."));
     } finally {
       setDeleting(false);
     }
@@ -575,10 +575,10 @@ function RoleDetail({
                   </p>
                   <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
                     {role.isSystem
-                      ? "System role không thể đổi metadata, permission hoặc xóa."
+                      ? "Vai trò hệ thống không thể đổi thông tin, quyền hoặc bị xóa."
                       : canManage
-                        ? "Bạn có identity.roles.manage để quản trị vai trò này."
-                        : "Tài khoản hiện tại thiếu identity.roles.manage."}
+                        ? "Bạn có quyền “Quản lý vai trò” nên có thể quản trị vai trò này."
+                        : "Tài khoản hiện tại chưa có quyền “Quản lý vai trò”."}
                   </p>
                 </div>
               </div>
@@ -629,14 +629,14 @@ function RoleDetail({
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
             <div>
-              <p className="text-sm font-black">Permission matrix</p>
+              <p className="text-sm font-black">Bộ quyền</p>
               <p className="mt-1 text-[0.68rem] text-muted-foreground">
-                {selectedPermissions.size}/{permissionCatalog.length} permission được chọn.
+                {selectedPermissions.size}/{permissionCatalog.length} quyền được chọn.
               </p>
             </div>
             <Button type="button" onClick={() => void savePermissions()} disabled={!permissionsDirty || savingPermissions}>
               {savingPermissions ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}
-              Lưu permission
+              Lưu quyền
             </Button>
           </div>
           <CardContent>
@@ -724,13 +724,13 @@ function PermissionMatrix({
   return (
     <div className="space-y-3">
       <label className="relative block">
-        <span className="sr-only">Tìm permission</span>
+        <span className="sr-only">Tìm quyền</span>
         <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           className="pl-9"
-          placeholder={`Tìm trong ${permissions.length} permission…`}
+          placeholder={`Tìm trong ${permissions.length} quyền…`}
         />
       </label>
 
@@ -772,7 +772,7 @@ function PermissionMatrix({
       </div>
       {!groups.length ? (
         <p className="rounded-lg border p-5 text-center text-xs text-muted-foreground">
-          Không có permission phù hợp với từ khóa.
+          Không có quyền phù hợp với từ khóa.
         </p>
       ) : null}
     </div>
@@ -805,7 +805,7 @@ function TechnicalCatalog({
       <div className="border-b bg-muted/30 px-4 py-3">
         <p className="text-sm font-black">Dữ liệu kỹ thuật</p>
         <p className="mt-1 text-[0.68rem] leading-5 text-muted-foreground">
-          ID và code phục vụ kiểm tra RBAC. Permission catalog vẫn do backend sở hữu.
+          Mã định danh và mã kỹ thuật dùng khi đối chiếu phân quyền. Danh sách quyền vẫn do hệ thống quản lý.
         </p>
       </div>
       <div className="grid gap-3 p-4">
@@ -828,7 +828,7 @@ function TechnicalCatalog({
                 ) : null}
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                <TechnicalValue label="ID vai trò" value={role.id} />
+                <TechnicalValue label="Mã định danh vai trò" value={role.id} />
                 <TechnicalValue label="Mã vai trò" value={role.code} />
                 <TechnicalValue label="Vai trò hệ thống" value={role.isSystem ? "Có" : "Không"} />
                 <TechnicalValue label="Số quyền" value={String(role.permissions.length)} />

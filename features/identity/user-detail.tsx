@@ -410,7 +410,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
               <Fact label="Trạng thái hồ sơ" value={profileLabels[user.profileStatus]} />
               <Fact label="Giới tính" value={user.gender ? genderLabels[user.gender as Gender] ?? user.gender : "Chưa khai báo"} />
               <Fact label="Ngày sinh" value={user.dateOfBirth ?? "Chưa khai báo"} />
-              <Fact label="ID người dùng" value={user.userId} mono />
+              <Fact label="Mã định danh người dùng" value={user.userId} mono />
               <Fact label="Phiên bản" value={String(user.version)} mono />
               <Fact label="Vai trò" value={user.roles.length ? user.roles.map((role) => rolePresentation(role).name).join(", ") : "Chưa có vai trò"} />
             </CardContent>
@@ -456,7 +456,7 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                   </label>
                   <label className="grid gap-2 text-xs font-bold">Ngày sinh<Input name="dateOfBirth" type="date" defaultValue={user.dateOfBirth ?? ""} disabled={!canEditProfile} /></label>
                 </div>
-                <label className="grid gap-2 text-xs font-bold">Avatar URL<Input name="avatarUrl" type="url" maxLength={2048} defaultValue={user.avatarUrl ?? ""} disabled={!canEditProfile} placeholder="https://..." /></label>
+                <label className="grid gap-2 text-xs font-bold">Đường dẫn ảnh đại diện<Input name="avatarUrl" type="url" maxLength={2048} defaultValue={user.avatarUrl ?? ""} disabled={!canEditProfile} placeholder="https://..." /></label>
                 {canEditProfile ? (
                   <div className="flex justify-end border-t pt-4">
                     <Button type="submit" disabled={saving === "profile"}>

@@ -110,7 +110,7 @@ export function OperationsDispatch() {
       const params = new URLSearchParams({ page: String(eventPage), pageSize: String(EVENT_PAGE_SIZE) });
       if (assignmentCode) {
         const assignment = assignments.find((item) => item.code === assignmentCode.trim().toUpperCase());
-        if (!assignment) throw new Error("Không tìm thấy mã assignment trong phạm vi truy cập.");
+        if (!assignment) throw new Error("Không tìm thấy mã phân công trong phạm vi truy cập.");
         params.set("assignmentId", assignment.id);
       }
       const nextShipmentLabels = Object.fromEntries(
@@ -136,7 +136,7 @@ export function OperationsDispatch() {
       ])));
       setEvents(await getOperationsDispatchEvents(params));
     } catch (cause) {
-      const message = apiMessage(cause, "Không thể tải dispatch events.");
+      const message = apiMessage(cause, "Không thể tải sự kiện điều phối.");
       setError(message);
       toast.error(message);
     } finally {
@@ -155,7 +155,7 @@ export function OperationsDispatch() {
       setSummary(nextSummary);
       setDeadLetters(nextDeadLetters);
     } catch (cause) {
-      toast.error(apiMessage(cause, "Không thể tải Operations outbox."));
+      toast.error(apiMessage(cause, "Không thể tải hàng đợi gửi sự kiện."));
     } finally {
       setLoadingOutbox(false);
     }
@@ -188,7 +188,7 @@ export function OperationsDispatch() {
       setSelected(await getOperationsDeadLetter(id));
       setDiscardReason("");
     } catch (cause) {
-      toast.error(apiMessage(cause, "Không thể tải dead-letter message."));
+      toast.error(apiMessage(cause, "Không thể tải sự kiện gửi lỗi."));
     } finally {
       setMutating(false);
     }
@@ -199,11 +199,11 @@ export function OperationsDispatch() {
     setMutating(true);
     try {
       await retryOperationsDeadLetter(selected.messageId);
-      toast.success("Đã đưa message về hàng đợi retry.");
+      toast.success("Đã đưa sự kiện về hàng đợi để gửi lại.");
       setSelected(null);
       await loadOutbox();
     } catch (cause) {
-      toast.error(apiMessage(cause, "Không thể retry dead-letter."));
+      toast.error(apiMessage(cause, "Không thể gửi lại sự kiện lỗi."));
     } finally {
       setMutating(false);
     }
@@ -214,12 +214,12 @@ export function OperationsDispatch() {
     setMutating(true);
     try {
       await discardOperationsDeadLetter(selected.messageId, discardReason.trim());
-      toast.success("Đã discard dead-letter message.");
+      toast.success("Đã bỏ qua sự kiện gửi lỗi.");
       setSelected(null);
       setDiscardReason("");
       await loadOutbox();
     } catch (cause) {
-      toast.error(apiMessage(cause, "Không thể discard dead-letter."));
+      toast.error(apiMessage(cause, "Không thể bỏ qua sự kiện gửi lỗi."));
     } finally {
       setMutating(false);
     }
@@ -230,10 +230,10 @@ export function OperationsDispatch() {
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-3 border-b bg-gradient-to-br from-brand/[0.08] via-card to-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Dispatch reliability</p>
-            <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">Dispatch & outbox</h1>
+            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Độ tin cậy điều phối</p>
+            <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">Hàng đợi sự kiện</h1>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Event feed được scope theo quyền hub/global. Dead-letter outbox là reliability tooling toàn hệ thống và chỉ global assignment manager được thao tác.
+              Dòng sự kiện được lọc theo phạm vi bưu cục bạn được xem. Hàng đợi sự kiện gửi lỗi dùng chung toàn hệ thống và chỉ quản lý điều phối toàn quốc được thao tác.
             </p>
           </div>
           <Button
@@ -248,20 +248,20 @@ export function OperationsDispatch() {
 
       {canManageOutbox ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Pending outbox" value={summary?.pendingCount} loading={loadingOutbox} />
-          <SummaryCard label="Dead-letter" value={summary?.deadLetteredCount} loading={loadingOutbox} danger />
-          <SummaryCard label="Đã discard" value={summary?.discardedCount} loading={loadingOutbox} />
+          <SummaryCard label="Chờ gửi" value={summary?.pendingCount} loading={loadingOutbox} />
+          <SummaryCard label="Gửi lỗi" value={summary?.deadLetteredCount} loading={loadingOutbox} danger />
+          <SummaryCard label="Đã bỏ qua" value={summary?.discardedCount} loading={loadingOutbox} />
           <Card>
             <CardContent>
-              <p className="text-[0.68rem] font-black uppercase tracking-[0.1em] text-muted-foreground">Oldest pending</p>
+              <p className="text-[0.68rem] font-black uppercase tracking-[0.1em] text-muted-foreground">Chờ lâu nhất</p>
               <p className="mt-2 text-sm font-black">{summary?.oldestPendingAgeSeconds != null ? `${summary.oldestPendingAgeSeconds}s` : "—"}</p>
-              <p className="mt-1 text-[0.65rem] text-muted-foreground">{summary?.oldestPendingOccurredAt ? formatDateTime(summary.oldestPendingOccurredAt) : "Không có pending message"}</p>
+              <p className="mt-1 text-[0.65rem] text-muted-foreground">{summary?.oldestPendingOccurredAt ? formatDateTime(summary.oldestPendingOccurredAt) : "Không có sự kiện chờ gửi"}</p>
             </CardContent>
           </Card>
         </div>
       ) : (
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
-          Bạn đang ở hub-scoped access. Dispatch event vẫn hiển thị theo hub được backend cấp; outbox/dead-letter bị ẩn vì cần <code>operations.assignments.manage</code> global.
+          Bạn đang xem theo phạm vi bưu cục. Sự kiện điều phối vẫn hiển thị theo các bưu cục bạn được cấp; hàng đợi sự kiện gửi lỗi bị ẩn vì cần quyền quản lý phân công trên toàn quốc.
         </div>
       )}
 
@@ -269,13 +269,13 @@ export function OperationsDispatch() {
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
             <ShieldAlertIcon className="size-4 text-brand" />
-            <p className="text-sm font-black">Dispatch events</p>
+            <p className="text-sm font-black">Sự kiện điều phối</p>
           </div>
           <div className={canReadGlobalShipments
             ? "grid gap-2 lg:grid-cols-[1fr_1fr_220px_auto]"
             : "grid gap-2 lg:grid-cols-[1fr_220px_auto]"}
           >
-            <Input value={assignmentDraft} onChange={(event) => setAssignmentDraft(event.target.value)} placeholder="Mã assignment, ví dụ OA-..." className="font-mono text-xs uppercase" />
+            <Input value={assignmentDraft} onChange={(event) => setAssignmentDraft(event.target.value)} placeholder="Mã phân công, ví dụ OA-..." className="font-mono text-xs uppercase" />
             {canReadGlobalShipments ? (
               <Input value={shipmentDraft} onChange={(event) => setShipmentDraft(event.target.value)} placeholder="Mã vận đơn, ví dụ PAVEX..." className="font-mono text-xs uppercase" />
             ) : null}
@@ -284,7 +284,7 @@ export function OperationsDispatch() {
               onChange={(event) => updateFilters({ eventType: event.target.value })}
               className="h-10 rounded-md border bg-background px-3 text-sm"
             >
-              <option value="">Tất cả event</option>
+              <option value="">Tất cả sự kiện</option>
               {operationalAssignmentEventTypes.map((item) => <option key={item} value={item}>{operationalAssignmentEventLabel(item)}</option>)}
             </select>
             <Button onClick={() => updateFilters({
@@ -304,7 +304,7 @@ export function OperationsDispatch() {
           {loadingEvents ? (
             <div className="grid min-h-40 place-items-center text-sm text-muted-foreground"><LoaderCircleIcon className="size-4 animate-spin" /></div>
           ) : !events?.items.length ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">Không có dispatch event phù hợp.</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">Không có sự kiện điều phối phù hợp.</p>
           ) : (
             <div className="divide-y rounded-lg border">
               {events.items.map((event) => (
@@ -316,12 +316,12 @@ export function OperationsDispatch() {
                     </p>
                   </div>
                   <div className="text-[0.65rem] text-muted-foreground">
-                    <p>Assignment <span className="font-mono">{assignmentLabels[event.assignmentId] || shortId(event.assignmentId)}</span></p>
+                    <p>Phân công <span className="font-mono">{assignmentLabels[event.assignmentId] || shortId(event.assignmentId)}</span></p>
                     <p className="mt-1">Vận đơn <span className="font-mono">{shipmentLabels[event.shipmentId] || shortId(event.shipmentId)}</span></p>
                   </div>
                   <div className="text-[0.65rem] text-muted-foreground">
                     <p>Nhân sự <span>{event.workforceMemberId ? workerLabels[event.workforceMemberId] || "Ngoài danh sách hiện tại" : "—"}</span></p>
-                    <p className="mt-1">Actor <span className="font-mono">{shortId(event.actorUserId)}</span></p>
+                    <p className="mt-1">Người thao tác <span className="font-mono">{shortId(event.actorUserId)}</span></p>
                   </div>
                   <div className="text-right text-[0.65rem] text-muted-foreground">
                     <p>{formatDateTime(event.occurredAt)}</p>
@@ -351,7 +351,7 @@ export function OperationsDispatch() {
               <div className="flex items-center gap-2">
                 <ShieldAlertIcon className="size-4 text-brand" />
                 <div>
-                  <p className="text-sm font-black">Dead-letter outbox</p>
+                  <p className="text-sm font-black">Sự kiện gửi lỗi</p>
                   <p className="mt-1 text-xs text-muted-foreground">Mỗi lần gửi lại hoặc bỏ qua đều ghi lại người thao tác và không bị xử lý trùng.</p>
                 </div>
               </div>
@@ -359,7 +359,7 @@ export function OperationsDispatch() {
             </div>
 
             {!deadLetters?.items.length ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">Không có dead-letter message.</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">Không có sự kiện gửi lỗi.</p>
             ) : (
               <div className="divide-y rounded-lg border">
                 {deadLetters.items.map((item) => (
@@ -405,7 +405,7 @@ export function OperationsDispatch() {
           <section className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-xl border bg-card shadow-2xl">
             <header className="flex items-start justify-between gap-3 border-b p-4 sm:p-5">
               <div>
-                <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-destructive">Dead-letter</p>
+                <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-destructive">Gửi lỗi</p>
                 <h2 className="mt-1 text-lg font-black">{selected.eventType}</h2>
                 <p className="mt-1 font-mono text-[0.65rem] text-muted-foreground">{selected.messageId}</p>
               </div>
@@ -413,32 +413,32 @@ export function OperationsDispatch() {
             </header>
             <div className="space-y-4 p-4 sm:p-5">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Fact label="Aggregate" value={`${selected.aggregateType} · ${selected.aggregateId}`} />
-                <Fact label="Attempts" value={String(selected.attemptCount)} />
-                <Fact label="Occurred" value={formatDateTime(selected.occurredAt)} />
-                <Fact label="Dead-lettered" value={formatDateTime(selected.deadLetteredAt)} />
+                <Fact label="Đối tượng" value={`${selected.aggregateType} · ${selected.aggregateId}`} />
+                <Fact label="Số lần gửi" value={String(selected.attemptCount)} />
+                <Fact label="Phát sinh lúc" value={formatDateTime(selected.occurredAt)} />
+                <Fact label="Chuyển sang lỗi lúc" value={formatDateTime(selected.deadLetteredAt)} />
               </div>
               {selected.lastError ? (
                 <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-                  <p className="text-xs font-black text-destructive">Last error</p>
+                  <p className="text-xs font-black text-destructive">Lỗi gần nhất</p>
                   <pre className="mt-2 whitespace-pre-wrap break-words text-[0.68rem] leading-5">{selected.lastError}</pre>
                 </div>
               ) : null}
               <div>
-                <p className="text-xs font-black">Payload</p>
+                <p className="text-xs font-black">Nội dung sự kiện</p>
                 <pre className="mt-2 max-h-72 overflow-auto rounded-lg border bg-muted/20 p-3 text-[0.65rem] leading-5">{prettyPayload(selected.payload)}</pre>
               </div>
               <label className="grid gap-2 text-xs font-black">
-                Lý do discard
-                <Input value={discardReason} onChange={(event) => setDiscardReason(event.target.value)} placeholder="Bắt buộc khi discard..." disabled={mutating} />
+                Lý do bỏ qua
+                <Input value={discardReason} onChange={(event) => setDiscardReason(event.target.value)} placeholder="Bắt buộc khi bỏ qua..." disabled={mutating} />
               </label>
             </div>
             <footer className="flex flex-wrap justify-end gap-2 border-t p-4 sm:p-5">
               <Button variant="outline" onClick={() => void retry()} disabled={mutating}>
-                {mutating ? <LoaderCircleIcon className="size-4 animate-spin" /> : <RotateCcwIcon className="size-4" />} Retry
+                {mutating ? <LoaderCircleIcon className="size-4 animate-spin" /> : <RotateCcwIcon className="size-4" />} Gửi lại
               </Button>
               <Button variant="destructive" onClick={() => void discard()} disabled={mutating || !discardReason.trim()}>
-                <Trash2Icon className="size-4" /> Discard
+                <Trash2Icon className="size-4" /> Bỏ qua
               </Button>
             </footer>
           </section>

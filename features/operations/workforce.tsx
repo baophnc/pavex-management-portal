@@ -276,7 +276,7 @@ export function OperationsWorkforce() {
     try {
       setData(await getWorkforce(query));
     } catch (requestError) {
-      setError(apiMessage(requestError, "Không thể tải danh sách workforce."));
+      setError(apiMessage(requestError, "Không thể tải danh sách nhân sự."));
     } finally {
       setLoading(false);
     }
@@ -308,10 +308,10 @@ export function OperationsWorkforce() {
               <UsersRoundIcon className="size-5" />
             </span>
             <div>
-              <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Operations / Workforce</p>
+              <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Vận hành / Nhân sự</p>
               <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">Nhân sự vận hành</h1>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Tạo và quản lý nhân sự vận hành, hồ sơ, vai trò, tải công việc và phạm vi bưu cục. Quyền staff chỉ được cấp qua luồng quản trị nội bộ.
+                Tạo và quản lý nhân sự vận hành, hồ sơ, vai trò, tải công việc và phạm vi bưu cục. Quyền nhân viên chỉ được cấp qua quy trình quản trị nội bộ.
               </p>
             </div>
           </div>
@@ -337,9 +337,9 @@ export function OperationsWorkforce() {
               onKeyDown={(event) => {
                 if (event.key === "Enter") submitSearch();
               }}
-              placeholder="Tên, email, employee code..."
+              placeholder="Tên, email, mã nhân viên..."
             />
-            <Button type="button" size="icon" variant="outline" onClick={submitSearch} aria-label="Tìm workforce">
+            <Button type="button" size="icon" variant="outline" onClick={submitSearch} aria-label="Tìm nhân sự">
               <SearchIcon className="size-4" />
             </Button>
           </div>
@@ -392,7 +392,7 @@ export function OperationsWorkforce() {
         <Card className="border-destructive/30">
           <CardContent className="flex items-start gap-3 text-sm text-destructive">
             <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
-            <div><p className="font-black">Không tải được workforce</p><p className="mt-1 text-xs">{error}</p></div>
+            <div><p className="font-black">Không tải được nhân sự</p><p className="mt-1 text-xs">{error}</p></div>
           </CardContent>
         </Card>
       ) : null}
@@ -401,7 +401,7 @@ export function OperationsWorkforce() {
         <CardContent className="p-0">
           {loading && !data ? (
             <div className="grid min-h-64 place-items-center text-sm text-muted-foreground">
-              <div className="flex items-center gap-2"><LoaderCircleIcon className="size-4 animate-spin" /> Đang tải workforce...</div>
+              <div className="flex items-center gap-2"><LoaderCircleIcon className="size-4 animate-spin" /> Đang tải nhân sự...</div>
             </div>
           ) : data?.items.length ? (
             <div className="overflow-x-auto">
@@ -411,8 +411,8 @@ export function OperationsWorkforce() {
                     <th className="px-4 py-3 font-black">Nhân sự</th>
                     <th className="px-4 py-3 font-black">Loại</th>
                     <th className="px-4 py-3 font-black">Trạng thái</th>
-                    <th className="px-4 py-3 font-black">Availability / tải</th>
-                    <th className="px-4 py-3 font-black">Hub</th>
+                    <th className="px-4 py-3 font-black">Sẵn sàng / tải việc</th>
+                    <th className="px-4 py-3 font-black">Bưu cục</th>
                     <th className="px-4 py-3 font-black">Cập nhật</th>
                   </tr>
                 </thead>
@@ -434,7 +434,7 @@ export function OperationsWorkforce() {
                           <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-[0.64rem] font-black", statusClass(member.status))}>
                             {workforceStatusLabel(member.status)}
                           </span>
-                          {!member.identityAccessValid ? <p className="mt-1 text-[0.6rem] font-bold text-destructive">Identity/role không còn hợp lệ</p> : null}
+                          {!member.identityAccessValid ? <p className="mt-1 text-[0.6rem] font-bold text-destructive">Tài khoản/vai trò không còn hợp lệ</p> : null}
                         </td>
                         <td className="px-4 py-3.5">
                           {member.availability ? (
@@ -446,8 +446,8 @@ export function OperationsWorkforce() {
                         </td>
                         <td className="px-4 py-3.5">
                           <p className="text-xs font-black">{primary?.hubCode ?? activeHubs[0]?.hubCode ?? "—"}</p>
-                          <p className="mt-1 max-w-48 truncate text-[0.68rem] text-muted-foreground">{primary?.hubName ?? activeHubs[0]?.hubName ?? `${activeHubs.length} hub đang hoạt động`}</p>
-                          {activeHubs.length > 1 ? <p className="mt-1 text-[0.6rem] font-bold text-brand">+{activeHubs.length - 1} hub khác</p> : null}
+                          <p className="mt-1 max-w-48 truncate text-[0.68rem] text-muted-foreground">{primary?.hubName ?? activeHubs[0]?.hubName ?? `${activeHubs.length} bưu cục đang hoạt động`}</p>
+                          {activeHubs.length > 1 ? <p className="mt-1 text-[0.6rem] font-bold text-brand">+{activeHubs.length - 1} bưu cục khác</p> : null}
                         </td>
                         <td className="px-4 py-3.5 text-[0.68rem] text-muted-foreground">{formatDateTime(member.updatedAt)}</td>
                       </tr>
@@ -460,8 +460,8 @@ export function OperationsWorkforce() {
             <div className="grid min-h-64 place-items-center p-6 text-center">
               <div>
                 <UserRoundSearchIcon className="mx-auto size-8 text-muted-foreground" />
-                <p className="mt-3 text-sm font-black">Chưa có workforce phù hợp</p>
-                <p className="mt-1 text-xs text-muted-foreground">Thử đổi bộ lọc hoặc tạo workforce member mới.</p>
+                <p className="mt-3 text-sm font-black">Chưa có nhân sự phù hợp</p>
+                <p className="mt-1 text-xs text-muted-foreground">Thử đổi bộ lọc hoặc tạo nhân viên mới.</p>
               </div>
             </div>
           )}

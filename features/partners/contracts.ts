@@ -81,11 +81,11 @@ export type MerchantReadiness = {
 export function orderRestrictionLabel(code: string) {
   switch (code as MerchantOrderRestriction) {
     case "MERCHANT_REQUIRED":
-      return "Chưa có hồ sơ Merchant";
+      return "Chưa có hồ sơ cửa hàng";
     case "MERCHANT_NOT_ACTIVE":
-      return "Hồ sơ Merchant chưa được duyệt";
+      return "Hồ sơ cửa hàng chưa được duyệt";
     case "MERCHANT_SUSPENDED":
-      return "Merchant đang tạm ngưng";
+      return "Cửa hàng đang tạm ngưng";
     case "IDENTITY_NOT_ELIGIBLE":
       return "Tài khoản đăng nhập chưa đủ điều kiện (bị khóa, chưa xác minh email hoặc chưa hoàn tất hồ sơ)";
     case "DEFAULT_PICKUP_REQUIRED":
@@ -140,7 +140,7 @@ export function merchantReasonLabel(reason: MerchantStatusReason) {
     case "POLICY_VIOLATION":
       return "Vi phạm chính sách";
     case "MERCHANT_REQUEST":
-      return "Theo yêu cầu Merchant";
+      return "Theo yêu cầu cửa hàng";
     case "OTHER":
       return "Lý do khác";
   }

@@ -86,7 +86,7 @@ const sections: Section[] = [
   {
     title: "Khách hàng và tài khoản",
     metrics: [
-      { key: "merchants", label: "Shop chờ duyệt", hint: "Hồ sơ shop cần xét duyệt", href: "/partners/merchants?status=PENDING_VERIFICATION", attention: "shop chờ duyệt", canAccess: (user) => hasPermission(user, "partners.merchants.read"), load: () => loadCount("admin/merchants?page=1&pageSize=1&status=PENDING_VERIFICATION") },
+      { key: "merchants", label: "Cửa hàng chờ duyệt", hint: "Hồ sơ cửa hàng cần xét duyệt", href: "/partners/merchants?status=PENDING_VERIFICATION", attention: "cửa hàng chờ duyệt", canAccess: (user) => hasPermission(user, "partners.merchants.read"), load: () => loadCount("admin/merchants?page=1&pageSize=1&status=PENDING_VERIFICATION") },
       { key: "support", label: "Yêu cầu hỗ trợ mới", hint: "Khách đang chờ phản hồi", href: "/support", attention: "yêu cầu hỗ trợ mới", canAccess: canAccessSupportRequests, load: () => loadField("admin/support/requests/counts", "new") },
       { key: "users", label: "Tài khoản", hint: "Người dùng trong phạm vi quản trị", href: "/identity/users", canAccess: (user) => hasPermission(user, "identity.users.read"), load: () => loadCount("users?page=1&pageSize=1") },
     ],
