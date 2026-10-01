@@ -3,9 +3,11 @@ import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { backendFetch, readBackendPayload } from "@/lib/api/backend";
 import { asRecord, parseBackendProblem } from "@/lib/api/problem";
+import { passwordProblem } from "@/lib/auth/password-policy";
 import { clearSession } from "@/lib/auth/session";
 
-export async function recoverPassword(request: NextRequest, action: "forgot-password" | "reset-password") {
+/** Forgot password, reset password, and accepting an invitation (which also sets the first password). */
+export async function recoverPassword(request: NextRequest, action: "forgot-password" | "reset-password" | "accept-invite") {
   const json = (payload: object, status = 200) => NextResponse.json(payload, {
     status,
     headers: { "cache-control": "no-store", "referrer-policy": "no-referrer" },
@@ -26,24 +28,29 @@ export async function recoverPassword(request: NextRequest, action: "forgot-pass
   } else {
     const token = typeof input.token === "string" ? input.token.trim() : "";
     const newPassword = typeof input.newPassword === "string" ? input.newPassword : "";
-    if (!token || token.length > 512 || !newPassword.trim() || newPassword.length < 8 || newPassword.length > 128) {
-      return json({ message: "Liên kết không hợp lệ hoặc mật khẩu chưa đủ 8–128 ký tự." }, 400);
+    if (!token || token.length > 512) {
+      return json({ message: "Liên kết không hợp lệ. Hãy yêu cầu liên kết mới." }, 400);
     }
-    body = { token, newPassword };
+    const problem = passwordProblem(newPassword);
+    if (problem) return json({ message: problem }, 400);
+    body = action === "accept-invite" ? { token, password: newPassword } : { token, newPassword };
   }
   try {
     const response = await backendFetch(`/api/v1/auth/${action}`, { method: "POST", body: JSON.stringify(body) });
     if (response.ok) {
       const result = json({ success: true, message: action === "forgot-password"
         ? "Nếu email có tài khoản, bạn sẽ nhận được liên kết đặt mật khẩu. Hãy kiểm tra hộp thư và thư rác."
-        : "Đã đặt mật khẩu và xác minh email. Bạn có thể đăng nhập bằng mật khẩu mới." });
-      if (action === "reset-password") clearSession(result);
+        : action === "accept-invite"
+          ? "Đã kích hoạt tài khoản. Bạn có thể đăng nhập bằng mật khẩu vừa đặt."
+          : "Đã đặt mật khẩu và xác minh email. Bạn có thể đăng nhập bằng mật khẩu mới." });
+      if (action !== "forgot-password") clearSession(result);
       return result;
     }
     const problem = parseBackendProblem(await readBackendPayload(response));
     const status = response.status >= 400 && response.status <= 599 ? response.status : 502;
     const message = status === 429 ? "Bạn đã yêu cầu quá nhiều lần. Vui lòng chờ rồi thử lại."
       : status >= 500 ? "Dịch vụ đang gián đoạn. Vui lòng thử lại sau."
+      : action === "accept-invite" ? "Lời mời đã hết hạn, đã được dùng hoặc không hợp lệ. Hãy nhờ quản trị viên gửi lại lời mời."
       : action === "reset-password" ? "Liên kết đã hết hạn, đã được sử dụng hoặc không hợp lệ. Hãy yêu cầu liên kết mới."
       : "Không thể gửi yêu cầu. Vui lòng kiểm tra email và thử lại.";
     const result = json({ code: problem.code, message }, status);

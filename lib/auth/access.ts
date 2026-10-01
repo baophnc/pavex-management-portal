@@ -9,6 +9,7 @@ export const MANAGEMENT_PERMISSIONS = [
   "identity.users.invite",
   "identity.roles.assign",
   "identity.users.manage-status",
+  "identity.users.delete",
   "partners.merchants.read",
   "partners.merchants.manage-status",
   "network.read",

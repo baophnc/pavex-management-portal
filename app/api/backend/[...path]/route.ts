@@ -132,8 +132,10 @@ async function handle(request: NextRequest, context: Context) {
 
     let backend = await forward(request, path, accessToken, body);
 
+    // 403: the token may predate a new role or permission (it lives 15 minutes). A refreshed token
+    // carries the current ones, so try once more; a request refused with 401/403 was never carried out.
     if (
-      backend.status === 401 &&
+      (backend.status === 401 || backend.status === 403) &&
       session.refreshToken &&
       !freshTokens
     ) {

@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PASSWORD_HINT, passwordProblem } from "@/lib/auth/password-policy";
 
-export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-password" | "reset-password"; token?: string }) {
+export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-password" | "reset-password" | "accept-invite"; token?: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const reset = mode === "reset-password";
+  // Accepting an invitation is setting the first password from a link, like a reset.
+  const reset = mode !== "forgot-password";
+  const invite = mode === "accept-invite";
   const missingToken = reset && !token;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -66,11 +68,11 @@ export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-passw
           )}
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           {!missingToken && <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Đang xử lý…" : reset ? "Lưu mật khẩu mới" : "Gửi liên kết đặt mật khẩu"}
+            {pending ? "Đang xử lý…" : invite ? "Kích hoạt tài khoản" : reset ? "Lưu mật khẩu mới" : "Gửi liên kết đặt mật khẩu"}
           </Button>}
         </form>
       )}
-      {reset && !message && <Link href="/forgot-password" className="block text-sm text-brand underline">Yêu cầu liên kết mới</Link>}
+      {reset && !invite && !message && <Link href="/forgot-password" className="block text-sm text-brand underline">Yêu cầu liên kết mới</Link>}
       <Link href="/login" className="block text-sm font-semibold underline">Quay lại đăng nhập</Link>
     </div>
   );

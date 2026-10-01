@@ -134,6 +134,19 @@ export function removeUserRole(userId: string, roleCode: string) {
   );
 }
 
+/** Deletes the account softly: kept for history, cannot sign in, its email can be used again. */
+export function deleteUser(userId: string) {
+  return apiRequest<null>(`users/${userId}`, { method: "DELETE" });
+}
+
+/** Changes the sign-in email; the account must confirm the new address. */
+export function changeUserEmail(userId: string, email: string) {
+  return apiRequest<null>(`users/${userId}/email`, {
+    method: "PUT",
+    body: JSON.stringify({ email }),
+  });
+}
+
 export function inviteUser(userId: string) {
   return apiRequest<null>(`users/${userId}/invite`, { method: "POST" });
 }
