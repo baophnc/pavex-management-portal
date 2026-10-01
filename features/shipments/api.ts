@@ -210,20 +210,13 @@ function shipmentCasePost(caseId: string, path: string, body: unknown) {
   );
 }
 
-export function getShipmentControlTowerAlerts(params: URLSearchParams) {
+export function getShipmentControlTowerOverview(params: URLSearchParams) {
   const query = params.toString();
-  return apiRequest<import("@/features/shipments/contracts").ShipmentControlTowerPage>(
-    `admin/control-tower/alerts${query ? `?${query}` : ""}`,
+  return apiRequest<import("@/features/shipments/contracts").ShipmentControlTowerOverview>(
+    `admin/control-tower${query ? `?${query}` : ""}`,
   );
 }
 
-export function getShipmentControlTowerSummary(hubId: string | null = null) {
-  const query = new URLSearchParams();
-  if (hubId?.trim()) query.set("hubId", hubId.trim());
-  return apiRequest<import("@/features/shipments/contracts").ShipmentControlTowerSummary>(
-    `admin/control-tower/summary${query.size ? `?${query}` : ""}`,
-  );
-}
 
 
 export function getShipmentExceptionQueue(params: URLSearchParams) {
