@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/auth/password-policy";
 
-export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-password" | "reset-password"; token?: string }) {
+export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-password" | "reset-password" | "accept-invite"; token?: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const reset = mode === "reset-password";
+  // Accepting an invitation is setting the first password from a link, like a reset.
+  const reset = mode !== "forgot-password";
+  const invite = mode === "accept-invite";
   const missingToken = reset && !token;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -17,6 +20,11 @@ export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-passw
     if (pending || missingToken) return;
     const form = new FormData(event.currentTarget);
     const newPassword = String(form.get("newPassword") ?? "");
+    const problem = reset ? passwordProblem(newPassword) : null;
+    if (problem) {
+      setError(problem);
+      return;
+    }
     if (reset && newPassword !== String(form.get("confirmation") ?? "")) {
       setError("Hai mật khẩu chưa trùng nhau.");
       return;
@@ -51,7 +59,7 @@ export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-passw
               <label className="grid gap-2 text-sm font-semibold">Nhập lại mật khẩu mới
                 <Input name="confirmation" type="password" autoComplete="new-password" minLength={8} maxLength={128} required disabled={pending} />
               </label>
-              <p className="text-sm text-muted-foreground">Dùng 8–128 ký tự. Không chia sẻ mật khẩu hoặc liên kết này.</p>
+              <p className="text-sm text-muted-foreground">{PASSWORD_HINT} Không chia sẻ mật khẩu hoặc liên kết này.</p>
             </>
           ) : (
             <label className="grid gap-2 text-sm font-semibold">Email được quản trị viên cấp
@@ -60,11 +68,11 @@ export function PasswordRecoveryForm({ mode, token = "" }: { mode: "forgot-passw
           )}
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           {!missingToken && <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Đang xử lý…" : reset ? "Lưu mật khẩu mới" : "Gửi liên kết đặt mật khẩu"}
+            {pending ? "Đang xử lý…" : invite ? "Kích hoạt tài khoản" : reset ? "Lưu mật khẩu mới" : "Gửi liên kết đặt mật khẩu"}
           </Button>}
         </form>
       )}
-      {reset && !message && <Link href="/forgot-password" className="block text-sm text-brand underline">Yêu cầu liên kết mới</Link>}
+      {reset && !invite && !message && <Link href="/forgot-password" className="block text-sm text-brand underline">Yêu cầu liên kết mới</Link>}
       <Link href="/login" className="block text-sm font-semibold underline">Quay lại đăng nhập</Link>
     </div>
   );

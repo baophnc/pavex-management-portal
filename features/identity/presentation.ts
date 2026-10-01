@@ -97,6 +97,7 @@ export const accountLabels: Record<AccountStatus, string> = {
   ACTIVE: "Hoạt động",
   SUSPENDED: "Tạm khóa",
   DISABLED: "Vô hiệu hóa",
+  DELETED: "Đã xoá",
 };
 
 export const profileLabels: Record<ProfileStatus, string> = {

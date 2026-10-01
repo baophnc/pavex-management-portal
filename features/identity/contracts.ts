@@ -1,4 +1,4 @@
-export type AccountStatus = "ACTIVE" | "SUSPENDED" | "DISABLED";
+export type AccountStatus = "ACTIVE" | "SUSPENDED" | "DISABLED" | "DELETED";
 export type ProfileStatus =
   | "INCOMPLETE"
   | "COMPLETED"
@@ -48,11 +48,14 @@ export type UserPage = {
   totalPages: number;
 };
 
+/** Statuses an administrator can set; deleting is a separate action. */
 export const accountStatuses: AccountStatus[] = [
   "ACTIVE",
   "SUSPENDED",
   "DISABLED",
 ];
+/** Statuses the account list can be filtered by; deleted accounts only show when asked for. */
+export const accountStatusFilters: AccountStatus[] = [...accountStatuses, "DELETED"];
 export const profileStatuses: ProfileStatus[] = [
   "INCOMPLETE",
   "COMPLETED",
@@ -68,6 +71,9 @@ export type CreateUserResponse = {
 
 export type UserDetail = UserListItem & {
   permissions: string[];
+  /** Set once the account is deleted: when, and the email it had then. */
+  deletedAt?: string | null;
+  deletedEmail?: string | null;
 };
 
 export const genders: Gender[] = ["UNSPECIFIED", "MALE", "FEMALE", "OTHER"];

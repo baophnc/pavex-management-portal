@@ -6,11 +6,13 @@ import {
   CalendarDaysIcon,
   CheckCircle2Icon,
   LoaderCircleIcon,
+  MailIcon,
   MailPlusIcon,
   RefreshCwIcon,
   ShieldCheckIcon,
   ShieldMinusIcon,
   ShieldPlusIcon,
+  Trash2Icon,
   UserCogIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -33,6 +35,8 @@ import {
 } from "@/features/identity/contracts";
 import {
   assignUserRole,
+  changeUserEmail,
+  deleteUser,
   getRoles,
   getUser,
   inviteUser,
@@ -71,6 +75,9 @@ function statusClass(status: AccountStatus) {
   }
   if (status === "SUSPENDED") {
     return "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+  }
+  if (status === "DELETED") {
+    return "border-border bg-muted text-muted-foreground";
   }
   return "border-destructive/20 bg-destructive/10 text-destructive";
 }
@@ -113,11 +120,13 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
   const canManageStatus = hasPermission("identity.users.manage-status");
   const canAssignRole = hasPermission("identity.roles.assign");
   const canInvite = hasPermission("identity.users.invite");
+  const canDelete = hasPermission("identity.users.delete");
 
   const [user, setUser] = useState<UserDetail | null>(null);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [newEmail, setNewEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState("");
   const [status, setStatus] = useState<AccountStatus>("ACTIVE");
@@ -227,6 +236,44 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
     }
   }
 
+  async function saveEmail() {
+    const email = newEmail.trim().toLowerCase();
+    if (!user || !canEditProfile || !email || email === user.email) return;
+    if (!window.confirm(`Đổi email đăng nhập thành ${email}? Tài khoản sẽ bị đăng xuất và phải xác minh email mới.`)) return;
+    setSaving("email");
+    try {
+      await changeUserEmail(user.userId, email);
+      toast.success("Đã đổi email. Hệ thống đã gửi email xác minh tới địa chỉ mới.");
+      setNewEmail("");
+      await loadUser();
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Không thể đổi email.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function removeAccount() {
+    if (!user || !canDelete) return;
+    if (
+      !window.confirm(
+        `Xoá tài khoản ${user.email}? Tài khoản không đăng nhập được nữa và email được giải phóng để dùng lại. ` +
+          "Vận đơn và lịch sử cũ vẫn được giữ. Không hoàn tác được.",
+      )
+    ) {
+      return;
+    }
+    setSaving("delete");
+    try {
+      await deleteUser(user.userId);
+      toast.success("Đã xoá tài khoản.");
+      router.push("/identity/users");
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Không thể xoá tài khoản.");
+      setSaving(null);
+    }
+  }
+
   async function assignRole() {
     if (!user || !selectedRole || !canAssignRole) return;
     setSaving("assign-role");
@@ -327,9 +374,20 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
     (role) =>
       !user.roles.includes(role.code) && isIdentityAssignableRole(role.code),
   );
+  const deleted = user.status === "DELETED";
 
   return (
     <div className="space-y-4">
+      {deleted ? (
+        <div role="status" className="flex items-start gap-3 rounded-xl border bg-muted/40 p-4 text-sm">
+          <Trash2Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <p>
+            Tài khoản đã bị xoá{user.deletedAt ? ` lúc ${formatDateTime(user.deletedAt)}` : ""}
+            {user.deletedEmail ? <>; email cũ: <span className="font-bold">{user.deletedEmail}</span></> : null}.
+            Tài khoản không đăng nhập được và không chỉnh sửa được nữa.
+          </p>
+        </div>
+      ) : null}
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-4 bg-gradient-to-br from-brand/[0.08] via-card to-card p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-start gap-3">
@@ -501,10 +559,10 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                <select value={status} onChange={(event) => setStatus(event.target.value as AccountStatus)} disabled={!canManageStatus} className="h-10 rounded-md border bg-background px-3 text-sm disabled:opacity-60">
+                <select value={status} onChange={(event) => setStatus(event.target.value as AccountStatus)} disabled={!canManageStatus || deleted} className="h-10 rounded-md border bg-background px-3 text-sm disabled:opacity-60">
                   {accountStatuses.map((item) => <option key={item} value={item}>{accountLabels[item]}</option>)}
                 </select>
-                {canManageStatus ? (
+                {canManageStatus && !deleted ? (
                   <Button onClick={() => void changeStatus()} disabled={saving === "status" || status === user.status}>
                     {saving === "status" ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
                     Cập nhật
@@ -516,6 +574,45 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
               </div>
             </CardContent>
           </Card>
+
+          {canEditProfile && !deleted ? (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2"><MailIcon className="size-4 text-brand" /><p className="text-sm font-black">Email đăng nhập</p></div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">Hiện tại: <span className="font-bold text-foreground">{user.email}</span></p>
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <Input type="email" maxLength={255} placeholder="Email mới" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} />
+                  <Button onClick={() => void saveEmail()} disabled={saving === "email" || !newEmail.trim()}>
+                    {saving === "email" ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
+                    Đổi email
+                  </Button>
+                </div>
+                <p className="text-[0.68rem] leading-5 text-muted-foreground">
+                  Tài khoản sẽ bị đăng xuất khỏi mọi thiết bị và phải bấm link xác minh gửi tới email mới.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {canDelete && !deleted ? (
+            <Card className="border-destructive/30">
+              <CardHeader>
+                <div className="flex items-center gap-2"><Trash2Icon className="size-4 text-destructive" /><p className="text-sm font-black">Xoá tài khoản</p></div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Tài khoản không đăng nhập được nữa và biến khỏi danh sách; email được giải phóng để tạo tài khoản mới.
+                  Vận đơn, nhật ký và lịch sử vẫn giữ tên người này.
+                </p>
+                <Button variant="destructive" onClick={() => void removeAccount()} disabled={saving === "delete"}>
+                  {saving === "delete" ? <LoaderCircleIcon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
+                  Xoá tài khoản
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>

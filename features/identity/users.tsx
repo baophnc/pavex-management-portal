@@ -20,7 +20,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
 import {
-  accountStatuses,
+  accountStatusFilters,
   profileStatuses,
   type AccountStatus,
   type ProfileStatus,
@@ -40,7 +40,7 @@ import { cn, formatDateTime } from "@/lib/utils";
 const PAGE_SIZE = 20;
 
 function parseAccountStatus(value: string | null): AccountStatus | "" {
-  return accountStatuses.includes(value as AccountStatus)
+  return accountStatusFilters.includes(value as AccountStatus)
     ? (value as AccountStatus)
     : "";
 }
@@ -58,6 +58,7 @@ function accountBadge(status: AccountStatus) {
     SUSPENDED:
       "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
     DISABLED: "border-destructive/20 bg-destructive/10 text-destructive",
+    DELETED: "border-border bg-muted text-muted-foreground line-through",
   };
 
   return (
@@ -323,7 +324,7 @@ export function IdentityUsers() {
               className="h-11 rounded-md border bg-background px-3 text-xs font-bold sm:h-10"
             >
               <option value="">Mọi trạng thái tài khoản</option>
-              {accountStatuses.map((item) => (
+              {accountStatusFilters.map((item) => (
                 <option key={item} value={item}>
                   {accountLabels[item]}
                 </option>
