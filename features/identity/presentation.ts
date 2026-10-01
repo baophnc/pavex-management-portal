@@ -52,11 +52,11 @@ const ROLE_PRESENTATION: Record<string, RolePresentation> = {
   ),
   COMMERCIAL_MANAGER: headOffice(
     "Kinh doanh & CSKH",
-    "Duyệt shop, quản lý bảng giá và xử lý khiếu nại của khách hàng trên toàn quốc.",
+    "Duyệt cửa hàng, quản lý bảng giá và xử lý khiếu nại của khách hàng trên toàn quốc.",
   ),
   FINANCE_ACCOUNTANT: headOffice(
     "Kế toán",
-    "Duyệt tiền bưu tá nộp, đối soát với shop và quản lý hóa đơn trên toàn quốc.",
+    "Duyệt tiền bưu tá nộp, đối soát với cửa hàng và quản lý hóa đơn trên toàn quốc.",
   ),
   HUB_MANAGER: hubWorkforce(
     "Trưởng bưu cục",
@@ -75,13 +75,13 @@ const ROLE_PRESENTATION: Record<string, RolePresentation> = {
     "Chạy các chuyến chở hàng giữa bưu cục và kho được giao.",
   ),
   MERCHANT: {
-    name: "Shop",
-    description: "Tạo và theo dõi vận đơn, hóa đơn và đối soát của shop mình.",
+    name: "Cửa hàng",
+    description: "Tạo và theo dõi vận đơn, hóa đơn và đối soát của cửa hàng mình.",
     ownership: "PARTNERS",
-    ownershipLabel: "Tự cấp khi hồ sơ shop được duyệt",
+    ownershipLabel: "Tự cấp khi hồ sơ cửa hàng được duyệt",
     assignableFromIdentity: false,
-    assignmentSummary: "Hệ thống tự cấp hoặc thu hồi theo trạng thái duyệt hồ sơ shop.",
-    note: "Không gán hoặc gỡ thủ công để tránh lệch với trạng thái hồ sơ shop.",
+    assignmentSummary: "Hệ thống tự cấp hoặc thu hồi theo trạng thái duyệt hồ sơ cửa hàng.",
+    note: "Không gán hoặc gỡ thủ công để tránh lệch với trạng thái hồ sơ cửa hàng.",
   },
   CUSTOMER: {
     name: "Khách cá nhân",

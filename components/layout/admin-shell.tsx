@@ -122,7 +122,7 @@ function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-baseline gap-1.5 select-none">
       <span className="text-xl font-black tracking-tight text-brand italic">PAVEX</span>
-      {compact ? null : <span className="text-[0.62rem] font-bold tracking-[0.18em] text-muted-foreground uppercase">Management</span>}
+      {compact ? null : <span className="text-[0.62rem] font-bold tracking-[0.18em] text-muted-foreground uppercase">Quản trị</span>}
     </span>
   );
 }

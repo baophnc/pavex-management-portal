@@ -50,10 +50,10 @@ export function SessionCard() {
   return (
     <section className="w-full max-w-2xl rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
       <p className="text-xs font-black tracking-[0.18em] text-brand uppercase">
-        Pavex Management Portal
+        Pavex Quản trị
       </p>
       <h1 className="mt-3 text-3xl font-black tracking-tight">
-        Kết nối backend thành công
+        Kết nối máy chủ thành công
       </h1>
       {error ? (
         <p className="mt-6 rounded-lg border border-brand/25 bg-brand/5 p-4 text-sm text-brand">

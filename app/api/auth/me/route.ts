@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json(
             {
               code: "auth_backend_unavailable",
-              message: "Auth tạm thời không khả dụng.",
+              message: "Dịch vụ đăng nhập tạm thời không khả dụng.",
             },
             { status: 502 },
           );
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
           {
             code: "auth_backend_unavailable",
-            message: "Auth tạm thời không khả dụng.",
+            message: "Dịch vụ đăng nhập tạm thời không khả dụng.",
           },
           { status: 502 },
         );
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
           authenticated: false,
           code: "management_access_required",
           message:
-            "Tài khoản này không còn quyền sử dụng Pavex Management Portal.",
+            "Tài khoản này không còn quyền sử dụng trang quản trị Pavex.",
         },
         { status: 403 },
       );
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         code: "management_backend_unavailable",
-        message: "Backend không khả dụng.",
+        message: "Máy chủ Pavex không khả dụng.",
       },
       { status: 502 },
     );

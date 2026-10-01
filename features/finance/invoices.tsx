@@ -58,8 +58,8 @@ export function Invoices() {
     <div className="grid gap-4">
       <PricingPageHeader
         eyebrow="Tài chính"
-        title="Hóa đơn Merchant"
-        description="Hóa đơn được lập tự động khi đối soát: mỗi dòng là cước của một vận đơn, phần đã cấn trừ bằng tiền thu hộ hiện là một khoản thanh toán. Merchant trả phần còn lại bằng QR; tiền mặt hoặc chuyển khoản trực tiếp được ghi nhận tại đây."
+        title="Hóa đơn cửa hàng"
+        description="Hóa đơn được lập tự động khi đối soát: mỗi dòng là cước của một vận đơn, phần đã cấn trừ bằng tiền thu hộ hiện là một khoản thanh toán. Cửa hàng trả phần còn lại bằng QR; tiền mặt hoặc chuyển khoản trực tiếp được ghi nhận tại đây."
         actions={<Button variant="outline" onClick={reload}><RefreshCwIcon className="size-4" />Làm mới</Button>}
       />
 
@@ -80,7 +80,7 @@ export function Invoices() {
             <thead className="border-b bg-muted/25 text-[0.62rem] uppercase tracking-[0.08em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Hóa đơn</th>
-                <th className="px-4 py-3">Merchant</th>
+                <th className="px-4 py-3">Cửa hàng</th>
                 <th className="px-4 py-3 text-right">Tổng</th>
                 <th className="px-4 py-3 text-right">Đã trả</th>
                 <th className="px-4 py-3 text-right">Còn lại</th>
@@ -170,7 +170,7 @@ function InvoicePanel({ invoiceId, onClose, onChanged }: { invoiceId: string; on
           <div>
             <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">Hóa đơn</p>
             <h2 className="mt-1 font-mono text-lg font-black">{invoice?.invoiceNumber ?? "…"}</h2>
-            {invoice ? <p className="mt-1 text-xs text-muted-foreground">Merchant <span className="font-mono">{invoice.merchantId}</span> · hạn {dateTime(invoice.dueAt)}</p> : null}
+            {invoice ? <p className="mt-1 text-xs text-muted-foreground">Cửa hàng <span className="font-mono">{invoice.merchantId}</span> · hạn {dateTime(invoice.dueAt)}</p> : null}
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Đóng"><XIcon className="size-4" /></Button>
         </div>
@@ -236,7 +236,7 @@ function InvoicePanel({ invoiceId, onClose, onChanged }: { invoiceId: string; on
       <FinanceDialog
         open={action === "cash"}
         title="Ghi nhận tiền mặt"
-        description="Ghi nhận khoản Merchant đã trả trực tiếp bằng tiền mặt hoặc chuyển khoản ngoài cổng QR."
+        description="Ghi nhận khoản cửa hàng đã trả trực tiếp bằng tiền mặt hoặc chuyển khoản ngoài cổng QR."
         confirmLabel="Ghi nhận"
         input={{ label: "Mã tham chiếu", placeholder: "Số phiếu thu / mã giao dịch" }}
         loading={saving}

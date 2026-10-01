@@ -221,13 +221,13 @@ export function shipmentCaseSeverityLabel(severity: import("@/features/shipments
 
 export function shipmentCaseEventLabel(code: string) {
   const labels: Record<string, string> = {
-    "case.created": "Tạo case",
+    "case.created": "Tạo hồ sơ",
     "case.assigned": "Phân công",
     "case.investigating": "Bắt đầu điều tra",
     "case.note-added": "Thêm ghi chú",
     "case.shipment-linked": "Liên kết vận đơn",
     "case.resolved": "Xử lý xong",
-    "case.closed": "Đóng case",
+    "case.closed": "Đóng hồ sơ",
   };
   return labels[code] ?? code;
 }
@@ -237,15 +237,15 @@ export function shipmentControlAlertTypeLabel(
 ) {
   switch (type) {
     case "SENT_BUT_NOT_ARRIVED": return "Đã gửi nhưng chưa đến";
-    case "MISSING_ARRIVAL_SCAN": return "Thiếu scan đến";
+    case "MISSING_ARRIVAL_SCAN": return "Thiếu lượt quét nhận";
     case "ARRIVED_NOT_OUT_FOR_DELIVERY": return "Đến bưu cục nhưng chưa phát giao";
     case "ROUTE_DEVIATION": return "Sai lệch tuyến";
     case "SHIPMENT_STUCK": return "Vận đơn đứng yên";
-    case "ESTIMATED_DELIVERY_OVERDUE": return "Quá ETA giao hàng";
-    case "CASE_OVERDUE": return "Case quá SLA";
-    case "EXCEPTION_OVERDUE": return "Exception quá SLA";
-    case "SIGNATURE_WITHOUT_DELIVERY": return "Có chữ ký nhưng chưa Delivered";
-    case "DELIVERED_WITHOUT_SIGNATURE": return "Delivered thiếu chữ ký";
+    case "ESTIMATED_DELIVERY_OVERDUE": return "Quá thời gian giao dự kiến";
+    case "CASE_OVERDUE": return "Hồ sơ sự cố quá hạn xử lý";
+    case "EXCEPTION_OVERDUE": return "Ngoại lệ quá hạn xử lý";
+    case "SIGNATURE_WITHOUT_DELIVERY": return "Có chữ ký nhưng chưa ghi nhận đã giao";
+    case "DELIVERED_WITHOUT_SIGNATURE": return "Đã giao nhưng thiếu chữ ký";
   }
 }
 

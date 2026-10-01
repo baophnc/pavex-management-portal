@@ -65,7 +65,7 @@ export function workforceIdentityName(input: {
     input.displayName?.trim() ||
     [input.firstName, input.lastName].filter(Boolean).join(" ").trim() ||
     input.email ||
-    "Chưa có hồ sơ Identity"
+    "Chưa có hồ sơ tài khoản"
   );
 }
 

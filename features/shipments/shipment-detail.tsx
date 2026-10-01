@@ -443,7 +443,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
                 href={`/control-tower?search=${encodeURIComponent(shipment.trackingCode)}`}
                 className="inline-flex h-10 items-center rounded-md border bg-background px-4 text-sm font-bold hover:bg-muted"
               >
-                Control Tower
+                Giám sát vận đơn
               </Link>
             ) : null}
             <Button
@@ -513,7 +513,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
               value={`${money(shipment.collection.amountToCollect, pricing.currency)} · ${collectionStatusLabel(shipment.collection.status)}`}
             />
             <KeyValue
-              label="Merchant trả cước"
+              label="Cửa hàng trả cước"
               value={money(shipment.collection.merchantShippingFee, pricing.currency)}
             />
             {shipment.collection.collectedAt ? (

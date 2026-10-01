@@ -6,8 +6,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Pavex Management Portal",
-    template: "%s | Pavex Management Portal",
+    default: "Pavex Quản trị",
+    template: "%s | Pavex Quản trị",
   },
   description: "Cổng quản trị vận hành Pavex Express",
   robots: { index: false, follow: false },

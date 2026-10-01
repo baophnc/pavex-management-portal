@@ -150,7 +150,7 @@ export function NetworkRoutePlanner() {
         eyebrow="Kiểm tra định tuyến"
         title="Tìm tuyến"
         description="Mô phỏng hành trình từ địa chỉ gửi đến địa chỉ nhận dựa trên lịch chạy, thời gian chờ và sức chứa hiện tại."
-        help={{ description: "Dùng trang này để kiểm tra Network trước khi tích hợp hoặc debug Shipment.", bullets: ["Chọn xã/phường gửi, nhận và khối lượng hàng.", "Chế độ ưu tiên hành trình đã cấu hình sẽ thử hành trình do vận hành thiết lập trước.", "Kết quả cho biết từng chặng, giờ đi, giờ đến, thời gian chờ và sức chứa còn lại."] }}
+        help={{ description: "Dùng trang này để kiểm tra mạng lưới trước khi đưa vào sử dụng hoặc khi cần tìm nguyên nhân sự cố của vận đơn.", bullets: ["Chọn xã/phường gửi, nhận và khối lượng hàng.", "Chế độ ưu tiên hành trình đã cấu hình sẽ thử hành trình do vận hành thiết lập trước.", "Kết quả cho biết từng chặng, giờ đi, giờ đến, thời gian chờ và sức chứa còn lại."] }}
       />
 
       <div className="grid gap-4 xl:grid-cols-[26rem_minmax(0,1fr)]">

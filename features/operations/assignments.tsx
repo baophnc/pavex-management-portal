@@ -198,7 +198,7 @@ export function OperationsAssignments() {
         ),
       );
     } catch (cause) {
-      const message = apiMessage(cause, "Không thể tải assignment vận hành.");
+      const message = apiMessage(cause, "Không thể tải phân công vận hành.");
       setError(message);
       toast.error(message);
     } finally {

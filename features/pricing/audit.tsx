@@ -76,7 +76,7 @@ export function PricingAudit() {
 
       <Card className="grid gap-3 p-4 md:grid-cols-[minmax(0,20rem)_1fr] md:items-end">
         <label className="grid gap-1.5 text-xs font-bold"><span>Loại đối tượng</span><select className={selectClassName} value={entityType} onChange={(event) => { setPage(1); setEntityType(event.target.value as PricingAuditEntityType | ""); }}><option value="">Tất cả</option><option value="RATE_PLAN">Bảng giá</option><option value="RATE_RULE">Quy tắc giá</option></select></label>
-        <p className="text-xs leading-5 text-muted-foreground">Chọn loại dữ liệu để thu hẹp lịch sử. Mã kỹ thuật vẫn có trong chi tiết audit khi cần điều tra.</p>
+        <p className="text-xs leading-5 text-muted-foreground">Chọn loại dữ liệu để thu hẹp lịch sử. Mã kỹ thuật vẫn có trong chi tiết nhật ký khi cần điều tra.</p>
       </Card>
 
       {loading ? <PricingLoading label="Đang tải nhật ký giá cước..." /> : error ? <PricingError message={error} onRetry={() => { setLoading(true); setRefreshKey((value) => value + 1); }} /> : (

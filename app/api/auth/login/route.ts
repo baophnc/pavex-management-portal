@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           code: "invalid_auth_response",
-          message: "Auth trả về phiên đăng nhập không hợp lệ.",
+          message: "Dịch vụ đăng nhập trả về phiên không hợp lệ.",
         },
         { status: 502 },
       );
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         {
           code: "management_access_required",
           message:
-            "Tài khoản này chưa được cấp quyền sử dụng Pavex Management Portal.",
+            "Tài khoản này chưa được cấp quyền sử dụng trang quản trị Pavex.",
         },
         { status: 403 },
       );

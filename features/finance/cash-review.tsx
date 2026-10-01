@@ -91,12 +91,12 @@ export function CashReview() {
       <PricingPageHeader
         eyebrow="Tài chính"
         title="Duyệt tiền nộp"
-        description="Bưu tá nộp tiền thu được khi giao hàng về bưu cục theo từng lô. Tài chính duyệt lô khi đã nhận đủ tiền; tiền thu hộ đã duyệt mới được đưa vào đối soát với Merchant."
+        description="Bưu tá nộp tiền thu được khi giao hàng về bưu cục theo từng lô. Tài chính duyệt lô khi đã nhận đủ tiền; tiền thu hộ đã duyệt mới được đưa vào đối soát với cửa hàng."
         help={{
           description: "Duyệt khi bưu cục đã kiểm đếm đủ số tiền của lô. Nếu thiếu hoặc thừa, từ chối kèm lý do: tiền được giữ tại bưu cục và bưu cục gửi duyệt lại sau khi kiểm đếm.",
           bullets: [
             "Số tiền khai của lô luôn bằng tổng các đơn trong lô.",
-            "Tiền đã duyệt không thể hoàn tác; đối soát sẽ trả phần thu hộ cho Merchant.",
+            "Tiền đã duyệt không thể hoàn tác; đối soát sẽ trả phần thu hộ cho cửa hàng.",
           ],
         }}
         actions={<Button variant="outline" onClick={reload}><RefreshCwIcon className="size-4" />Làm mới</Button>}
@@ -188,7 +188,7 @@ export function CashReview() {
         open={action !== null}
         title={approving ? "Xác nhận đã nhận đủ tiền?" : "Từ chối khoản tiền này?"}
         description={approving
-          ? `Xác nhận bưu cục đã nhận đủ ${money(actionAmount)}. Phần tiền thu hộ sẽ được đưa vào kỳ đối soát kế tiếp của Merchant.`
+          ? `Xác nhận bưu cục đã nhận đủ ${money(actionAmount)}. Phần tiền thu hộ sẽ được đưa vào kỳ đối soát kế tiếp của cửa hàng.`
           : "Tiền được giữ lại tại bưu cục. Bưu cục kiểm đếm lại rồi gửi duyệt lại."}
         confirmLabel={approving ? "Duyệt" : "Từ chối"}
         destructive={!approving}

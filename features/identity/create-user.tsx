@@ -96,7 +96,7 @@ export function CreateIdentityUser() {
     }
     if (!isIdentityAssignableRole(normalizedRole)) {
       setError(
-        "Vai trò này được quản lý ở workspace nghiệp vụ riêng và không thể gán thủ công tại Identity.",
+        "Vai trò này được cấp ở phân hệ nghiệp vụ riêng và không thể gán thủ công tại đây.",
       );
       return;
     }
@@ -215,7 +215,7 @@ export function CreateIdentityUser() {
                 </label>
               </div>
               <label className="grid gap-2 text-xs font-bold">
-                Avatar URL
+                Đường dẫn ảnh đại diện
                 <Input name="avatarUrl" type="url" maxLength={2048} placeholder="https://..." />
               </label>
             </CardContent>
@@ -267,7 +267,7 @@ export function CreateIdentityUser() {
                 Nhân viên đăng nhập bằng email vừa cấp và <strong>mật khẩu tạm</strong> (mặc định <code>123456</code>), rồi đặt mật khẩu riêng ngay ở lần đăng nhập đầu. Mật khẩu tạm hết hạn sau 72 giờ; khi đó nhân viên dùng <Link href="/forgot-password" className="font-bold text-brand hover:underline">Quên mật khẩu</Link> để nhận liên kết đặt mật khẩu qua email.
               </div>
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-muted-foreground">
-                Role nghiệp vụ được cấp tại đúng workspace sở hữu nó: <strong>Đối tác gửi hàng</strong> được đồng bộ sau duyệt Merchant; <strong>Tài xế, Nhân viên kho, Quản lý bưu cục và Quản lý vận hành</strong> được tạo tại <Link href="/operations/workforce" className="font-black text-brand hover:underline">Operations → Workforce</Link>. Tài khoản tự đăng ký ngoài hệ thống chỉ nhận role Khách hàng.
+                Vai trò nghiệp vụ được cấp tại đúng phân hệ quản lý nó: <strong>Đối tác gửi hàng</strong> được đồng bộ sau duyệt cửa hàng; <strong>Tài xế, Nhân viên kho, Quản lý bưu cục và Quản lý vận hành</strong> được tạo tại <Link href="/operations/workforce" className="font-black text-brand hover:underline">Nhân sự & ca → Nhân sự bưu cục</Link>. Tài khoản tự đăng ký ngoài hệ thống chỉ nhận vai trò Khách hàng.
               </div>
             </CardContent>
           </Card>

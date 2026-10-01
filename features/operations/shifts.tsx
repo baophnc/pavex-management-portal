@@ -120,7 +120,7 @@ function CreateShiftDialog({
       <section className="w-full max-w-xl rounded-xl border bg-card shadow-2xl">
         <header className="flex items-start justify-between gap-4 border-b p-5">
           <div>
-            <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">Shift planning</p>
+            <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">Lập ca</p>
             <h2 className="mt-1 text-lg font-black">Tạo ca làm việc</h2>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">Ca tối đa 24 giờ; hệ thống sẽ kiểm tra bưu cục và thời gian ca.</p>
           </div>
@@ -239,9 +239,9 @@ export function OperationsShifts() {
           <div className="flex items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-brand/15 bg-brand/10 text-brand"><CalendarClockIcon className="size-5" /></span>
             <div>
-              <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Operations shifts</p>
+              <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Ca vận hành</p>
               <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">Ca làm việc</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Lập ca, theo dõi roster và attendance tại từng hub.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Lập ca, theo dõi danh sách ca và chấm công tại từng bưu cục.</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -266,7 +266,7 @@ export function OperationsShifts() {
             {data.items.length ? <div className="divide-y">{data.items.map((shift) => (
               <Link key={shift.id} href={`/operations/shifts/${shift.id}`} className="grid gap-3 px-4 py-4 transition hover:bg-muted/35 sm:grid-cols-[1.2fr_1fr_0.8fr_auto] sm:items-center sm:px-5">
                 <div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{shift.name}</p><span className={`rounded-full border px-2 py-0.5 text-[0.58rem] font-black ${shiftStatusClass(shift.status)}`}>{workShiftStatusLabel(shift.status)}</span></div><p className="mt-1 font-mono text-[0.62rem] text-muted-foreground">{shift.code}</p></div>
-                <div><p className="text-xs font-black">{shift.hubCode || "Hub"}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">{shift.hubName || shift.hubId}</p></div>
+                <div><p className="text-xs font-black">{shift.hubCode || "Bưu cục"}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">{shift.hubName || shift.hubId}</p></div>
                 <div><p className="text-xs font-bold">{formatDateTime(shift.startsAt)}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">→ {formatDateTime(shift.endsAt)}</p></div>
                 <div className="flex items-center gap-1.5 text-xs font-black"><UsersRoundIcon className="size-4 text-brand" />{shift.rosterCount}</div>
               </Link>

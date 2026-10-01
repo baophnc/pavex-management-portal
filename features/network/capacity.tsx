@@ -162,13 +162,13 @@ export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision
       <NetworkPageHeader
         eyebrow="Sức chứa chuyến"
         title="Sức chứa"
-        description="Theo dõi tổng tải, tải đã giữ và tải còn lại của từng chuyến; người có quyền quản lý có thể xử lý reservation khi cần khắc phục vận hành."
+        description="Theo dõi tổng tải, tải đã giữ và tải còn lại của từng chuyến; người có quyền quản lý có thể xử lý phần giữ chỗ khi cần khắc phục vận hành."
         help={{
           description: "Sức chứa được tính theo từng chuyến cụ thể, không dùng một con số chung cho cả tuyến.",
           bullets: [
             "Chọn tuyến và ngày để xem tải của từng giờ khởi hành.",
             "Vận đơn giữ chỗ theo phiên bản tuyến và từng chặng theo thứ tự.",
-            "Giải phóng/consume ở trang này là thao tác vận hành có audit; chỉ dùng khi hiểu rõ trạng thái Shipment.",
+            "Giải phóng hoặc xác nhận dùng tải ở trang này đều được ghi nhật ký; chỉ dùng khi hiểu rõ trạng thái vận đơn.",
           ],
         }}
         actions={
@@ -244,13 +244,13 @@ export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision
                           variant="outline"
                           size="sm"
                           disabled={loading || leg.sequence !== firstReservedSequence}
-                          title={leg.sequence !== firstReservedSequence ? "Cần consume các chặng trước theo đúng thứ tự." : undefined}
+                          title={leg.sequence !== firstReservedSequence ? "Cần xác nhận dùng tải các chặng trước theo đúng thứ tự." : undefined}
                           onClick={() => setPendingAction({ kind: "consume", legSequence: leg.sequence })}
                         >
                           Ghi nhận đã dùng tải
                         </Button>
                         {leg.sequence !== firstReservedSequence ? (
-                          <p className="text-[0.65rem] text-muted-foreground">Chờ chặng trước được consume.</p>
+                          <p className="text-[0.65rem] text-muted-foreground">Chờ chặng trước được xác nhận dùng tải.</p>
                         ) : null}
                       </div>
                     ) : null}
@@ -259,7 +259,7 @@ export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision
                 {canManage && hasReservedLeg ? (
                   <div className="grid gap-2 border-t pt-3">
                     <Button type="button" variant="destructive" disabled={loading} onClick={() => setPendingAction({ kind: "release" })}>Giải phóng tải còn giữ</Button>
-                    <ActionPolicyNote>Release chỉ chuyển các leg còn ở trạng thái RESERVED sang RELEASED. Leg đã CONSUMED không bị hoàn tác.</ActionPolicyNote>
+                    <ActionPolicyNote>Giải phóng chỉ áp dụng cho các chặng còn “Đã giữ tải”. Chặng đã xác nhận dùng tải không bị hoàn tác.</ActionPolicyNote>
                   </div>
                 ) : null}
               </div>
@@ -270,9 +270,9 @@ export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision
 
       <ConfirmActionDialog
         open={Boolean(pendingAction)}
-        title={pendingAction?.kind === "release" ? "Giải phóng reservation?" : "Ghi nhận đã dùng tải?"}
+        title={pendingAction?.kind === "release" ? "Giải phóng phần giữ chỗ?" : "Ghi nhận đã dùng tải?"}
         description={pendingAction?.kind === "release"
-          ? "Các chặng vẫn còn RESERVED sẽ được giải phóng và sức chứa tương ứng trở lại khả dụng. Thao tác được ghi audit."
+          ? "Các chặng còn “Đã giữ tải” sẽ được giải phóng và sức chứa tương ứng trở lại khả dụng. Thao tác được ghi nhật ký."
           : `Chặng ${pendingAction?.kind === "consume" ? pendingAction.legSequence : ""} sẽ được đánh dấu đã sử dụng. Các chặng phải được xác nhận lần lượt theo đúng thứ tự.`}
         confirmLabel={pendingAction?.kind === "release" ? "Giải phóng tải" : "Xác nhận đã dùng"}
         destructive={pendingAction?.kind === "release"}

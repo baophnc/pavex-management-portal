@@ -7,7 +7,7 @@ const messages: Record<string, string> = {
   cash_collection_not_submitted: "Chỉ duyệt được khoản tiền đang chờ duyệt.",
   statement_not_found: "Không tìm thấy kỳ đối soát.",
   invalid_cutoff: "Thời điểm chốt số liệu không được ở tương lai.",
-  payout_account_missing: "Merchant chưa đăng ký tài khoản nhận tiền nên chưa thể ghi nhận chuyển khoản.",
+  payout_account_missing: "Cửa hàng chưa đăng ký tài khoản nhận tiền nên chưa thể ghi nhận chuyển khoản.",
   payout_conflict: "Kỳ đối soát này không còn khoản chờ chuyển.",
   invoice_not_found: "Không tìm thấy hóa đơn.",
   invalid_payment_amount: "Số tiền vượt quá số dư chưa thanh toán của hóa đơn.",

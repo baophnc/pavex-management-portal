@@ -191,7 +191,7 @@ export function ShipmentControlTower() {
       setData(nextPage);
       setSummary(nextSummary);
     } catch (cause) {
-      const text = message(cause, "Không thể tải Control Tower.");
+      const text = message(cause, "Không thể tải dữ liệu giám sát.");
       setError(text);
       toast.error(text);
     } finally {
@@ -226,10 +226,10 @@ export function ShipmentControlTower() {
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-3 border-b bg-gradient-to-br from-brand/[0.08] via-card to-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Shipment operations</p>
-            <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">Control Tower</h1>
+            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Vận hành vận đơn</p>
+            <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">Giám sát vận đơn</h1>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Cảnh báo được backend tính trực tiếp từ trạng thái vận đơn, route SLA, exception/case và delivery proof. Đây là read-only operational view, không phải incident store độc lập.
+              Cảnh báo được tính trực tiếp từ trạng thái vận đơn, hạn xử lý của tuyến, ngoại lệ, hồ sơ sự cố và bằng chứng giao hàng. Đây là màn hình theo dõi, không phải nơi lưu hồ sơ sự cố.
             </p>
           </div>
           <Button variant="outline" onClick={() => void load()} disabled={loading}>
@@ -256,9 +256,9 @@ export function ShipmentControlTower() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="Tổng cảnh báo" value={summary?.total} />
-        <SummaryCard label="Critical" value={summary?.critical} tone="CRITICAL" />
-        <SummaryCard label="Warning" value={summary?.warning} tone="WARNING" />
-        <SummaryCard label="Info" value={summary?.info} tone="INFO" />
+        <SummaryCard label="Nghiêm trọng" value={summary?.critical} tone="CRITICAL" />
+        <SummaryCard label="Cảnh báo" value={summary?.warning} tone="WARNING" />
+        <SummaryCard label="Thông tin" value={summary?.info} tone="INFO" />
       </div>
 
       {summary ? (
@@ -266,7 +266,7 @@ export function ShipmentControlTower() {
           <CardContent>
             <div className="mb-3 flex items-center gap-2">
               <ShieldAlertIcon className="size-4 text-brand" />
-              <p className="text-sm font-black">Alert mix</p>
+              <p className="text-sm font-black">Cơ cấu cảnh báo</p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
               {SHIPMENT_CONTROL_ALERT_TYPES.map((alertType) => {
@@ -303,7 +303,7 @@ export function ShipmentControlTower() {
               onKeyDown={(event) => {
                 if (event.key === "Enter") update({ search: searchDraft });
               }}
-              placeholder="Tracking, parcel, case, nội dung cảnh báo..."
+              placeholder="Mã vận đơn, mã kiện, mã hồ sơ, nội dung cảnh báo..."
             />
             <select
               value={type}
@@ -331,7 +331,7 @@ export function ShipmentControlTower() {
                 onChange={(event) => setHubDraft(event.target.value)}
                 className="h-10 rounded-md border bg-background px-3 text-sm"
               >
-                <option value="">Tất cả hub trong scope</option>
+                <option value="">Tất cả bưu cục trong phạm vi</option>
                 {hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}
               </select>
             ) : (
@@ -361,7 +361,7 @@ export function ShipmentControlTower() {
             <table className="w-full min-w-[1180px] text-left">
               <thead className="border-b bg-muted/30 text-[0.65rem] uppercase text-muted-foreground">
                 <tr>
-                  {['Mức độ', 'Cảnh báo', 'Đối tượng', 'Hub', 'SLA / hoạt động', 'Drill-down'].map((header) => (
+                  {['Mức độ', 'Cảnh báo', 'Đối tượng', 'Bưu cục', 'Hạn xử lý / hoạt động', 'Xem chi tiết'].map((header) => (
                     <th key={header} className="px-4 py-3">{header}</th>
                   ))}
                 </tr>
@@ -412,7 +412,7 @@ export function ShipmentControlTower() {
                     <td colSpan={6} className="px-4 py-16 text-center">
                       <CheckCircle2Icon className="mx-auto size-8 text-emerald-600" />
                       <p className="mt-3 text-sm font-black">Không có cảnh báo phù hợp</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Scope/filter hiện tại không có anomaly đang được Control Tower phát hiện.</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Không có bất thường nào trong phạm vi và bộ lọc hiện tại.</p>
                     </td>
                   </tr>
                 ) : null}
@@ -440,7 +440,7 @@ export function ShipmentControlTower() {
 
       <div className="flex gap-2 rounded-lg border border-sky-500/20 bg-sky-500/5 p-3 text-xs leading-5 text-sky-800 dark:text-sky-200">
         <ShieldAlertIcon className="mt-0.5 size-4 shrink-0" />
-        Backend Control Tower derive alert trực tiếp từ live state. Vì chưa có persisted alert lifecycle nên Management không hiển thị acknowledge/owner/escalation giả.
+        Cảnh báo được tính trực tiếp từ dữ liệu hiện tại và chưa được lưu lại, nên chưa có bước xác nhận, giao người phụ trách hay chuyển cấp xử lý.
       </div>
     </div>
   );
