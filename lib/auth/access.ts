@@ -22,6 +22,7 @@ export const MANAGEMENT_PERMISSIONS = [
   "shipments.exceptions.read",
   "shipments.exceptions.manage",
   "shipments.weight.adjust",
+  "shipments.admin.update",
   "shipments.cases.read",
   "shipments.cases.manage",
   "shipments.control-tower.read",

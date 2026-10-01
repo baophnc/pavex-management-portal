@@ -2,7 +2,7 @@
 
 import { DownloadIcon, RotateCcwIcon, ScanSearchIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { DataTable, Pagination, type Column } from "@/components/workspace/data-table";
 import {
@@ -14,6 +14,8 @@ import {
   ToolbarButton,
   WorkspaceToolbar,
 } from "@/components/workspace/filters";
+import type { Hub } from "@/features/network/contracts";
+import { getScopedHubs } from "@/features/operations/hub-scope";
 import { getAdminShipments } from "@/features/shipments/api";
 import type { AdminShipmentSummary, ShipmentLifecycleStatus, ShipmentStatus } from "@/features/shipments/contracts";
 import { SHIPMENT_LIFECYCLE_STATUSES, SHIPMENT_STATUSES } from "@/features/shipments/contracts";
@@ -27,7 +29,16 @@ import {
 import { downloadCsv } from "@/lib/csv";
 import { cn, formatDateTime } from "@/lib/utils";
 
-type Filters = { query: string; status: ShipmentStatus | ""; lifecycleStatus: ShipmentLifecycleStatus | "" };
+type Filters = {
+  query: string;
+  status: ShipmentStatus | "";
+  lifecycleStatus: ShipmentLifecycleStatus | "";
+  hubId: string;
+  createdFrom: string;
+  createdTo: string;
+};
+
+const EMPTY: Filters = { query: "", status: "", lifecycleStatus: "", hubId: "", createdFrom: "", createdTo: "" };
 
 /** Pages further than this from the last one loaded are not walked to one by one. */
 const MAX_PAGE_HOPS = 50;
@@ -47,6 +58,9 @@ function params(filters: Filters, size: number, cursor: string | null | undefine
   if (filters.query.trim()) result.set("q", filters.query.trim());
   if (filters.status) result.set("status", filters.status);
   if (filters.lifecycleStatus) result.set("lifecycleStatus", filters.lifecycleStatus);
+  if (filters.hubId) result.set("hubId", filters.hubId);
+  if (filters.createdFrom) result.set("createdFrom", filters.createdFrom);
+  if (filters.createdTo) result.set("createdTo", filters.createdTo);
   if (cursor) result.set("cursor", cursor);
   return result;
 }
@@ -79,16 +93,57 @@ const columns: Column<AdminShipmentSummary>[] = [
   { key: "updatedAt", header: "Cập nhật", width: 130, sortValue: (row) => row.updatedAt, cell: (row) => formatDateTime(row.updatedAt) },
 ];
 
+/** Why, when and at which point a shipment was cancelled; shown on the cancelled list. */
+const cancellationColumns: Column<AdminShipmentSummary>[] = [
+  { key: "cancelledAt", header: "Thời điểm huỷ", width: 130, sortValue: (row) => row.cancelledAt, cell: (row) => (row.cancelledAt ? formatDateTime(row.cancelledAt) : "—") },
+  {
+    key: "cancelStage",
+    header: "Huỷ khi",
+    width: 120,
+    sortValue: (row) => String(row.cancelledAfterPickup),
+    cell: (row) => (row.cancelledAfterPickup ? "Đã lấy hàng, hoàn về" : "Chưa lấy hàng"),
+  },
+  { key: "cancelReason", header: "Lý do huỷ", width: 260, sortValue: (row) => row.cancellationReason, cell: (row) => row.cancellationReason ?? "—" },
+];
+
 export function AdminShipments({
   initialQuery = "",
   initialStatus = "",
   initialLifecycleStatus = "",
+  cancelledOnly = false,
 }: {
   initialQuery?: string;
   initialStatus?: ShipmentStatus | "";
   initialLifecycleStatus?: ShipmentLifecycleStatus | "";
+  /** The cancelled-shipments page: lifecycle fixed to cancelled, with the reasons shown. */
+  cancelledOnly?: boolean;
 }) {
-  const initial: Filters = { query: initialQuery, status: initialStatus, lifecycleStatus: initialLifecycleStatus };
+  const initial: Filters = {
+    ...EMPTY,
+    query: initialQuery,
+    status: initialStatus,
+    lifecycleStatus: cancelledOnly ? "CANCELLED" : initialLifecycleStatus,
+  };
+  const [hubs, setHubs] = useState<Hub[]>([]);
+  const tableColumns = useMemo(
+    () => (cancelledOnly ? [...columns.slice(0, 2), ...cancellationColumns, ...columns.slice(2)] : columns),
+    [cancelledOnly],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    // Head office gets every hub, hub staff their own; without either the filter stays hidden.
+    getScopedHubs()
+      .then((items) => {
+        if (!cancelled) setHubs(items);
+      })
+      .catch(() => {
+        if (!cancelled) setHubs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [draft, setDraft] = useState<Filters>(initial);
   const [applied, setApplied] = useState<Filters>(initial);
   const [rows, setRows] = useState<AdminShipmentSummary[]>([]);
@@ -142,7 +197,7 @@ export function AdminShipments({
   }
 
   function reset() {
-    const empty: Filters = { query: "", status: "", lifecycleStatus: "" };
+    const empty: Filters = { ...EMPTY, lifecycleStatus: cancelledOnly ? "CANCELLED" : "" };
     setDraft(empty);
     setApplied(empty);
     void load(1, pageSize, empty, [null]);
@@ -150,8 +205,8 @@ export function AdminShipments({
 
   function exportPage() {
     downloadCsv(
-      `van-don-trang-${page}.csv`,
-      ["Mã vận đơn", "Mã tham chiếu", "Trạng thái", "Vòng đời", "Dịch vụ", "Số kiện", "Bưu cục gửi", "Bưu cục phát", "Tỉnh/thành nhận", "Phường/xã nhận", "Cước", "COD", "Thu người nhận", "Thời gian tạo"],
+      `${cancelledOnly ? "van-don-huy" : "van-don"}-trang-${page}.csv`,
+      ["Mã vận đơn", "Mã tham chiếu", "Trạng thái", "Vòng đời", "Dịch vụ", "Số kiện", "Bưu cục gửi", "Bưu cục phát", "Tỉnh/thành nhận", "Phường/xã nhận", "Cước", "COD", "Thu người nhận", "Thời gian tạo", "Thời điểm huỷ", "Lý do huỷ"],
       rows.map((row) => [
         row.trackingCode,
         row.merchantReference,
@@ -167,6 +222,8 @@ export function AdminShipments({
         row.codAmount,
         row.amountToCollect,
         formatDateTime(row.createdAt),
+        row.cancelledAt ? formatDateTime(row.cancelledAt) : "",
+        row.cancellationReason ?? "",
       ]),
     );
   }
@@ -193,12 +250,40 @@ export function AdminShipments({
         </WorkspaceToolbar>
 
         <FilterGrid collapsed={collapsed}>
-          <FilterField label="Mã vận đơn / tham chiếu">
+          <FilterField label="Mã vận đơn / tham chiếu / SĐT nhận">
             <FilterInput
               value={draft.query}
               onChange={(event) => setDraft((current) => ({ ...current, query: event.target.value }))}
-              placeholder="Nhập mã để tra cứu"
+              placeholder="Mã PAVEX, mã của shop hoặc SĐT"
               maxLength={120}
+            />
+          </FilterField>
+          {hubs.length ? (
+            <FilterField label="Bưu cục">
+              <FilterSelect value={draft.hubId} onChange={(event) => setDraft((current) => ({ ...current, hubId: event.target.value }))}>
+                <option value="">{hubs.length > 1 ? "Tất cả bưu cục" : "Mọi bưu cục trong phạm vi"}</option>
+                {hubs.map((hub) => (
+                  <option key={hub.id} value={hub.id}>
+                    {hub.code} · {hub.name}
+                  </option>
+                ))}
+              </FilterSelect>
+            </FilterField>
+          ) : null}
+          <FilterField label="Tạo từ ngày">
+            <FilterInput
+              type="date"
+              value={draft.createdFrom}
+              max={draft.createdTo || undefined}
+              onChange={(event) => setDraft((current) => ({ ...current, createdFrom: event.target.value }))}
+            />
+          </FilterField>
+          <FilterField label="Đến ngày">
+            <FilterInput
+              type="date"
+              value={draft.createdTo}
+              min={draft.createdFrom || undefined}
+              onChange={(event) => setDraft((current) => ({ ...current, createdTo: event.target.value }))}
             />
           </FilterField>
           <FilterField label="Trạng thái">
@@ -214,7 +299,7 @@ export function AdminShipments({
               ))}
             </FilterSelect>
           </FilterField>
-          <FilterField label="Vòng đời">
+          {cancelledOnly ? null : <FilterField label="Vòng đời">
             <FilterSelect
               value={draft.lifecycleStatus}
               onChange={(event) =>
@@ -228,7 +313,7 @@ export function AdminShipments({
                 </option>
               ))}
             </FilterSelect>
-          </FilterField>
+          </FilterField>}
         </FilterGrid>
       </form>
 
@@ -239,12 +324,18 @@ export function AdminShipments({
       ) : null}
 
       <DataTable
-        columns={columns}
+        columns={tableColumns}
         rows={rows}
         rowKey={(row) => row.id}
         loading={loading}
         startIndex={(page - 1) * pageSize}
-        emptyText={applied.query || applied.status || applied.lifecycleStatus ? "Không có vận đơn phù hợp bộ lọc" : "Chưa có vận đơn"}
+        emptyText={
+          applied.query || applied.status || applied.hubId || applied.createdFrom || applied.createdTo || (!cancelledOnly && applied.lifecycleStatus)
+            ? "Không có vận đơn phù hợp bộ lọc"
+            : cancelledOnly
+              ? "Chưa có vận đơn bị huỷ"
+              : "Chưa có vận đơn"
+        }
         actionsWidth={130}
         actions={(row) => (
           <>

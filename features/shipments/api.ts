@@ -17,6 +17,22 @@ export function getAdminShipment(trackingCode: string) {
   );
 }
 
+export type AdminShipmentUpdate = {
+  recipientName?: string;
+  recipientPhone?: string;
+  recipientAddressLine?: string;
+  note?: string;
+  reason: string;
+};
+
+/** Staff correct the recipient's contact details or the note; the reason goes on the timeline. */
+export function updateAdminShipment(trackingCode: string, body: AdminShipmentUpdate) {
+  return apiRequest<AdminShipmentDetail>(
+    `admin/shipments/${encodeURIComponent(trackingCode.trim())}`,
+    { method: "PATCH", body: JSON.stringify(body) },
+  );
+}
+
 export function getShipmentExceptionState(shipmentId: string) {
   return apiRequest<import("@/features/shipments/contracts").ShipmentExceptionState>(
     `admin/shipments/${encodeURIComponent(shipmentId)}/exceptions`,
