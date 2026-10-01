@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AvatarPicker } from "@/features/account/avatar-picker";
 import { useAccess } from "@/features/auth/access-context";
 import {
   accountStatuses,
@@ -456,7 +457,18 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
                   </label>
                   <label className="grid gap-2 text-xs font-bold">Ngày sinh<Input name="dateOfBirth" type="date" defaultValue={user.dateOfBirth ?? ""} disabled={!canEditProfile} /></label>
                 </div>
-                <label className="grid gap-2 text-xs font-bold">Đường dẫn ảnh đại diện<Input name="avatarUrl" type="url" maxLength={2048} defaultValue={user.avatarUrl ?? ""} disabled={!canEditProfile} placeholder="https://..." /></label>
+                <div className="grid gap-2 text-xs font-bold">
+                  Ảnh đại diện
+                  <AvatarPicker<{ avatarUrl: string }>
+                    avatarUrl={user.avatarUrl}
+                    initials={initialsOf(user)}
+                    uploadPath={`users/${encodeURIComponent(user.userId)}/avatar`}
+                    disabled={!canEditProfile}
+                    onUploaded={({ avatarUrl }) => setUser((current) => (current ? { ...current, avatarUrl } : current))}
+                  />
+                  {/* Saving the profile keeps the current photo. */}
+                  <input type="hidden" name="avatarUrl" value={user.avatarUrl ?? ""} readOnly />
+                </div>
                 {canEditProfile ? (
                   <div className="flex justify-end border-t pt-4">
                     <Button type="submit" disabled={saving === "profile"}>
