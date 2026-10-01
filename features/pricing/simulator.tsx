@@ -436,7 +436,7 @@ export function PricingSimulator() {
           </Card>
         </div>
 
-        <div className="grid content-start gap-4 xl:sticky xl:top-4">
+        <div className="grid content-start gap-4 xl:sticky xl:top-24">
           {!quote ? (
             <Card className="grid min-h-72 place-items-center p-6 text-center">
               <div>

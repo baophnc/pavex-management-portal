@@ -261,7 +261,7 @@ function RequestDetail({
   };
 
   return (
-    <Card className="grid content-start gap-0 overflow-hidden lg:sticky lg:top-4">
+    <Card className="grid content-start gap-0 overflow-hidden lg:sticky lg:top-24">
       <div className="flex items-start justify-between gap-3 border-b bg-muted/25 p-4">
         <div className="min-w-0">
           <p className="font-mono text-sm font-black">{detail.code}</p>
