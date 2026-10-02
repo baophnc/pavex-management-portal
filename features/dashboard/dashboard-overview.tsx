@@ -21,6 +21,7 @@ import {
   seesAllHubs,
 } from "@/lib/auth/access";
 import { apiRequest } from "@/lib/api/client";
+import { BusinessOverview } from "@/features/dashboard/business-overview";
 import type { CurrentUser } from "@/lib/auth/contracts";
 
 type Metric = {
@@ -222,6 +223,8 @@ export function DashboardOverview() {
           </ToolbarButton>
         </div>
       </div>
+
+      <BusinessOverview />
 
       <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_19rem]">
         <div className="space-y-2.5">
