@@ -44,6 +44,8 @@ export async function getScopedHubs(): Promise<Hub[]> {
     parentHubId: null,
     publicVisible: false,
     publicName: null,
+    latitude: null,
+    longitude: null,
     createdAt: "",
     updatedAt: "",
   }));

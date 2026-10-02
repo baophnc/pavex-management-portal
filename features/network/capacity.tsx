@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAccess } from "@/features/auth/access-context";
+import { LaneMap } from "@/features/network/lane-map";
 import {
   consumeCapacityLeg,
   getCapacityReservation,
@@ -51,12 +52,18 @@ type PendingCapacityAction =
   | { kind: "release" }
   | { kind: "consume"; legSequence: number };
 
+function vietnamToday() {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
+}
+
 export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision = "" }: { initialTrackingCode?: string; initialRouteRevision?: string }) {
   const { hasPermission } = useAccess();
   const canManage = hasPermission("network.manage");
   const [lanes, setLanes] = useState<HubLane[]>([]);
   const [laneId, setLaneId] = useState("");
-  const [serviceDate, setServiceDate] = useState("");
+  const [serviceDate, setServiceDate] = useState(vietnamToday);
+  // Share of each lane's capacity already reserved on [serviceDate], for the map.
+  const [usage, setUsage] = useState<Record<string, LaneCapacity>>({});
   const [capacity, setCapacity] = useState<LaneCapacity | null>(null);
   const [reservation, setReservation] = useState<CapacityReservation | null>(null);
   const [reservationTrackingCode, setReservationTrackingCode] = useState("");
@@ -73,6 +80,20 @@ export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision
     }, 0);
     return () => window.clearTimeout(task);
   }, []);
+
+  useEffect(() => {
+    if (!serviceDate || lanes.length === 0) return;
+    let active = true;
+    const activeLanes = lanes.filter((lane) => lane.status === "ACTIVE");
+    void Promise.all(activeLanes.map((lane) => getLaneCapacity(lane.id, serviceDate).catch(() => null)))
+      .then((items) => {
+        if (!active) return;
+        setUsage(Object.fromEntries(items.flatMap((item) => (item ? [[item.laneId, item]] : []))));
+      });
+    return () => {
+      active = false;
+    };
+  }, [lanes, serviceDate]);
 
   async function refreshCapacity() {
     if (!laneId || !serviceDate) return;
@@ -180,6 +201,52 @@ export function NetworkCapacity({ initialTrackingCode = "", initialRouteRevision
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_28rem]">
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <p className="text-sm font-black">Bản đồ sức chứa ngày {serviceDate ? serviceDate.split("-").reverse().join("/") : ""}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Mỗi đường là một tuyến, ghi phần trăm tải đã được giữ chỗ.{" "}
+                <span className="font-bold text-emerald-700 dark:text-emerald-300">Xanh</span> dưới 70%,{" "}
+                <span className="font-bold text-amber-700 dark:text-amber-300">vàng</span> tới 90%,{" "}
+                <span className="font-bold text-red-700 dark:text-red-300">đỏ</span> gần đầy. Nét đứt: không có chuyến trong ngày.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <LaneMap
+                className="h-80"
+                lanes={lanes.filter((lane) => lane.status === "ACTIVE")}
+                focusKey={laneId || "all"}
+                focusLaneIds={laneId ? [laneId] : undefined}
+                styleOf={(lane) => {
+                  const item = usage[lane.id];
+                  if (!item || Number(item.totalCapacityKg) <= 0) return { tone: "muted", dashed: true, width: 2 };
+                  const used = ratio(Number(item.allocatedCapacityKg), Number(item.totalCapacityKg));
+                  return {
+                    tone: used >= 90 ? "danger" : used >= 70 ? "warning" : "success",
+                    width: lane.id === laneId ? 6 : 4,
+                    label: `${lane.fromHubCode}→${lane.toHubCode} ${Math.round(used)}%`,
+                  };
+                }}
+              />
+              <div className="flex flex-wrap gap-2">
+                {lanes.filter((lane) => lane.status === "ACTIVE").map((lane) => {
+                  const item = usage[lane.id];
+                  const used = item && Number(item.totalCapacityKg) > 0 ? Math.round(ratio(Number(item.allocatedCapacityKg), Number(item.totalCapacityKg))) : null;
+                  return (
+                    <button
+                      key={lane.id}
+                      type="button"
+                      onClick={() => { setLaneId(lane.id); setCapacity(null); }}
+                      className={`rounded-full border px-3 py-1 text-xs font-bold ${lane.id === laneId ? "border-brand bg-brand/10 text-brand" : "hover:bg-muted"}`}
+                    >
+                      {lane.fromHubCode} → {lane.toHubCode} · {used === null ? "không chạy" : `${used}%`}
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><p className="text-sm font-black">Sức chứa theo ngày</p></CardHeader>
             <CardContent>

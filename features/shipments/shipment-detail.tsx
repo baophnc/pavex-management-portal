@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
 import { HubName, MerchantName, UserName } from "@/features/directory/names";
+import { ShipmentTruck } from "@/features/fleet/shipment-truck";
 import { Barcode } from "@/features/shipments/barcode";
 import { displayUserName } from "@/features/identity/presentation";
 import {
@@ -383,6 +384,9 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
   const pricing = shipment.pricing;
   const creator = context.users[data.createdByUserId];
   const canViewTechnical = hasRole("ADMIN");
+  const canWatchTrucks = hasPermission("fleet.trips.read-hub");
+  // The leg a parcel is riding on right now, if the shipment is on a line-haul truck.
+  const ridingLeg = data.shipment.parcels.find((parcel) => parcel.status === "IN_TRANSIT" && parcel.currentRouteLegId)?.currentRouteLegId ?? null;
   const canManageExceptions = hasPermission("shipments.exceptions.manage");
   const canAdjustWeight = hasPermission("shipments.weight.adjust");
   const canManageCases = hasPermission("shipments.cases.manage");
@@ -555,6 +559,8 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
             </Link>
           </div>
         </Card>
+
+        {ridingLeg && canWatchTrucks ? <ShipmentTruck routeLegId={ridingLeg} /> : null}
 
         <Card className="overflow-hidden">
           <div className="flex items-center gap-2 border-b bg-muted/25 p-4">

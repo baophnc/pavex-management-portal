@@ -9,6 +9,8 @@ export const fleetApi = {
     return apiRequest<FleetTrip[]>(`fleet/trips?${query}`);
   },
   get: (id: string) => apiRequest<FleetTrip>(`fleet/trips/${encodeURIComponent(id)}`),
+  /** The truck a parcel on this route leg rides on; null until the truck leaves. */
+  byRouteLeg: (routeLegId: string) => apiRequest<FleetTrip | null>(`fleet/trips/by-route-leg/${encodeURIComponent(routeLegId)}`),
   track: (id: string) => apiRequest<FleetTrack>(`fleet/trips/${encodeURIComponent(id)}/track`),
 };
 

@@ -140,6 +140,8 @@ export function OperationsAssignments() {
           parentHubId: membership.parentHubId,
           publicVisible: false,
           publicName: null,
+          latitude: null,
+          longitude: null,
           createdAt: membership.assignedAt,
           updatedAt: membership.updatedAt,
         });

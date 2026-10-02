@@ -95,6 +95,9 @@ export type ShipmentParcel = {
   widthCm: number;
   heightCm: number;
   status: ParcelStatus;
+  currentHubId?: string | null;
+  /** The route leg the parcel rides on while it is on a line-haul truck. */
+  currentRouteLegId?: string | null;
 };
 
 export type ShipmentTimelineEvent = {

@@ -57,6 +57,8 @@ type HubDraft = {
   parentHubId: string;
   publicVisible: boolean;
   publicName: string;
+  /** "lat, lng" as copied from Google Maps. */
+  location: string;
 };
 
 const emptyDraft: HubDraft = {
@@ -69,6 +71,7 @@ const emptyDraft: HubDraft = {
   parentHubId: "",
   publicVisible: false,
   publicName: "",
+  location: "",
 };
 
 function draftFromHub(hub: Hub): HubDraft {
@@ -82,7 +85,20 @@ function draftFromHub(hub: Hub): HubDraft {
     parentHubId: hub.parentHubId ?? "",
     publicVisible: hub.publicVisible,
     publicName: hub.publicName ?? "",
+    location: hub.latitude !== null && hub.longitude !== null ? `${hub.latitude}, ${hub.longitude}` : "",
   };
+}
+
+/** "21.0355, 105.8270" → coordinates; null when blank, undefined when it cannot be read. */
+function parseLocation(value: string): { latitude: number; longitude: number } | null | undefined {
+  const text = value.trim();
+  if (!text) return null;
+  const match = text.match(/^(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)$/);
+  if (!match) return undefined;
+  const latitude = Number(match[1]);
+  const longitude = Number(match[2]);
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return undefined;
+  return { latitude, longitude };
 }
 
 function normalizeSearch(value: string) {
@@ -265,7 +281,15 @@ export function NetworkHubs() {
       return;
     }
 
+    const location = parseLocation(draft.location);
+    if (location === undefined) {
+      toast.error("Toạ độ chưa đúng. Dán theo dạng 21.0355, 105.8270 (vĩ độ, kinh độ).");
+      return;
+    }
+
     const payload = {
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
       name: draft.name.trim(),
       type: draft.type,
       addressLine: draft.addressLine.trim(),
@@ -719,6 +743,21 @@ export function NetworkHubs() {
                         />
                       </FormField>
                     </div>
+
+                    <FormField
+                      label="Vị trí trên bản đồ"
+                      hint="Trên Google Maps, bấm chuột phải vào điểm này rồi bấm dòng số đầu tiên để sao chép, sau đó dán vào đây. Dùng để vẽ xe và tuyến trên bản đồ."
+                    >
+                      <Input
+                        value={draft.location}
+                        disabled={!canManage}
+                        inputMode="decimal"
+                        placeholder="21.0355, 105.8270"
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, location: event.target.value }))
+                        }
+                      />
+                    </FormField>
 
                     <details className="rounded-lg border bg-muted/15 p-3">
                       <summary className="cursor-pointer text-xs font-black">Thông tin kỹ thuật</summary>

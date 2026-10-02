@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   getHubs,
+  getLanes,
   getProvinces,
   getWards,
   planRoute,
@@ -22,6 +23,7 @@ import {
 import { networkErrorMessage } from "@/features/network/errors";
 import type {
   Hub,
+  HubLane,
   Province,
   RoutePlan,
   RoutePlanningMode,
@@ -40,11 +42,13 @@ import {
   NetworkPageHeader,
   selectClassName,
 } from "@/features/network/ui";
+import { LaneMap } from "@/features/network/lane-map";
 import { formatDateTime } from "@/lib/utils";
 
 export function NetworkRoutePlanner() {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [hubs, setHubs] = useState<Hub[]>([]);
+  const [lanes, setLanes] = useState<HubLane[]>([]);
   const [originProvince, setOriginProvince] = useState("");
   const [destinationProvince, setDestinationProvince] = useState("");
   const [originWards, setOriginWards] = useState<Ward[]>([]);
@@ -64,8 +68,9 @@ export function NetworkRoutePlanner() {
       void Promise.all([
         getProvinces(),
         getHubs(new URLSearchParams({ page: "1", pageSize: "100" })),
+        getLanes(new URLSearchParams({ page: "1", pageSize: "100", status: "ACTIVE" })),
       ])
-        .then(([provinceItems, hubPage]) => { setProvinces(provinceItems); setHubs(hubPage.items); })
+        .then(([provinceItems, hubPage, lanePage]) => { setProvinces(provinceItems); setHubs(hubPage.items); setLanes(lanePage.items); })
         .catch((reason) => toast.error(networkErrorMessage(reason, "Không thể tải dữ liệu định tuyến.")));
     }, 0);
     return () => window.clearTimeout(task);
@@ -186,8 +191,23 @@ export function NetworkRoutePlanner() {
 
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between"><div><p className="text-sm font-black">Kết quả tìm tuyến</p><p className="mt-1 text-xs text-muted-foreground">Hệ thống tính cả thời gian chờ, thời gian chuyển tiếp và sức chứa còn lại.</p></div>{plan ? <span className="rounded-full border bg-brand/5 px-3 py-1 text-xs font-black text-brand">{routeSourceLabel(plan.source)}</span> : null}</CardHeader>
+          <div className="px-4">
+            <LaneMap
+              className="h-80"
+              lanes={lanes}
+              focusKey={plan ? `plan-${plan.arrivalAt}` : "all"}
+              focusLaneIds={plan?.legs.map((leg) => leg.laneId)}
+              styleOf={(lane) => {
+                const leg = plan?.legs.find((item) => item.laneId === lane.id);
+                return leg ? { tone: "brand", width: 4, label: `Chặng ${leg.sequence}` } : null;
+              }}
+            />
+            <p className="mt-1 text-[0.68rem] text-muted-foreground">
+              Nét đứt: tuyến đang chạy trong mạng lưới. Nét đậm: các chặng của hành trình tìm được.
+            </p>
+          </div>
           {!plan ? (
-            <div className="grid min-h-96 place-items-center p-6 text-center"><div><RouteIcon className="mx-auto size-8 text-muted-foreground" /><p className="mt-3 text-sm font-black">Chưa có kết quả</p><p className="mt-1 text-xs text-muted-foreground">Chọn điểm gửi, điểm nhận rồi bấm Tìm tuyến.</p></div></div>
+            <div className="grid min-h-40 place-items-center p-6 text-center"><div><RouteIcon className="mx-auto size-8 text-muted-foreground" /><p className="mt-3 text-sm font-black">Chưa có kết quả</p><p className="mt-1 text-xs text-muted-foreground">Chọn điểm gửi, điểm nhận rồi bấm Tìm tuyến.</p></div></div>
           ) : (
             <CardContent className="space-y-5">
               {originResolution && destinationResolution ? (

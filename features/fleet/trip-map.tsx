@@ -14,6 +14,23 @@ export type MapMarker = LatLng & {
   headingDeg?: number | null;
 };
 
+/** A lane between two hubs, drawn as a straight line: dashed when nothing runs on it. */
+export type MapLane = {
+  id: string;
+  from: LatLng;
+  to: LatLng;
+  tone?: "brand" | "muted" | "warning" | "danger" | "success";
+  dashed?: boolean;
+  /** Line width in pixels; thicker lanes carry more. */
+  width?: number;
+  label?: string;
+  /** Pixels to the right of the direction of travel, so A→B and B→A sit side by side. */
+  offset?: number;
+};
+
+/** A hub: a small square with its code, always labelled. */
+export type MapPlace = LatLng & { id: string; code: string; name: string };
+
 type View = { center: LatLng; zoom: number };
 
 const TILE = 256;
@@ -59,6 +76,14 @@ function fitView(points: LatLng[], width: number, height: number): View {
   return { center, zoom: MIN_ZOOM };
 }
 
+const laneColor: Record<NonNullable<MapLane["tone"]>, string> = {
+  brand: "var(--brand)",
+  muted: "#64748b",
+  warning: "#f59e0b",
+  danger: "#dc2626",
+  success: "#16a34a",
+};
+
 const toneClass: Record<MapMarker["tone"], string> = {
   brand: "bg-brand text-white",
   warning: "bg-amber-500 text-white",
@@ -71,20 +96,24 @@ const toneClass: Record<MapMarker["tone"], string> = {
  * buttons or double-click to zoom. It re-centres on [focus] whenever [focusKey] changes.
  */
 export function TripMap({
-  markers,
-  path,
+  markers = [],
+  path = [],
+  lanes = [],
+  places = [],
   focus,
   focusKey,
-  selectedId,
+  selectedId = null,
   onSelect,
   className,
 }: {
-  markers: MapMarker[];
-  path: LatLng[];
+  markers?: MapMarker[];
+  path?: LatLng[];
+  lanes?: MapLane[];
+  places?: MapPlace[];
   focus: LatLng[];
   focusKey: string;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
   className?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -165,6 +194,65 @@ export function TripMap({
         />
       ))}
 
+      {lanes.length ? (
+        <svg className="pointer-events-none absolute inset-0 size-full" aria-hidden>
+          {lanes.map((lane) => {
+            const start = toScreen(lane.from);
+            const end = toScreen(lane.to);
+            const length = Math.hypot(end.x - start.x, end.y - start.y) || 1;
+            const shiftX = lane.offset ? (-(end.y - start.y) / length) * lane.offset : 0;
+            const shiftY = lane.offset ? ((end.x - start.x) / length) * lane.offset : 0;
+            const a = { x: start.x + shiftX, y: start.y + shiftY };
+            const b = { x: end.x + shiftX, y: end.y + shiftY };
+            const width = lane.width ?? 3;
+            return (
+              <g key={lane.id}>
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="white" strokeWidth={width + 3} strokeLinecap="round" opacity={0.85} />
+                <line
+                  x1={a.x}
+                  y1={a.y}
+                  x2={b.x}
+                  y2={b.y}
+                  stroke={laneColor[lane.tone ?? "muted"]}
+                  strokeWidth={width}
+                  strokeLinecap="round"
+                  strokeDasharray={lane.dashed ? "8 7" : undefined}
+                />
+                {lane.label ? (
+                  // A third of the way along, so the labels of A→B and B→A do not meet in the middle.
+                  <text
+                    x={a.x + (b.x - a.x) / 3 + shiftX * 3}
+                    y={a.y + (b.y - a.y) / 3 + shiftY * 3}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#0f172a"
+                    className="text-[11px] font-bold"
+                    paintOrder="stroke"
+                    stroke="white"
+                    strokeWidth={4}
+                  >
+                    {lane.label}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+        </svg>
+      ) : null}
+
+      {places.map((place) => {
+        const { x, y } = toScreen(place);
+        if (x < -60 || y < -40 || x > size.width + 60 || y > size.height + 40) return null;
+        return (
+          <div key={place.id} title={place.name} className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2" style={{ left: x, top: y }}>
+            <span className="block size-3 rotate-45 border-2 border-white bg-slate-900 shadow" />
+            <span className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 text-[0.62rem] font-black shadow-sm">
+              {place.code}
+            </span>
+          </div>
+        );
+      })}
+
       {line ? (
         <svg className="pointer-events-none absolute inset-0 size-full" aria-hidden>
           <polyline points={line} fill="none" stroke="white" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
@@ -183,7 +271,7 @@ export function TripMap({
             title={marker.label}
             aria-label={marker.label}
             aria-pressed={selected}
-            onClick={() => onSelect(marker.id)}
+            onClick={() => onSelect?.(marker.id)}
             className="absolute -translate-x-1/2 -translate-y-1/2 focus-visible:outline-none"
             style={{ left: x, top: y }}
           >

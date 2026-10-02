@@ -33,6 +33,8 @@ export type Hub = {
   parentHubId: string | null;
   publicVisible: boolean;
   publicName: string | null;
+  latitude: number | null;
+  longitude: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -429,6 +431,8 @@ export type CreateHubPayload = {
   parentHubId?: string | null;
   publicVisible?: boolean;
   publicName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type UpdateHubPayload = Omit<CreateHubPayload, "code">;

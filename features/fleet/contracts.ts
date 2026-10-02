@@ -4,6 +4,9 @@ export type FleetHubRef = {
   id: string;
   code: string;
   name: string;
+  /** Where the hub is on the map, when its coordinates are set. */
+  lat: number | null;
+  lng: number | null;
 };
 
 export type FleetPosition = {
