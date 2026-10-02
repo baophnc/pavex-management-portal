@@ -170,7 +170,7 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
               {shipment ? (
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border bg-background p-3 text-xs"><p className="font-black">{shipment.shipment.trackingCode}</p><p className="mt-1 text-muted-foreground">{shipment.shipment.sender.contactName} → {shipment.shipment.recipient.contactName}</p><p className="mt-1 text-muted-foreground">{shipment.shipment.parcels.length} kiện · {shipmentStatusLabel(shipment.shipment.status)}</p></div>
-                  <label className="grid gap-2 text-xs font-bold">Kiện cụ thể <span className="font-medium text-muted-foreground">(không bắt buộc)</span><select value={parcelId} onChange={(event) => setParcelId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="">Sự cố cấp vận đơn / chưa xác định kiện</option>{shipment.shipment.parcels.map((parcel) => <option key={parcel.id} value={parcel.id}>{parcel.code} · {parcel.description} · {parcelStatusLabel(parcel.status)}</option>)}</select></label>
+                  <label className="grid min-w-0 gap-2 text-xs font-bold">Kiện cụ thể <span className="font-medium text-muted-foreground">(không bắt buộc)</span><select value={parcelId} onChange={(event) => setParcelId(event.target.value)} className="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm"><option value="">Sự cố cấp vận đơn / chưa xác định kiện</option>{shipment.shipment.parcels.map((parcel) => <option key={parcel.id} value={parcel.id}>{parcel.code} · {parcel.description} · {parcelStatusLabel(parcel.status)}</option>)}</select></label>
                 </div>
               ) : null}
             </div>
@@ -178,7 +178,7 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
             <label className="grid gap-2 text-xs font-bold">Mã vạch / mã dán trên kiện <span className="font-medium text-muted-foreground">(nếu đọc được)</span><Input value={externalBarcode} onChange={(event) => setExternalBarcode(event.target.value)} placeholder="Quét hoặc nhập mã vạch bên ngoài" /></label>
           )}
 
-          <div className="grid gap-2 text-xs font-bold">Tiêu đề<ReasonPicker key={type} reasons={type === "PROBLEM_PARCEL" ? REASONS.caseProblemTitle : REASONS.caseUnidentifiedTitle} value={title} onChange={setTitle} maxLength={160} placeholder="Tóm tắt sự cố trong một câu" /></div>
+          <div className="grid gap-2 text-xs font-bold">Tiêu đề<ReasonPicker key={type} reasons={type === "PROBLEM_PARCEL" ? REASONS.caseProblemTitle : REASONS.caseUnidentifiedTitle} value={title} onChange={setTitle} maxLength={160} emptyLabel="Chọn tiêu đề…" placeholder="Tóm tắt sự cố trong một câu" /></div>
           <label className="grid gap-2 text-xs font-bold">Giao cho <span className="font-medium text-muted-foreground">(người trong bưu cục sẽ kiểm tra và kết luận; có thể giao sau)</span><HubPeoplePicker hubId={hubId} value={assignee} onChange={setAssignee} emptyLabel="Giao sau" /></label>
           <label className="grid gap-2 text-xs font-bold">Mô tả<textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} className="min-h-28 rounded-md border bg-background px-3 py-2 text-sm" placeholder="Mô tả tình trạng, vị trí, dấu hiệu nhận biết và việc đã kiểm tra..." /></label>
         </div>

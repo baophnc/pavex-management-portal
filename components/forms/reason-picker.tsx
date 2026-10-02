@@ -20,6 +20,7 @@ export function ReasonPicker({
   placeholder = "Ghi rõ lý do",
   disabled = false,
   maxLength = 500,
+  emptyLabel = "Chọn lý do…",
   className,
 }: {
   reasons: readonly string[];
@@ -28,6 +29,7 @@ export function ReasonPicker({
   placeholder?: string;
   disabled?: boolean;
   maxLength?: number;
+  emptyLabel?: string;
   className?: string;
 }) {
   const preset = reasons.includes(value);
@@ -47,7 +49,7 @@ export function ReasonPicker({
           onChange(next === OTHER || next === "" ? "" : next);
         }}
       >
-        <option value="">Chọn lý do…</option>
+        <option value="">{emptyLabel}</option>
         {reasons.map((reason) => (
           <option key={reason} value={reason}>
             {reason}
