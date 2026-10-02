@@ -204,8 +204,8 @@ export function linkShipmentCase(caseId: string, shipmentId: string, parcelId: s
   return shipmentCasePost(caseId, "link", { shipmentId, parcelId, note });
 }
 
-export function resolveShipmentCase(caseId: string, resolution: string) {
-  return shipmentCasePost(caseId, "resolve", { resolution });
+export function resolveShipmentCase(caseId: string, resolution: string, outcome: import("@/features/shipments/contracts").ShipmentCaseOutcome | null = null) {
+  return shipmentCasePost(caseId, "resolve", { resolution, outcome });
 }
 
 export function closeShipmentCase(caseId: string, note: string | null) {

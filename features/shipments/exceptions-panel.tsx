@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { LocationName, LocationPicker } from "@/components/forms/location-picker";
 import { REASONS, ReasonPicker } from "@/components/forms/reason-picker";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/features/auth/access-context";
@@ -152,10 +153,12 @@ function ExistingRequestCard({
   request,
   pending,
   actions,
+  canManage,
 }: {
   request: ShipmentExceptionRequest;
   pending: boolean;
   actions: RequestActions;
+  canManage: boolean;
 }) {
   const [note, setNote] = useState("");
   const canReview = request.status === "PENDING_APPROVAL";
@@ -178,7 +181,7 @@ function ExistingRequestCard({
           <p className="font-black">Người nhận chuyển tiếp</p>
           <p className="mt-1">{request.forwardRecipient.contactName} · {request.forwardRecipient.contactPhone}</p>
           <p className="mt-1 text-muted-foreground">{request.forwardRecipient.addressLine}</p>
-          <p className="mt-1 text-muted-foreground">Ward {request.forwardRecipient.wardCode} · Province {request.forwardRecipient.provinceCode}</p>
+          <p className="mt-1 text-muted-foreground"><LocationName provinceCode={request.forwardRecipient.provinceCode} wardCode={request.forwardRecipient.wardCode} /></p>
         </div>
       ) : null}
 
@@ -192,10 +195,10 @@ function ExistingRequestCard({
 
       {canReview ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-          <div><p className="text-xs font-black">Đang chờ cấp duyệt độc lập</p><p className="mt-1 text-[0.66rem] text-muted-foreground">Người tạo yêu cầu không được tự duyệt. Quản lý vận hành hoặc quản trị viên khác sẽ xử lý trong hàng chờ duyệt.</p></div>
-          <Link href="/shipments/exceptions?status=PENDING_APPROVAL" className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-xs font-black hover:bg-muted">Mở hàng chờ duyệt →</Link>
+          <div><p className="text-xs font-black">Đang chờ trưởng bưu cục duyệt</p><p className="mt-1 text-[0.66rem] text-muted-foreground">Người gửi yêu cầu không tự duyệt được: trưởng bưu cục (hoặc quản lý vận hành) duyệt ở trang Duyệt ngoại lệ.</p></div>
+          {canManage ? <Link href="/shipments/exceptions?status=PENDING_APPROVAL" className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-xs font-black hover:bg-muted">Mở trang duyệt →</Link> : null}
         </div>
-      ) : canComplete ? (
+      ) : canComplete && canManage ? (
         <div className="mt-4 border-t pt-4">
           <label className="grid gap-2 text-xs font-bold">Ghi chú hoàn tất<textarea className={textAreaClass()} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ghi chú khi hoàn tất xử lý/định tuyến..." disabled={pending} /></label>
           <Button className="mt-3" type="button" size="sm" onClick={() => void actions.complete(note.trim() || null)} disabled={pending}>
@@ -291,8 +294,13 @@ function NewRequestForms({
           <Input placeholder="Tên người nhận" value={recipient.contactName} onChange={(event) => setRecipient((current) => ({ ...current, contactName: event.target.value }))} disabled={pending} />
           <Input placeholder="Số điện thoại" value={recipient.contactPhone} onChange={(event) => setRecipient((current) => ({ ...current, contactPhone: event.target.value }))} disabled={pending} />
           <Input className="sm:col-span-2" placeholder="Địa chỉ" value={recipient.addressLine} onChange={(event) => setRecipient((current) => ({ ...current, addressLine: event.target.value }))} disabled={pending} />
-          <Input placeholder="Mã tỉnh/thành" value={recipient.provinceCode} onChange={(event) => setRecipient((current) => ({ ...current, provinceCode: event.target.value }))} disabled={pending} />
-          <Input placeholder="Mã phường/xã" value={recipient.wardCode} onChange={(event) => setRecipient((current) => ({ ...current, wardCode: event.target.value }))} disabled={pending} />
+          <LocationPicker
+            className="sm:col-span-2"
+            provinceCode={recipient.provinceCode}
+            wardCode={recipient.wardCode}
+            disabled={pending}
+            onChange={(location) => setRecipient((current) => ({ ...current, ...location }))}
+          />
         </div>
         <Button className="mt-3" type="button" size="sm" variant="outline" onClick={() => void createForward()} disabled={pending}>
           Tạo yêu cầu chuyển tiếp
@@ -516,6 +524,7 @@ export function ShipmentExceptionsPanel({
   destinationHubId,
   destinationHubName,
   canManage,
+  canRequest = canManage,
   canAdjustWeight,
   onShipmentChanged,
 }: {
@@ -528,6 +537,8 @@ export function ShipmentExceptionsPanel({
   destinationHubId: string;
   destinationHubName: string;
   canManage: boolean;
+  /** Hub staff may ask for a return, forward or cancellation; a manager approves it. */
+  canRequest?: boolean;
   canAdjustWeight: boolean;
   onShipmentChanged?: () => void;
 }) {
@@ -618,8 +629,8 @@ export function ShipmentExceptionsPanel({
     <Card className="overflow-hidden">
       <div className="flex flex-col gap-3 border-b bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2"><ShieldAlertIcon className="size-4 text-brand" /><p className="text-sm font-black">Ngoại lệ & duyệt cân lại</p></div>
-          <p className="mt-1 text-[0.66rem] text-muted-foreground">{trackingCode} · tạm giữ, hoàn hàng, chuyển tiếp, huỷ và cân lại kiện hàng.</p>
+          <div className="flex items-center gap-2"><ShieldAlertIcon className="size-4 text-brand" /><p className="text-sm font-black">Xử lý ngoại lệ</p></div>
+          <p className="mt-1 text-[0.66rem] text-muted-foreground">{trackingCode} · Khi vận đơn không đi theo đường bình thường: tạm giữ để kiểm tra, hoàn về người gửi, chuyển sang địa chỉ khác, huỷ sau khi đã lấy hàng, hoặc cân lại khi khối lượng sai.</p>
         </div>
         <div className="flex gap-2"><Link href="/shipments/exceptions" className="inline-flex h-8 items-center rounded-md border bg-background px-3 text-xs font-black hover:bg-muted">Hàng chờ duyệt</Link><Button type="button" size="sm" variant="outline" onClick={() => void load()} disabled={pending}><RefreshCwIcon className={cn("size-3.5", pending && "animate-spin")} /> Làm mới</Button></div>
       </div>
@@ -634,10 +645,10 @@ export function ShipmentExceptionsPanel({
 
         {canManage ? <HoldPanel shipmentId={shipmentId} state={state} pending={pending} hubOptions={hubOptions} mutate={mutate} /> : null}
 
-        {canManage ? (
+        {canManage || canRequest ? (
           <section className="space-y-3">
-            <div><p className="text-xs font-black uppercase tracking-[0.08em] text-muted-foreground">Hoàn hàng / Chuyển tiếp / Hủy</p><p className="mt-1 text-xs text-muted-foreground">Khi duyệt, hệ thống có thể đổi hướng đi của kiện, huỷ phân công đang có và trả lại chỗ đã giữ trên tuyến.</p></div>
-            {requests.length ? <div className="grid gap-3 xl:grid-cols-2">{requests.map((request) => <ExistingRequestCard key={request.requestId} request={request} pending={pending} actions={requestActions(request)} />)}</div> : <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Chưa có yêu cầu ngoại lệ.</div>}
+            <div><p className="text-xs font-black uppercase tracking-[0.08em] text-muted-foreground">Hoàn hàng / Chuyển tiếp / Hủy</p><p className="mt-1 text-xs text-muted-foreground">Nhân viên gửi yêu cầu kèm lý do, trưởng bưu cục duyệt. Khi duyệt, hệ thống đổi hướng đi của kiện, huỷ các việc đang giao dở và trả lại chỗ đã giữ trên xe.</p></div>
+            {requests.length ? <div className="grid gap-3 xl:grid-cols-2">{requests.map((request) => <ExistingRequestCard key={request.requestId} request={request} pending={pending} actions={requestActions(request)} canManage={canManage} />)}</div> : <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">Chưa có yêu cầu ngoại lệ.</div>}
             {lifecycleStatus === "ACTIVE" ? <NewRequestForms shipmentId={shipmentId} state={state} pending={pending} mutate={mutate} /> : null}
           </section>
         ) : null}

@@ -16,6 +16,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { REASONS, ReasonPicker } from "@/components/forms/reason-picker";
+import { HubPeoplePicker } from "@/features/operations/hub-people-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,8 @@ import {
   shipmentCaseSeverityLabel,
   shipmentCaseStatusLabel,
   shipmentCaseTypeLabel,
+  parcelStatusLabel,
+  shipmentStatusLabel,
 } from "@/features/shipments/presentation";
 import { ApiError } from "@/lib/api/client";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -69,7 +73,9 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
   const [trackingCode, setTrackingCode] = useState("");
   const [shipment, setShipment] = useState<AdminShipmentDetail | null>(null);
   const [parcelId, setParcelId] = useState("");
+  const [assignee, setAssignee] = useState("");
   const [lookingUp, setLookingUp] = useState(false);
+  const hubInScope = (id: string | null | undefined) => (id && hubs.some((hub) => hub.id === id) ? id : null);
   const [saving, setSaving] = useState(false);
 
   async function lookupShipment() {
@@ -79,8 +85,14 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
       const detail = await getShipmentForCase(trackingCode.trim());
       setShipment(detail);
       setTrackingCode(detail.shipment.trackingCode);
-      setParcelId("");
-      if (!hubId) setHubId(detail.originHubId);
+      // Suggest the parcel still moving through a hub, and the hub it is at now.
+      const open = detail.shipment.parcels.filter((parcel) => !["DELIVERED", "RETURNED", "CANCELLED"].includes(parcel.status));
+      setParcelId(open.length === 1 ? open[0].id : "");
+      const at = hubInScope(open.find((parcel) => parcel.currentHubId)?.currentHubId) ?? hubInScope(detail.originHubId) ?? hubInScope(detail.destinationHubId);
+      if (at) {
+        setHubId(at);
+        setAssignee("");
+      }
     } catch (error) {
       setShipment(null);
       toast.error(message(error, "Không tìm thấy vận đơn."));
@@ -104,6 +116,7 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
             severity,
             title: title.trim(),
             description: description.trim(),
+            assignedToUserId: assignee || null,
           })
         : await createUnidentifiedParcelCase({
             hubId,
@@ -111,6 +124,7 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
             title: title.trim(),
             description: description.trim(),
             externalBarcode: externalBarcode.trim() || null,
+            assignedToUserId: assignee || null,
           });
       toast.success(type === "PROBLEM_PARCEL" ? "Đã mở hồ sơ kiện có vấn đề." : "Đã mở hồ sơ kiện chưa xác định đầu mối.");
       onCreated(created);
@@ -129,7 +143,7 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
           <div>
             <p className="text-[0.62rem] font-black uppercase tracking-[0.15em] text-brand">Hồ sơ sự cố</p>
             <h2 className="mt-1 text-lg font-black">Mở hồ sơ sự cố kiện hàng</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">Không cần nhập UUID. Chọn luồng nghiệp vụ, bưu cục và mã vận đơn/barcode mà nhân viên thực tế nhìn thấy.</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Nhập mã vận đơn: hệ thống tự gợi ý kiện và bưu cục đang giữ kiện. Giao luôn cho một người trong bưu cục để họ kiểm tra và kết luận.</p>
           </div>
           <Button size="icon" variant="ghost" onClick={onClose} disabled={saving}><XIcon className="size-4" /></Button>
         </header>
@@ -145,7 +159,7 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-xs font-bold">Bưu cục tiếp nhận<select value={hubId} onChange={(event) => setHubId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="">Chọn bưu cục</option>{hubs.filter((hub) => hub.status === "ACTIVE").map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}</select></label>
+            <label className="grid gap-2 text-xs font-bold">Bưu cục tiếp nhận<select value={hubId} onChange={(event) => { setHubId(event.target.value); setAssignee(""); }} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="">Chọn bưu cục</option>{hubs.filter((hub) => hub.status === "ACTIVE").map((hub) => <option key={hub.id} value={hub.id}>{hub.code} · {hub.name}</option>)}</select></label>
             <label className="grid gap-2 text-xs font-bold">Mức độ<select value={severity} onChange={(event) => setSeverity(event.target.value as ShipmentCaseSeverity)} className="h-10 rounded-md border bg-background px-3 text-sm">{SHIPMENT_CASE_SEVERITIES.map((value) => <option key={value} value={value}>{shipmentCaseSeverityLabel(value)}</option>)}</select></label>
           </div>
 
@@ -155,8 +169,8 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
               <div className="mt-2 flex gap-2"><Input value={trackingCode} onChange={(event) => { setTrackingCode(event.target.value); setShipment(null); setParcelId(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void lookupShipment(); } }} placeholder="Mã vận đơn PAVEX..." /><Button type="button" variant="outline" onClick={() => void lookupShipment()} disabled={lookingUp || !trackingCode.trim()}>{lookingUp ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SearchIcon className="size-4" />}Tìm</Button></div>
               {shipment ? (
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-lg border bg-background p-3 text-xs"><p className="font-black">{shipment.shipment.trackingCode}</p><p className="mt-1 text-muted-foreground">{shipment.shipment.sender.contactName} → {shipment.shipment.recipient.contactName}</p><p className="mt-1 text-muted-foreground">{shipment.shipment.parcels.length} kiện · {shipment.shipment.status}</p></div>
-                  <label className="grid gap-2 text-xs font-bold">Kiện cụ thể <span className="font-medium text-muted-foreground">(không bắt buộc)</span><select value={parcelId} onChange={(event) => setParcelId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="">Sự cố cấp vận đơn / chưa xác định kiện</option>{shipment.shipment.parcels.map((parcel) => <option key={parcel.id} value={parcel.id}>{parcel.code} · {parcel.description}</option>)}</select></label>
+                  <div className="rounded-lg border bg-background p-3 text-xs"><p className="font-black">{shipment.shipment.trackingCode}</p><p className="mt-1 text-muted-foreground">{shipment.shipment.sender.contactName} → {shipment.shipment.recipient.contactName}</p><p className="mt-1 text-muted-foreground">{shipment.shipment.parcels.length} kiện · {shipmentStatusLabel(shipment.shipment.status)}</p></div>
+                  <label className="grid min-w-0 gap-2 text-xs font-bold">Kiện cụ thể <span className="font-medium text-muted-foreground">(không bắt buộc)</span><select value={parcelId} onChange={(event) => setParcelId(event.target.value)} className="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm"><option value="">Sự cố cấp vận đơn / chưa xác định kiện</option>{shipment.shipment.parcels.map((parcel) => <option key={parcel.id} value={parcel.id}>{parcel.code} · {parcel.description} · {parcelStatusLabel(parcel.status)}</option>)}</select></label>
                 </div>
               ) : null}
             </div>
@@ -164,7 +178,8 @@ function CreateCaseDialog({ hubs, onClose, onCreated }: { hubs: Hub[]; onClose: 
             <label className="grid gap-2 text-xs font-bold">Mã vạch / mã dán trên kiện <span className="font-medium text-muted-foreground">(nếu đọc được)</span><Input value={externalBarcode} onChange={(event) => setExternalBarcode(event.target.value)} placeholder="Quét hoặc nhập mã vạch bên ngoài" /></label>
           )}
 
-          <label className="grid gap-2 text-xs font-bold">Tiêu đề<Input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} placeholder={type === "PROBLEM_PARCEL" ? "Ví dụ: Kiện móp vỡ khi dỡ hàng" : "Ví dụ: Kiện không có nhãn tại khu nhận hàng"} /></label>
+          <div className="grid gap-2 text-xs font-bold">Tiêu đề<ReasonPicker key={type} reasons={type === "PROBLEM_PARCEL" ? REASONS.caseProblemTitle : REASONS.caseUnidentifiedTitle} value={title} onChange={setTitle} maxLength={160} emptyLabel="Chọn tiêu đề…" placeholder="Tóm tắt sự cố trong một câu" /></div>
+          <label className="grid gap-2 text-xs font-bold">Giao cho <span className="font-medium text-muted-foreground">(người trong bưu cục sẽ kiểm tra và kết luận; có thể giao sau)</span><HubPeoplePicker hubId={hubId} value={assignee} onChange={setAssignee} emptyLabel="Giao sau" /></label>
           <label className="grid gap-2 text-xs font-bold">Mô tả<textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} className="min-h-28 rounded-md border bg-background px-3 py-2 text-sm" placeholder="Mô tả tình trạng, vị trí, dấu hiệu nhận biết và việc đã kiểm tra..." /></label>
         </div>
 

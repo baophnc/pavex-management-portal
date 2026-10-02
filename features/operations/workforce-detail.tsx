@@ -12,7 +12,6 @@ import {
   SaveIcon,
   ShieldAlertIcon,
   Trash2Icon,
-  UserRoundCogIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -93,6 +92,29 @@ function HubCard({ membership, onRemove, removing }: { membership: WorkforceHubM
       </div>
     </div>
   );
+}
+
+function initials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return ((words.at(-1)?.[0] ?? "") + (words.length > 1 ? words[0][0] : "")).toUpperCase() || "?";
+}
+
+function genderText(value: string | null) {
+  if (value === "MALE") return "Nam";
+  if (value === "FEMALE") return "Nữ";
+  if (value === "OTHER") return "Khác";
+  return "Chưa khai báo";
+}
+
+/** "15/03/1995 (31 tuổi)" from an ISO date. */
+function birthText(value: string | null) {
+  if (!value) return "Chưa khai báo";
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age -= 1;
+  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year} (${age} tuổi)`;
 }
 
 export function OperationsWorkforceDetail({ workforceId }: { workforceId: string }) {
@@ -207,6 +229,9 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
     );
   }
 
+  const primaryHub = member.hubMemberships.find((membership) => membership.isActive && membership.isPrimary)
+    ?? member.hubMemberships.find((membership) => membership.isActive);
+
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-xl border bg-card">
@@ -214,7 +239,14 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
           <div>
             <Link href="/operations/workforce" className="-ml-2 mb-2 inline-flex h-7 items-center gap-2 rounded-md px-2.5 text-[0.68rem] font-bold hover:bg-muted"><ArrowLeftIcon className="size-4" /> Nhân sự</Link>
             <div className="flex items-start gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-brand/15 bg-brand/10 text-brand"><UserRoundCogIcon className="size-5" /></span>
+              {member.identity?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- avatars come from the account service, any host
+                <img src={member.identity.avatarUrl} alt="" className="size-16 shrink-0 rounded-xl border object-cover" />
+              ) : (
+                <span className="grid size-16 shrink-0 place-items-center rounded-xl border border-brand/15 bg-brand/10 text-lg font-black text-brand">
+                  {initials(workforceIdentityName(member.identity ?? {}))}
+                </span>
+              )}
               <div>
                 <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">{member.employeeCode}</p>
                 <h1 className="mt-1 text-xl font-black sm:text-2xl">{workforceIdentityName(member.identity ?? {})}</h1>
@@ -239,15 +271,22 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
       <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
         <div className="space-y-4">
           <Card>
-            <CardHeader><div><p className="text-sm font-black">Tài khoản & nhân sự</p><p className="mt-1 text-xs text-muted-foreground">Thông tin tài khoản được đồng bộ từ hệ thống tài khoản.</p></div></CardHeader>
+            <CardHeader><div><p className="text-sm font-black">Hồ sơ nhân viên</p><p className="mt-1 text-xs text-muted-foreground">Họ tên, ảnh, giới tính và ngày sinh lấy từ tài khoản của người này.</p></div></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Fact label="Mã nhân viên" value={member.employeeCode} mono />
+              <Fact label="Giới tính" value={genderText(member.identity?.gender ?? null)} />
+              <Fact label="Ngày sinh" value={birthText(member.identity?.dateOfBirth ?? null)} />
+              <Fact label="Email" value={member.identity?.email ?? "—"} />
+              <Fact label="Vào làm từ" value={formatDateTime(member.createdAt).split(" ").pop() ?? "—"} />
+              <Fact label="Bưu cục chính" value={primaryHub ? `${primaryHub.hubCode ?? ""} · ${primaryHub.hubName ?? ""}` : "Chưa có"} />
+              <Fact label="Việc đang làm" value={member.availability ? `${member.availability.activeAssignments}/${member.availability.maxConcurrentAssignments} việc` : "—"} />
+              <Fact label="Sẵn sàng nhận việc" value={member.availability ? availabilityLabel(member.availability.status) : "—"} />
               <Fact label="Loại nhân sự" value={workforceKindLabel(member.kind)} />
               <Fact label="Trạng thái nhân sự" value={workforceStatusLabel(member.status)} />
               <Fact label="Trạng thái tài khoản" value={member.identity ? accountLabels[member.identity.accountStatus as keyof typeof accountLabels] ?? member.identity.accountStatus : "Không đọc được"} />
               <Fact label="Trạng thái hồ sơ" value={member.identity ? profileLabels[member.identity.profileStatus as keyof typeof profileLabels] ?? member.identity.profileStatus : "Không đọc được"} />
               <Fact label="Vai trò" value={member.identity?.roles.map(roleLabel).join(", ") || "—"} />
-              <Fact label="Email verified" value={member.identity?.emailVerified ? "Đã xác minh" : "Chưa xác minh"} />
+              <Fact label="Email" value={member.identity?.emailVerified ? "Đã xác minh" : "Chưa xác minh"} />
               <Fact label="Cập nhật" value={formatDateTime(member.updatedAt)} />
             </CardContent>
           </Card>
@@ -274,7 +313,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                 <label className={cn("flex items-center gap-2 text-xs font-bold", !globalManager && "opacity-60")}>
                   <input type="checkbox" checked={hubPrimary} disabled={!globalManager} onChange={(event) => setHubPrimary(event.target.checked)} /> Đặt primary hub
                 </label>
-                <Input value={hubReason} onChange={(event) => setHubReason(event.target.value)} placeholder="Lý do gán bưu cục (tùy chọn)" />
+                <ReasonPicker reasons={REASONS.workforceAssignHub} value={hubReason} onChange={setHubReason} placeholder="Lý do gán bưu cục (tùy chọn)" />
               </div>
               {!globalManager ? <p className="text-[0.66rem] text-muted-foreground">Quản lý bưu cục gán được nhân sự vào bưu cục mình quản lý nhưng không đặt được bưu cục chính.</p> : null}
 

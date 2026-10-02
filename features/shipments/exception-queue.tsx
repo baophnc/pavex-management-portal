@@ -328,7 +328,7 @@ export function ShipmentExceptionQueue() {
             <div>
               <h1 className="text-2xl font-black">Duyệt ngoại lệ & huỷ vận đơn</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Yêu cầu hoàn hàng, chuyển tiếp, hủy và duyệt cân lại được gom vào một hàng chờ. Quyền xem chỉ theo dõi trong phạm vi bưu cục; nút duyệt chỉ hiện với tài khoản có quyền xử lý ngoại lệ.
+                “Ngoại lệ” là khi một vận đơn không đi tiếp theo đường bình thường. Nhân viên bưu cục gửi yêu cầu kèm lý do ngay trong trang chi tiết vận đơn; trưởng bưu cục duyệt hoặc từ chối ở đây. Người gửi yêu cầu không tự duyệt được.
               </p>
             </div>
             <Button variant="outline" onClick={() => void load()} disabled={loading}>
@@ -337,6 +337,23 @@ export function ShipmentExceptionQueue() {
           </div>
         </div>
       </section>
+
+      <details className="rounded-2xl border bg-card p-4 text-sm [&_summary]:cursor-pointer">
+        <summary className="font-black">Các loại ngoại lệ và khi nào dùng</summary>
+        <div className="mt-3 grid gap-3 text-xs leading-5 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["Hoàn hàng", "Người nhận từ chối, không liên lạc được hoặc giao thất bại nhiều lần. Duyệt xong, kiện đi ngược về bưu cục gửi rồi trả người gửi."],
+            ["Chuyển tiếp", "Người nhận muốn giao tới địa chỉ khác. Duyệt xong, hệ thống tìm tuyến mới tới địa chỉ mới; cước có thể thay đổi."],
+            ["Huỷ sau khi lấy", "Shop hoặc người gửi không muốn gửi nữa khi hàng đã vào bưu cục. Duyệt xong, đơn dừng lại và trả hàng cho người gửi."],
+            ["Cân lại", "Khối lượng thực khác khai báo. Nhân viên ghi khối lượng mới, đơn bị tạm giữ; duyệt xong mới đi tiếp với cước mới."],
+          ].map(([title, text]) => (
+            <div key={title} className="rounded-xl border bg-muted/20 p-3">
+              <p className="font-black">{title}</p>
+              <p className="mt-1 text-muted-foreground">{text}</p>
+            </div>
+          ))}
+        </div>
+      </details>
 
       {summary ? (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">

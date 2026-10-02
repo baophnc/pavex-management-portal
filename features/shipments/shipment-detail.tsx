@@ -10,6 +10,7 @@ import {
   MailIcon,
   MapPinIcon,
   PhoneIcon,
+  PrinterIcon,
   RefreshCwIcon,
   RouteIcon,
   ScanBarcodeIcon,
@@ -26,6 +27,8 @@ import { Card } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
 import { HubName, MerchantName, UserName } from "@/features/directory/names";
 import { ShipmentTruck } from "@/features/fleet/shipment-truck";
+import { EvidencePhoto, evidenceId } from "@/features/shipments/evidence-photo";
+import { QrCode } from "@/features/shipments/qr-code";
 import { Barcode } from "@/features/shipments/barcode";
 import { displayUserName } from "@/features/identity/presentation";
 import {
@@ -388,6 +391,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
   // The leg a parcel is riding on right now, if the shipment is on a line-haul truck.
   const ridingLeg = data.shipment.parcels.find((parcel) => parcel.status === "IN_TRANSIT" && parcel.currentRouteLegId)?.currentRouteLegId ?? null;
   const canManageExceptions = hasPermission("shipments.exceptions.manage");
+  const canRequestExceptions = canManageExceptions || hasPermission("shipments.exceptions.request");
   const canAdjustWeight = hasPermission("shipments.weight.adjust");
   const canManageCases = hasPermission("shipments.cases.manage");
   const finishedStages = ["DELIVERED", "RETURNED", "CANCELLED"];
@@ -418,6 +422,8 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
           <ArrowLeftIcon className="size-3.5" /> Danh sách vận đơn
         </Link>
         <div className="mt-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <QrCode value={shipment.trackingCode} label={`Mã QR vận đơn ${shipment.trackingCode}`} className="size-28 shrink-0 rounded-lg border p-1" />
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border bg-brand/10 px-2.5 py-1 text-[0.62rem] font-black text-brand">
@@ -433,11 +439,15 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
             <h1 className="mt-3 font-mono text-xl font-black tracking-tight sm:text-2xl">
               {shipment.trackingCode}
             </h1>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {shipment.merchantReference
-                ? `Mã tham chiếu đối tác: ${shipment.merchantReference}`
-                : "Không có mã tham chiếu đối tác"}
+            <p className="mt-1 text-sm font-bold">
+              {shipment.sender.contactName} <span className="text-muted-foreground">→</span> {shipment.recipient.contactName}
             </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {shipment.sender.provinceName} → {shipment.recipient.wardName}, {shipment.recipient.provinceName}
+              {shipment.merchantReference ? ` · Mã của shop: ${shipment.merchantReference}` : ""}
+            </p>
+            <Barcode value={shipment.trackingCode} label={`Mã vạch vận đơn ${shipment.trackingCode}`} className="mt-2 h-12 max-w-72" />
+          </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {canViewTechnical ? (
@@ -469,6 +479,12 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
                 Giám sát vận đơn
               </Link>
             ) : null}
+            <Link
+              href={`/counter/${encodeURIComponent(shipment.trackingCode)}/print`}
+              className="inline-flex h-10 items-center gap-1.5 rounded-md border bg-background px-4 text-sm font-bold hover:bg-muted"
+            >
+              <PrinterIcon className="size-3.5" /> In nhãn
+            </Link>
             <Button
               variant="outline"
               onClick={() => void copy(shipment.trackingCode, "mã vận đơn")}
@@ -712,7 +728,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
         />
       ) : null}
 
-      {canManageExceptions ? (
+      {canRequestExceptions ? (
         <ShipmentExceptionsPanel
           shipmentId={data.id}
           trackingCode={shipment.trackingCode}
@@ -723,6 +739,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
           destinationHubId={data.destinationHubId}
           destinationHubName={destinationHubName}
           canManage={canManageExceptions}
+          canRequest={canRequestExceptions}
           canAdjustWeight={canAdjustWeight}
           onShipmentChanged={() => void load()}
         />
@@ -828,18 +845,23 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
                         {attempt.recipientName ? ` · ${attempt.recipientName}` : ""}
                       </p>
                     ) : null}
-                    {attempt.evidenceReference ? (
-                      <p className="mt-1 break-all text-[0.64rem] text-muted-foreground">
-                        Minh chứng: {attempt.evidenceReference}
-                      </p>
+                    {attempt.evidenceReference && evidenceId(attempt.evidenceReference) ? (
+                      <EvidencePhoto reference={attempt.evidenceReference} alt={`Ảnh giao kiện ${attempt.parcelCode}`} />
+                    ) : attempt.evidenceReference ? (
+                      <p className="mt-1 text-[0.64rem] text-muted-foreground">Minh chứng: {attempt.evidenceReference}</p>
                     ) : null}
                     {attempt.note ? (
                       <p className="mt-2 text-[0.68rem] text-muted-foreground">{attempt.note}</p>
                     ) : null}
                     {attempt.latitude !== null && attempt.longitude !== null ? (
-                      <p className="mt-2 text-[0.62rem] text-muted-foreground">
-                        Vị trí ghi nhận: {attempt.latitude}, {attempt.longitude}
-                      </p>
+                      <a
+                        href={`https://www.google.com/maps?q=${attempt.latitude},${attempt.longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-block text-[0.64rem] font-bold text-brand hover:underline"
+                      >
+                        Xem nơi giao trên bản đồ →
+                      </a>
                     ) : null}
                     <p className="mt-2 text-[0.64rem] text-muted-foreground">
                       Người thao tác: {actor ? `${displayUserName(actor)} · ${actor.email}` : <UserName id={attempt.actorUserId} fallback="Nhân viên Pavex" />}

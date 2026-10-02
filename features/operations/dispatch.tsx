@@ -33,6 +33,7 @@ import {
 } from "@/features/operations/api";
 import {
   operationalAssignmentEventTypes,
+  type OperationalAssignmentEvent,
   type OperationalAssignmentEventPage,
   type OperationalAssignmentEventType,
   type OperationsOutboxDeadLetter,
@@ -48,9 +49,22 @@ import {
 import { getAdminShipment } from "@/features/shipments/api";
 import { TrackingCode, UserName } from "@/features/directory/names";
 import { ApiError } from "@/lib/api/client";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
-const EVENT_PAGE_SIZE = 50;
+// Large pages, so a shipment's events rarely split across two pages once grouped.
+const EVENT_PAGE_SIZE = 200;
+
+/** Events grouped by shipment, the most recently active shipment first; newest event first inside. */
+function groupByShipment(items: OperationalAssignmentEvent[]) {
+  const groups = new Map<string, OperationalAssignmentEvent[]>();
+  for (const event of items) groups.set(event.shipmentId, [...(groups.get(event.shipmentId) ?? []), event]);
+  return [...groups.entries()]
+    .map(([shipmentId, events]) => ({
+      shipmentId,
+      events: [...events].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)),
+    }))
+    .sort((left, right) => right.events[0].occurredAt.localeCompare(left.events[0].occurredAt));
+}
 const DEAD_PAGE_SIZE = 20;
 
 function apiMessage(error: unknown, fallback: string) {
@@ -73,6 +87,7 @@ export function OperationsDispatch() {
 
   const [shipmentDraft, setShipmentDraft] = useState(trackingCode);
   const [assignmentLabels, setAssignmentLabels] = useState<Record<string, string>>({});
+  const [openShipment, setOpenShipment] = useState<string | null>(null);
   const [workerLabels, setWorkerLabels] = useState<Record<string, string>>({});
   const [events, setEvents] = useState<OperationalAssignmentEventPage | null>(null);
   const [summary, setSummary] = useState<OperationsOutboxSummary | null>(null);
@@ -282,34 +297,62 @@ export function OperationsDispatch() {
             <p className="py-10 text-center text-sm text-muted-foreground">Không có sự kiện điều phối phù hợp.</p>
           ) : (
             <div className="divide-y rounded-lg border">
-              {events.items.map((event) => (
-                <div key={event.eventId} className="grid gap-2 px-3 py-3 lg:grid-cols-[1.1fr_1fr_1fr_auto] lg:items-center">
-                  <div>
-                    <p className="text-xs font-black">{operationalAssignmentEventLabel(event.eventType)}</p>
-                    <p className="mt-1 text-[0.65rem] text-muted-foreground">
-                      {event.previousStatus ? `${operationalAssignmentStatusLabel(event.previousStatus)} → ` : ""}{operationalAssignmentStatusLabel(event.newStatus)}
-                    </p>
+              {groupByShipment(events.items).map((group) => {
+                const latest = group.events[0];
+                const open = openShipment === group.shipmentId;
+                return (
+                  <div key={group.shipmentId}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenShipment(open ? null : group.shipmentId)}
+                      aria-expanded={open}
+                      className="grid w-full gap-2 px-3 py-3 text-left transition hover:bg-muted/35 lg:grid-cols-[1fr_1.2fr_auto] lg:items-center"
+                    >
+                      <div>
+                        <p className="text-sm font-black"><TrackingCode id={group.shipmentId} className="font-mono" /></p>
+                        <p className="mt-1 text-[0.65rem] text-muted-foreground">{group.events.length} mốc điều phối</p>
+                      </div>
+                      <div className="text-[0.68rem] text-muted-foreground">
+                        <p><span className="font-bold text-foreground">Mới nhất:</span> {operationalAssignmentEventLabel(latest.eventType)} · {assignmentLabels[latest.assignmentId] || "việc"}</p>
+                        <p className="mt-1">{operationalAssignmentStatusLabel(latest.newStatus)}{latest.workforceMemberId ? ` · ${workerLabels[latest.workforceMemberId] || "nhân sự khác"}` : ""}</p>
+                      </div>
+                      <div className="flex items-center gap-2 text-[0.65rem] text-muted-foreground">
+                        <span>{formatDateTime(latest.occurredAt)}</span>
+                        <ChevronRightIcon className={cn("size-4 transition", open && "rotate-90")} />
+                      </div>
+                    </button>
+                    {open ? (
+                      <ol className="space-y-2 border-t bg-muted/15 px-3 py-3">
+                        {group.events.map((event) => (
+                          <li key={event.eventId} className="grid gap-1 rounded-lg border bg-background p-3 text-[0.68rem] sm:grid-cols-[1fr_1fr_auto]">
+                            <div>
+                              <p className="text-xs font-black">{operationalAssignmentEventLabel(event.eventType)}</p>
+                              <p className="mt-0.5 text-muted-foreground">
+                                <Link href={`/operations/assignments/${event.assignmentId}`} className="font-bold text-foreground hover:text-brand hover:underline">{assignmentLabels[event.assignmentId] || "Xem việc"}</Link>
+                                {" · "}{event.previousStatus ? `${operationalAssignmentStatusLabel(event.previousStatus)} → ` : ""}{operationalAssignmentStatusLabel(event.newStatus)}
+                              </p>
+                            </div>
+                            <div className="text-muted-foreground">
+                              <p>Nhân sự: <span className="font-bold text-foreground">{event.workforceMemberId ? workerLabels[event.workforceMemberId] || "Ngoài danh sách hiện tại" : "—"}</span></p>
+                              <p className="mt-0.5">Người thao tác: <span className="font-bold text-foreground">{event.actorUserId ? <UserName id={event.actorUserId} /> : "Hệ thống tự động"}</span></p>
+                            </div>
+                            <div className="text-right text-muted-foreground">
+                              <p>{formatDateTime(event.occurredAt)}</p>
+                              {event.reason ? <p className="mt-0.5 max-w-60 truncate" title={event.reason}>{event.reason}</p> : null}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : null}
                   </div>
-                  <div className="text-[0.65rem] text-muted-foreground">
-                    <p>Việc <Link href={`/operations/assignments/${event.assignmentId}`} className="font-bold text-foreground hover:text-brand hover:underline">{assignmentLabels[event.assignmentId] || "Xem việc"}</Link></p>
-                    <p className="mt-1">Vận đơn <TrackingCode id={event.shipmentId} /></p>
-                  </div>
-                  <div className="text-[0.65rem] text-muted-foreground">
-                    <p>Nhân sự <span>{event.workforceMemberId ? workerLabels[event.workforceMemberId] || "Ngoài danh sách hiện tại" : "—"}</span></p>
-                    <p className="mt-1">Người thao tác <span className="font-bold text-foreground">{event.actorUserId ? <UserName id={event.actorUserId} /> : "Hệ thống tự động"}</span></p>
-                  </div>
-                  <div className="text-right text-[0.65rem] text-muted-foreground">
-                    <p>{formatDateTime(event.occurredAt)}</p>
-                    {event.reason ? <p className="mt-1 max-w-72 truncate" title={event.reason}>{event.reason}</p> : null}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           {events && events.totalPages > 1 ? (
             <div className="flex items-center justify-between gap-2 border-t pt-3">
-              <p className="text-xs text-muted-foreground">Trang {events.page}/{events.totalPages} · {events.total} event</p>
+              <p className="text-xs text-muted-foreground">Trang {events.page}/{events.totalPages} · {events.total} mốc</p>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" disabled={events.page <= 1} onClick={() => updateFilters({ page: String(events.page - 1) })}><ChevronLeftIcon className="size-4" /></Button>
                 <Button size="sm" variant="outline" disabled={events.page >= events.totalPages} onClick={() => updateFilters({ page: String(events.page + 1) })}><ChevronRightIcon className="size-4" /></Button>

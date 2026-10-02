@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, LoaderCircleIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
+import { CheckIcon, LoaderCircleIcon, PrinterIcon, RefreshCwIcon, SearchIcon, XIcon } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -35,6 +35,7 @@ export function CounterSettlements() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<CounterSettlement | null>(null);
+  const [voucher, setVoucher] = useState<CounterSettlement | null>(null);
 
   // Start on the user's own hub; head office starts on the first hub and can switch.
   const activeHubId = hubId || scope.initialHubId || scope.hubs[0]?.id || "";
@@ -70,8 +71,54 @@ export function CounterSettlements() {
     void load();
   }
 
+  const pending = items.filter((item) => item.status === "PENDING");
+  const totals = {
+    payout: pending.filter((item) => item.kind === "PAYOUT_COD"),
+    collect: pending.filter((item) => item.kind === "COLLECT_RETURN_FEE"),
+  };
+  const sum = (list: CounterSettlement[]) => list.reduce((total, item) => total + item.amount, 0);
+  const hubName = (id: string) => {
+    const hub = scope.hubs.find((item) => item.id === id);
+    return hub ? `${hub.code} · ${hub.name}` : "Bưu cục";
+  };
+
   return (
     <div className="grid gap-3">
+      <details className="rounded-lg border bg-card p-4 text-sm">
+        <summary className="cursor-pointer font-black">Trang này dùng để làm gì?</summary>
+        <div className="mt-3 grid gap-3 text-xs leading-5 md:grid-cols-2">
+          <div className="rounded-lg border bg-muted/20 p-3">
+            <p className="font-black text-emerald-700 dark:text-emerald-300">Trả tiền thu hộ cho khách gửi tại quầy</p>
+            <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-muted-foreground">
+              <li>Khách gửi hàng tại quầy có thu hộ (COD); bưu tá giao xong và thu tiền người nhận.</li>
+              <li>Bưu tá nộp tiền về bưu cục, trưởng bưu cục duyệt khoản tiền đó.</li>
+              <li>Khoản thu hộ hiện ở đây. Khách quay lại quầy, đọc đúng số điện thoại đã gửi hàng, nhân viên đưa tiền và in phiếu chi cho khách ký.</li>
+            </ol>
+          </div>
+          <div className="rounded-lg border bg-muted/20 p-3">
+            <p className="font-black text-brand">Thu cước hàng hoàn</p>
+            <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-muted-foreground">
+              <li>Đơn người nhận trả cước nhưng giao không được và hàng hoàn về quầy.</li>
+              <li>Người gửi nhận lại hàng và trả phần cước còn thiếu.</li>
+              <li>Nhân viên thu tiền, in phiếu thu; tiền vào mục “Tiền mặt tại quầy” để gửi trưởng bưu cục duyệt.</li>
+            </ol>
+          </div>
+        </div>
+      </details>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card className="p-4">
+          <p className="text-xs font-bold text-muted-foreground">Cần trả cho khách</p>
+          <p className="mt-1 text-xl font-black text-emerald-700 dark:text-emerald-300">{money(sum(totals.payout))}</p>
+          <p className="text-xs text-muted-foreground">{totals.payout.length} khoản đang chờ</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs font-bold text-muted-foreground">Cần thu của khách</p>
+          <p className="mt-1 text-xl font-black text-brand">{money(sum(totals.collect))}</p>
+          <p className="text-xs text-muted-foreground">{totals.collect.length} khoản đang chờ</p>
+        </Card>
+      </div>
+
       <Card className="p-3">
         <form onSubmit={search} className="grid gap-2 sm:grid-cols-[200px_160px_minmax(0,1fr)_auto_auto]">
           <HubSelect scope={scope} value={activeHubId} onChange={setHubId} />
@@ -118,11 +165,16 @@ export function CounterSettlements() {
                 ) : null}
               </div>
               {item.status === "PENDING" ? (
-                <Button onClick={() => setOpen(item)}>{item.kind === "PAYOUT_COD" ? "Trả tiền" : "Thu tiền"}</Button>
+                <Button onClick={() => setOpen(item)}>{item.kind === "PAYOUT_COD" ? `Trả ${money(item.amount)}` : `Thu ${money(item.amount)}`}</Button>
               ) : (
-                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                  <CheckIcon className="inline size-3.5" /> Xong
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                    <CheckIcon className="inline size-3.5" /> Xong
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => setVoucher(item)}>
+                    <PrinterIcon className="size-3.5" /> In lại phiếu
+                  </Button>
+                </div>
               )}
             </div>
           ))
@@ -131,6 +183,8 @@ export function CounterSettlements() {
 
       {activeHubId ? <HubCash hubId={activeHubId} /> : null}
 
+      {voucher ? <Voucher item={voucher} hubName={hubName(voucher.hubId)} onClose={() => setVoucher(null)} /> : null}
+
       {open ? (
         <CompleteDialog
           item={open}
@@ -138,6 +192,7 @@ export function CounterSettlements() {
           onDone={(done) => {
             setItems((current) => current.map((item) => (item.id === done.id ? done : item)).filter((item) => !status || item.status === status));
             setOpen(null);
+            setVoucher(done);
           }}
         />
       ) : null}
@@ -176,6 +231,11 @@ function CompleteDialog({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <form onSubmit={(event) => void confirm(event)} className="grid w-full max-w-md gap-3 rounded-lg border bg-card p-5 shadow-xl">
         <p className="text-base font-black">{payout ? "Trả tiền thu hộ" : "Thu cước hàng hoàn"}</p>
+        <ol className="grid gap-1 rounded-lg border bg-muted/20 p-3 text-xs">
+          <li><b>Bước 1.</b> Hỏi khách số điện thoại đã dùng khi gửi hàng (không đọc số cho khách).</li>
+          <li><b>Bước 2.</b> {payout ? "Đếm tiền và đưa cho khách." : "Nhận và đếm tiền của khách."}</li>
+          <li><b>Bước 3.</b> Bấm xác nhận, in phiếu {payout ? "chi" : "thu"} cho khách ký.</li>
+        </ol>
         <p className="text-sm">
           {payout ? "Đưa cho" : "Thu của"} <span className="font-bold">{item.senderName}</span> số tiền{" "}
           <span className="font-black text-brand">{money(item.amount)}</span> (vận đơn <span className="font-mono">{item.trackingCode}</span>).
@@ -267,5 +327,44 @@ function HubCash({ hubId }: { hubId: string }) {
         )}
       </Card>
     </section>
+  );
+}
+
+/** The paper the walk-in sender signs: a payment voucher for COD paid out, a receipt for a fee taken. */
+function Voucher({ item, hubName, onClose }: { item: CounterSettlement; hubName: string; onClose: () => void }) {
+  const payout = item.kind === "PAYOUT_COD";
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 print:static print:bg-transparent" role="dialog" aria-modal="true">
+      <div className="grid w-full max-w-lg gap-3 rounded-lg border bg-card p-5 shadow-xl">
+        <div className="flex items-center justify-between print:hidden">
+          <p className="text-base font-black">{payout ? "Phiếu chi" : "Phiếu thu"}</p>
+          <Button variant="ghost" size="icon" aria-label="Đóng" onClick={onClose}><XIcon className="size-4" /></Button>
+        </div>
+        <section className="counter-print rounded-lg border bg-white p-5 text-sm text-black">
+          <div className="flex items-start justify-between gap-3 border-b border-black pb-2">
+            <div>
+              <p className="text-lg font-black">PAVEX · {payout ? "PHIẾU CHI" : "PHIẾU THU"}</p>
+              <p className="text-xs">{hubName}</p>
+            </div>
+            <p className="text-right text-xs">{formatDateTime(item.completedAt ?? item.createdAt)}</p>
+          </div>
+          <dl className="mt-3 grid gap-1.5">
+            <div className="flex justify-between gap-3"><dt>{payout ? "Trả cho" : "Thu của"}</dt><dd className="font-bold">{item.senderName} · {item.senderPhone}</dd></div>
+            <div className="flex justify-between gap-3"><dt>Vận đơn</dt><dd className="font-mono font-bold">{item.trackingCode}</dd></div>
+            <div className="flex justify-between gap-3"><dt>Nội dung</dt><dd className="font-bold">{payout ? "Trả tiền thu hộ" : "Thu cước hàng hoàn"}</dd></div>
+            <div className="flex justify-between gap-3 border-t border-black pt-2 text-base"><dt className="font-bold">Số tiền</dt><dd className="font-black">{money(item.amount)}</dd></div>
+            {item.note ? <div className="flex justify-between gap-3 text-xs"><dt>Ghi chú</dt><dd>{item.note}</dd></div> : null}
+          </dl>
+          <div className="mt-8 grid grid-cols-2 gap-6 text-center text-xs">
+            <div><p className="font-bold">{payout ? "Người nhận tiền" : "Người nộp tiền"}</p><p className="mt-12">(Ký, ghi rõ họ tên)</p></div>
+            <div><p className="font-bold">Nhân viên quầy</p><p className="mt-12">(Ký, ghi rõ họ tên)</p></div>
+          </div>
+        </section>
+        <div className="flex justify-end gap-2 print:hidden">
+          <Button variant="outline" onClick={onClose}>Đóng</Button>
+          <Button onClick={() => window.print()}><PrinterIcon className="size-3.5" /> In phiếu</Button>
+        </div>
+      </div>
+    </div>
   );
 }

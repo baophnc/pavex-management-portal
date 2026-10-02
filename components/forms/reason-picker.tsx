@@ -20,6 +20,7 @@ export function ReasonPicker({
   placeholder = "Ghi rõ lý do",
   disabled = false,
   maxLength = 500,
+  emptyLabel = "Chọn lý do…",
   className,
 }: {
   reasons: readonly string[];
@@ -28,6 +29,7 @@ export function ReasonPicker({
   placeholder?: string;
   disabled?: boolean;
   maxLength?: number;
+  emptyLabel?: string;
   className?: string;
 }) {
   const preset = reasons.includes(value);
@@ -47,7 +49,7 @@ export function ReasonPicker({
           onChange(next === OTHER || next === "" ? "" : next);
         }}
       >
-        <option value="">Chọn lý do…</option>
+        <option value="">{emptyLabel}</option>
         {reasons.map((reason) => (
           <option key={reason} value={reason}>
             {reason}
@@ -107,5 +109,21 @@ export const REASONS = {
   invoiceCancel: ["Lập sai hoá đơn", "Cửa hàng đã thanh toán bằng cách khác", "Đối soát lại theo kỳ mới"],
   assignmentCancel: ["Nhân viên nghỉ đột xuất", "Đơn đã được xử lý theo cách khác", "Phân công nhầm việc"],
   workforceStatus: ["Nghỉ phép", "Nghỉ ốm", "Tạm ngưng theo quyết định của quản lý", "Đã nghỉ việc"],
+  caseProblemTitle: [
+    "Kiện móp, vỡ hoặc rách",
+    "Kiện bị ướt",
+    "Thiếu kiện so với vận đơn",
+    "Kiện nhẹ hơn khai báo, nghi mất hàng bên trong",
+    "Nhãn kiện mờ hoặc rách",
+    "Quét sai trạng thái, cần kiểm tra lại",
+    "Không tìm thấy kiện trong kho",
+  ],
+  caseUnidentifiedTitle: [
+    "Kiện không có nhãn",
+    "Nhãn không đọc được",
+    "Kiện lạc từ xe trung chuyển",
+    "Kiện khách gửi nhầm bưu cục",
+  ],
+  workforceAssignHub: ["Nhân viên mới", "Hỗ trợ bưu cục thiếu người", "Chuyển công tác", "Tài xế chạy tuyến qua bưu cục này"],
   workforceUnassign: ["Chuyển sang bưu cục khác", "Đã nghỉ việc", "Hết thời gian hỗ trợ bưu cục"],
 } as const;

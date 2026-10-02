@@ -151,10 +151,6 @@ export function canAccessFleetTrips(user: CurrentUser | null | undefined) {
   return hasPermission(user, "fleet.trips.read-hub");
 }
 
-/** Couriers use the portal only for their own deliveries and the cash they carry. */
-export function canAccessCourierDeliveries(user: CurrentUser | null | undefined) {
-  return hasPermission(user, "deliveries.complete-own");
-}
 
 /** Hub staff book walk-in customers' shipments at their hub's counter. */
 export function canAccessCounterBooking(user: CurrentUser | null | undefined) {
@@ -167,7 +163,7 @@ export function canAccessCounterSettlements(user: CurrentUser | null | undefined
 }
 
 export function canAccessManagement(user: CurrentUser | null | undefined) {
-  return hasAnyPermission(user, MANAGEMENT_PERMISSIONS) || canAccessCourierDeliveries(user);
+  return hasAnyPermission(user, MANAGEMENT_PERMISSIONS);
 }
 
 export function canAccessManagementPath(
@@ -199,9 +195,6 @@ export function canAccessManagementPath(
   }
   if (pathname.startsWith("/support")) {
     return canAccessSupportRequests(user);
-  }
-  if (pathname.startsWith("/deliveries")) {
-    return canAccessCourierDeliveries(user);
   }
   if (pathname.startsWith("/fleet")) {
     return canAccessFleetTrips(user);

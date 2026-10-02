@@ -89,6 +89,8 @@ export function shipmentEventLabel(code: string, status: ShipmentStatus) {
     "shipment.cancellation.completed": "Hoàn tất hủy vận đơn",
     "shipment.weight-adjusted": "Điều chỉnh khối lượng",
     "shipment.weight-review.completed": "Hoàn tất kiểm tra khối lượng",
+    "shipment.case-resolved": "Kết luận hồ sơ sự cố",
+    "shipment.details-updated": "Sửa thông tin vận đơn",
   };
   return labels[code] ?? shipmentStatusLabel(status);
 }
