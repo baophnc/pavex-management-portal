@@ -64,6 +64,9 @@ function tabTitle(pathname: string) {
   if (pathname.startsWith("/control-tower")) return "Giám sát vận đơn";
   if (pathname === "/fleet") return "Xe trung chuyển";
   if (pathname === "/support") return "Yêu cầu hỗ trợ";
+  if (pathname === "/notifications") return "Thông báo";
+  if (pathname === "/network/capacity") return "Sức chứa";
+  if (pathname === "/network/route-planner") return "Tìm tuyến";
   if (pathname === "/shipments/tracking") return "Tra hành trình";
   if (pathname === "/shipments/cancelled") return "Vận đơn đã huỷ";
   if (pathname === "/counter/new") return "Gửi hàng tại quầy";

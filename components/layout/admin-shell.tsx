@@ -27,6 +27,7 @@ import {
   type FormEvent,
 } from "react";
 
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import {
   locate,
   visibleModules,
@@ -387,6 +388,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 />
               </form>
             ) : null}
+
+            <NotificationBell />
 
             <div className="relative" ref={userMenuRef}>
               <button

@@ -70,7 +70,14 @@ export const navigationModules: NavigationModule[] = [
     label: "Tổng quan",
     groups: [
       { label: "Tổng quan", icon: CircleGaugeIcon, items: [{ href: "/dashboard", label: "Bảng điều hành" }] },
-      { label: "Cá nhân", icon: CircleUserRoundIcon, items: [{ href: "/account", label: "Tài khoản của tôi" }] },
+      {
+        label: "Cá nhân",
+        icon: CircleUserRoundIcon,
+        items: [
+          { href: "/notifications", label: "Thông báo" },
+          { href: "/account", label: "Tài khoản của tôi" },
+        ],
+      },
     ],
   },
   {
