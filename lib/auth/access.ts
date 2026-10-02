@@ -170,7 +170,7 @@ export function canAccessManagementPath(
   user: CurrentUser | null | undefined,
   pathname: string,
 ) {
-  if (pathname === "/dashboard" || pathname.startsWith("/account")) return true;
+  if (pathname === "/dashboard" || pathname.startsWith("/account") || pathname.startsWith("/notifications")) return true;
 
   if (pathname === "/identity/users/new") {
     return hasAllPermissions(user, [
