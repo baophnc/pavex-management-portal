@@ -442,8 +442,8 @@ export function MerchantManagement() {
                         <p className="font-mono text-[0.68rem] font-black">
                           {merchant.merchantCode}
                         </p>
-                        <p className="mt-1 max-w-44 truncate font-mono text-[0.6rem] text-muted-foreground">
-                          {merchant.id}
+                        <p className="mt-1 text-[0.62rem] text-muted-foreground">
+                          {merchant.servingHubId ? <HubName id={merchant.servingHubId} /> : "Chưa xác định bưu cục"}
                         </p>
                       </td>
                       <td className="px-4 py-3.5 align-top">
@@ -473,9 +473,7 @@ export function MerchantManagement() {
                       </td>
                       <td className="px-4 py-3.5 align-top">
                         <p className="font-bold">{formatDateTime(merchant.updatedAt)}</p>
-                        <p className="mt-1 text-[0.65rem] text-muted-foreground">
-                          {merchant.servingHubId ? <HubName id={merchant.servingHubId} /> : "Chưa xác định bưu cục"}
-                        </p>
+
                       </td>
                       <td className="px-4 py-3.5 text-right align-top">
                         <Link

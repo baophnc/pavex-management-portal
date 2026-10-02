@@ -563,7 +563,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <StatusPill status={merchant.status} />
                   <span className="font-mono text-[0.65rem] text-muted-foreground">
-                    {merchant.id}
+                    {merchant.merchantCode}
                   </span>
                 </div>
               </div>

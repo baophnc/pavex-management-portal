@@ -696,12 +696,6 @@ export function AccountSettings() {
                         {formatDateTime(session.expiresAt)}
                       </dd>
                     </div>
-                    <div className="min-w-0">
-                      <dt className="font-bold text-muted-foreground">Mã phiên</dt>
-                      <dd className="mt-0.5 truncate font-mono" title={session.sessionId}>
-                        {session.sessionId}
-                      </dd>
-                    </div>
                   </dl>
 
                   <p

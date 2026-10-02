@@ -215,7 +215,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
               <Info label="Bưu cục" value={hub ? `${hub.code} · ${hub.name}` : "Bưu cục trong phạm vi"} />
               <Info label="Thứ tự thực thi" value={String(assignment.sequence)} />
               <Info label="Nhân sự được phân công" value={assignedMember ? `${assignedMember.employeeCode} · ${workforceIdentityName(assignedMember.identity ?? {})}` : "Chưa phân công"} />
-              <Info label="Người phân công" value={assigningUser ? workforceIdentityName(assigningUser.identity ?? {}) : assignment.assignedByUserId ? <UserName id={assignment.assignedByUserId} /> : "Hệ thống tự phân"} />
+              <Info label="Người phân công" value={assigningUser ? workforceIdentityName(assigningUser.identity ?? {}) : assignment.assignedByUserId ? <UserName id={assignment.assignedByUserId} /> : assignment.assignedAt ? "Hệ thống tự phân" : "—"} />
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Time label="Giao việc" value={assignment.assignedAt} />
@@ -276,11 +276,11 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm font-black">Hủy phân công</p>
-                <p className="mt-1 text-xs text-muted-foreground">Phân công đã hoàn tất thì không thể hủy.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Chỉ huỷ được việc chưa hoàn tất. Việc bị huỷ sẽ không giao cho ai nữa.</p>
               </div>
               <ReasonPicker reasons={REASONS.assignmentCancel} value={cancelReason} onChange={setCancelReason} placeholder="Lý do hủy..." disabled={!canCancel || saving} />
               <Button variant="destructive" onClick={() => void cancel()} disabled={!canCancel || saving || !cancelReason.trim()}>
-                <BanIcon className="size-4" /> Hủy assignment
+                <BanIcon className="size-4" /> Huỷ việc này
               </Button>
             </CardContent>
           </Card>
@@ -294,10 +294,10 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
               <p className="text-sm font-black">Diễn biến</p>
               <p className="mt-1 text-xs text-muted-foreground">Lịch sử điều phối, không thể chỉnh sửa.</p>
             </div>
-            <span className="text-xs font-black text-brand">{events.length} event</span>
+            <span className="text-xs font-black text-brand">{events.length} mốc</span>
           </div>
           {events.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Chưa có event.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Chưa có diễn biến.</p>
           ) : (
             <div className="space-y-2">
               {events.map((event) => (
