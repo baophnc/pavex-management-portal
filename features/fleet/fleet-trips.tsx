@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fleetApi, fleetErrorMessage } from "@/features/fleet/api";
 import {
+  type FleetHubRef,
   type FleetTrack,
   type FleetTrip,
   type FleetTripStatus,
   fleetEndSourceLabels,
   fleetStartSourceLabels,
 } from "@/features/fleet/contracts";
-import { type MapMarker, TripMap } from "@/features/fleet/trip-map";
+import { type LatLng, type MapLane, type MapMarker, type MapPlace, TripMap } from "@/features/fleet/trip-map";
 import { StatusPill } from "@/features/finance/ui";
 import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
@@ -110,6 +111,10 @@ function TripDetail({ trip, track }: { trip: FleetTrip; track: FleetTrack | null
  * Line-haul trucks on the map for hub managers (their own hubs) and head office (every hub).
  * In-progress trips refresh every ten seconds.
  */
+function hubPoint(hub: FleetHubRef): LatLng | null {
+  return hub.lat !== null && hub.lng !== null ? { lat: hub.lat, lng: hub.lng } : null;
+}
+
 export function FleetTrips() {
   const [status, setStatus] = useState<FleetTripStatus>("IN_PROGRESS");
   const [hubId, setHubId] = useState("");
@@ -178,7 +183,23 @@ export function FleetTrips() {
     tone: tripTone(trip),
   }] : []);
   const path = selected && track?.tripId === selected.id ? track.points : [];
-  const focus = selected ? (path.length ? path : markers.filter((marker) => marker.id === selected.id)) : markers;
+  // Each trip's lane from hub to hub: the selected one in brand colour, the others faint.
+  const lanes: MapLane[] = trips.flatMap((trip) => {
+    const from = hubPoint(trip.fromHub);
+    const to = hubPoint(trip.toHub);
+    if (!from || !to) return [];
+    const chosen = trip.id === selectedId;
+    return [{ id: trip.id, from, to, tone: chosen ? "brand" : "muted", dashed: !chosen, width: chosen ? 4 : 2 }];
+  });
+  const places: MapPlace[] = [...new Map(trips.flatMap((trip) => [trip.fromHub, trip.toHub]).map((hub) => [hub.id, hub])).values()]
+    .flatMap((hub) => {
+      const point = hubPoint(hub);
+      return point ? [{ id: hub.id, code: hub.code, name: hub.name, ...point }] : [];
+    });
+  const selectedLane = lanes.find((lane) => lane.id === selectedId);
+  const focus = selected
+    ? [...(path.length ? path : markers.filter((marker) => marker.id === selected.id)), ...(selectedLane ? [selectedLane.from, selectedLane.to] : [])]
+    : [...markers, ...places];
 
   const counts = {
     running: trips.filter((trip) => trip.status === "IN_PROGRESS").length,
@@ -244,6 +265,8 @@ export function FleetTrips() {
             className="h-[28rem] lg:h-[34rem]"
             markers={markers}
             path={path}
+            lanes={lanes}
+            places={places}
             focus={focus}
             focusKey={`${status}|${hubId}|${selectedId ?? "all"}|${path.length > 0}`}
             selectedId={selectedId}

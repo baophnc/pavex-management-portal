@@ -14,6 +14,8 @@ export type HubDirectoryEntry = {
   status: HubStatus;
   provinceCode: string;
   wardCode: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 /*
