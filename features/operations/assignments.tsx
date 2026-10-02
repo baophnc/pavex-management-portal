@@ -34,7 +34,8 @@ import {
   workforceIdentityName,
   workforceKindLabel,
 } from "@/features/operations/presentation";
-import { getAdminShipment, getAdminShipments } from "@/features/shipments/api";
+import { getAdminShipment } from "@/features/shipments/api";
+import { TrackingCode, useTrackingCodes } from "@/features/directory/names";
 import { ApiError } from "@/lib/api/client";
 import { downloadCsv } from "@/lib/csv";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -75,10 +76,6 @@ const ALL_TYPES: OperationalAssignmentType[] = [
   "LAST_MILE_DELIVERY",
 ];
 
-function shortId(value: string | null) {
-  return value ? `${value.slice(0, 8)}…` : "—";
-}
-
 export function OperationsAssignments() {
   const { hasAnyPermission } = useAccess();
   const canReadGlobalShipments = hasAnyPermission(["shipments.admin.read", "shipments.read-hub"]);
@@ -93,7 +90,6 @@ export function OperationsAssignments() {
   const [items, setItems] = useState<OperationalAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [assignmentDraft, setAssignmentDraft] = useState(assignmentCode);
   const [shipmentDraft, setShipmentDraft] = useState(trackingCode);
   const [hubDraft, setHubDraft] = useState(hubCode);
   const [statusDraft, setStatusDraft] = useState<OperationalAssignmentStatus | "">(status);
@@ -105,14 +101,9 @@ export function OperationsAssignments() {
   const [pageSize, setPageSize] = useState(20);
   const [collapsed, setCollapsed] = useState(false);
   const [hubs, setHubs] = useState<Hub[]>([]);
-  const [shipmentLabels, setShipmentLabels] = useState<Record<string, string>>({});
   const [hubLabels, setHubLabels] = useState<Record<string, string>>({});
   const [workerLabels, setWorkerLabels] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    const task = window.setTimeout(() => setAssignmentDraft(assignmentCode), 0);
-    return () => window.clearTimeout(task);
-  }, [assignmentCode]);
   useEffect(() => {
     const task = window.setTimeout(() => setShipmentDraft(trackingCode), 0);
     return () => window.clearTimeout(task);
@@ -130,12 +121,9 @@ export function OperationsAssignments() {
     setLoading(true);
     setError(null);
     try {
-      const [networkHubs, workforcePage, shipmentPage] = await Promise.all([
+      const [networkHubs, workforcePage] = await Promise.all([
         getScopedHubs().catch(() => []),
         getWorkforce(new URLSearchParams({ page: "1", pageSize: "100" })).catch(() => null),
-        canReadGlobalShipments
-          ? getAdminShipments(new URLSearchParams({ limit: "100" })).catch(() => null)
-          : Promise.resolve(null),
       ]);
       const fallbackHubs = new Map<string, Hub>();
       workforcePage?.items.forEach((member) => member.hubMemberships.forEach((membership) => {
@@ -165,19 +153,9 @@ export function OperationsAssignments() {
       ])));
 
       const params = new URLSearchParams();
-      const nextShipmentLabels = Object.fromEntries(
-        (shipmentPage?.items ?? []).map((shipment) => [shipment.id, shipment.trackingCode]),
-      );
       if (trackingCode && canReadGlobalShipments) {
-        const normalizedTrackingCode = trackingCode.trim().toUpperCase();
-        const knownShipment = shipmentPage?.items.find(
-          (shipment) => shipment.trackingCode === normalizedTrackingCode,
-        );
-        const shipment = knownShipment ?? await getAdminShipment(normalizedTrackingCode);
+        const shipment = await getAdminShipment(trackingCode.trim().toUpperCase());
         params.set("shipmentId", shipment.id);
-        nextShipmentLabels[shipment.id] = "shipment" in shipment
-          ? shipment.shipment.trackingCode
-          : shipment.trackingCode;
       }
       if (hubCode) {
         const hub = visibleHubs.find((item) => item.code === hubCode);
@@ -186,7 +164,6 @@ export function OperationsAssignments() {
       }
       if (status) params.set("status", status);
       const response = await getOperationalAssignments(params);
-      setShipmentLabels(nextShipmentLabels);
       const visibleAssignments = assignmentCode
         ? response.filter((item) => item.code === assignmentCode.trim().toUpperCase())
         : response;
@@ -236,39 +213,29 @@ export function OperationsAssignments() {
       ),
     [items, kindFilter, typeFilter],
   );
+  const trackingCodes = useTrackingCodes(items.map((item) => item.shipmentId));
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const pageRows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const columns: Column<OperationalAssignment>[] = [
     {
-      key: "code",
-      header: "Mã việc",
-      width: 180,
-      sortValue: (row) => row.code,
+      key: "type",
+      header: "Việc",
+      width: 170,
+      sortValue: (row) => operationalAssignmentTypeLabel(row.type),
       cell: (row) => (
-        <Link href={`/operations/assignments/${row.id}`} className="font-mono font-semibold text-brand hover:underline">
-          {row.code}
+        <Link href={`/operations/assignments/${row.id}`} className="font-semibold text-brand hover:underline">
+          {operationalAssignmentTypeLabel(row.type)}
         </Link>
       ),
     },
-    { key: "type", header: "Loại việc", width: 170, sortValue: (row) => operationalAssignmentTypeLabel(row.type), cell: (row) => operationalAssignmentTypeLabel(row.type) },
     {
       key: "shipment",
       header: "Vận đơn",
       width: 190,
-      sortValue: (row) => shipmentLabels[row.shipmentId] ?? row.shipmentId,
-      cell: (row) =>
-        shipmentLabels[row.shipmentId] ? (
-          <Link
-            href={`/shipments/tracking?codes=${encodeURIComponent(shipmentLabels[row.shipmentId]!)}`}
-            className="font-mono hover:text-brand hover:underline"
-          >
-            {shipmentLabels[row.shipmentId]}
-          </Link>
-        ) : (
-          <span className="text-muted-foreground">{shortId(row.shipmentId)}</span>
-        ),
+      sortValue: (row) => trackingCodes.get(row.shipmentId) ?? "",
+      cell: (row) => <TrackingCode id={row.shipmentId} />,
     },
     { key: "hub", header: "Bưu cục", width: 220, sortValue: (row) => hubLabels[row.hubId] ?? "", cell: (row) => hubLabels[row.hubId] || "Bưu cục trong phạm vi" },
     { key: "kind", header: "Loại nhân sự", width: 130, sortValue: (row) => workforceKindLabel(row.requiredKind), cell: (row) => workforceKindLabel(row.requiredKind) },
@@ -306,7 +273,7 @@ export function OperationsAssignments() {
     setKindFilter(kindDraft);
     setPage(1);
     updateFilters({
-      assignmentCode: assignmentDraft.toUpperCase(),
+      assignmentCode: "",
       trackingCode: canReadGlobalShipments ? shipmentDraft.toUpperCase() : "",
       hubCode: hubDraft,
       status: statusDraft,
@@ -314,7 +281,6 @@ export function OperationsAssignments() {
   }
 
   function reset() {
-    setAssignmentDraft("");
     setShipmentDraft("");
     setHubDraft("");
     setStatusDraft("");
@@ -330,14 +296,13 @@ export function OperationsAssignments() {
   function exportRows() {
     downloadCsv(
       "phan-cong.csv",
-      ["Mã việc", "Loại việc", "Vận đơn", "Bưu cục", "Loại nhân sự", "Người nhận", "Trạng thái", "Ưu tiên", "Tạo lúc", "Cập nhật"],
+      ["Việc", "Vận đơn", "Bưu cục", "Loại nhân sự", "Người nhận", "Trạng thái", "Ưu tiên", "Tạo lúc", "Cập nhật"],
       visible.map((row) => [
-        row.code,
         operationalAssignmentTypeLabel(row.type),
-        shipmentLabels[row.shipmentId] ?? row.shipmentId,
-        hubLabels[row.hubId] ?? row.hubId,
+        trackingCodes.get(row.shipmentId) ?? "",
+        hubLabels[row.hubId] ?? "",
         workforceKindLabel(row.requiredKind),
-        row.assigneeWorkforceMemberId ? workerLabels[row.assigneeWorkforceMemberId] ?? row.assigneeWorkforceMemberId : "",
+        row.assigneeWorkforceMemberId ? workerLabels[row.assigneeWorkforceMemberId] ?? "" : "",
         operationalAssignmentStatusLabel(row.status),
         row.priority,
         formatDateTime(row.createdAt),
@@ -372,14 +337,6 @@ export function OperationsAssignments() {
         </WorkspaceToolbar>
 
         <FilterGrid collapsed={collapsed}>
-          <FilterField label="Mã việc">
-            <FilterInput
-              value={assignmentDraft}
-              onChange={(event) => setAssignmentDraft(event.target.value)}
-              placeholder="PAVEX-ASG-…"
-              className="font-mono uppercase placeholder:font-sans"
-            />
-          </FilterField>
           {canReadGlobalShipments ? (
             <FilterField label="Mã vận đơn">
               <FilterInput

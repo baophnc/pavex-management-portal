@@ -526,9 +526,7 @@ export function AccountSettings() {
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                <p className="text-[0.68rem] text-muted-foreground">
-                  User ID: <span className="font-mono">{profile?.userId ?? "-"}</span>
-                </p>
+<span />
                 <Button disabled={saving === "profile"}>
                   {saving === "profile" ? (
                     <RefreshCwIcon className="size-4 animate-spin" />
@@ -696,12 +694,6 @@ export function AccountSettings() {
                       <dt className="font-bold text-muted-foreground">Hết hạn</dt>
                       <dd className="mt-0.5 font-semibold">
                         {formatDateTime(session.expiresAt)}
-                      </dd>
-                    </div>
-                    <div className="min-w-0">
-                      <dt className="font-bold text-muted-foreground">Mã phiên</dt>
-                      <dd className="mt-0.5 truncate font-mono" title={session.sessionId}>
-                        {session.sessionId}
                       </dd>
                     </div>
                   </dl>

@@ -860,9 +860,7 @@ export function NetworkServiceAreas() {
                               <p className="mt-1 break-all font-mono">{selectedArea.code}</p>
                             </div>
                             <div className="rounded-lg border bg-background p-3 text-[0.68rem] text-muted-foreground">
-                              <p className="font-black text-foreground">Mã định danh vùng phục vụ</p>
-                              <p className="mt-1 break-all font-mono">{selectedArea.id}</p>
-                              <p className="mt-3">
+                              <p>
                                 Cập nhật {formatDateTime(selectedArea.updatedAt)}
                               </p>
                             </div>

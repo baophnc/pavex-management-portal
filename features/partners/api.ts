@@ -12,6 +12,7 @@ export type MerchantSearchParams = {
   pageSize: number;
   status?: MerchantStatus | "";
   search?: string;
+  hubId?: string;
 };
 
 export function searchMerchants(params: MerchantSearchParams) {
@@ -21,6 +22,7 @@ export function searchMerchants(params: MerchantSearchParams) {
   });
   if (params.status) query.set("status", params.status);
   if (params.search) query.set("search", params.search);
+  if (params.hubId) query.set("hubId", params.hubId);
   return apiRequest<MerchantListResponse>(`admin/merchants?${query.toString()}`);
 }
 

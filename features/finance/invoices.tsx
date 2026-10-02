@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { REASONS } from "@/components/forms/reason-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
@@ -17,8 +18,8 @@ import {
   invoiceStatusLabels,
   paymentMethodLabel,
   paymentStatusLabels,
-  shortId,
 } from "@/features/finance/contracts";
+import { MerchantName } from "@/features/directory/names";
 import { financeErrorMessage } from "@/features/finance/errors";
 import { FinanceDialog, StatusPill } from "@/features/finance/ui";
 import {
@@ -92,7 +93,7 @@ export function Invoices() {
               {items.map((invoice) => (
                 <tr key={invoice.id} className="cursor-pointer hover:bg-muted/20" onClick={() => setSelectedId(invoice.id)}>
                   <td className="px-4 py-3 font-mono font-black">{invoice.invoiceNumber}</td>
-                  <td className="px-4 py-3 font-mono" title={invoice.merchantId}>{shortId(invoice.merchantId)}</td>
+                  <td className="px-4 py-3 font-bold"><MerchantName id={invoice.merchantId} /></td>
                   <td className="px-4 py-3 text-right tabular-nums">{money(invoice.totalAmount)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{money(invoice.paidAmount)}</td>
                   <td className="px-4 py-3 text-right font-black tabular-nums">{money(invoice.balanceAmount)}</td>
@@ -170,7 +171,7 @@ function InvoicePanel({ invoiceId, onClose, onChanged }: { invoiceId: string; on
           <div>
             <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">Hóa đơn</p>
             <h2 className="mt-1 font-mono text-lg font-black">{invoice?.invoiceNumber ?? "…"}</h2>
-            {invoice ? <p className="mt-1 text-xs text-muted-foreground">Cửa hàng <span className="font-mono">{invoice.merchantId}</span> · hạn {dateTime(invoice.dueAt)}</p> : null}
+            {invoice ? <p className="mt-1 text-xs text-muted-foreground">Cửa hàng <span className="font-bold"><MerchantName id={invoice.merchantId} /></span> · hạn {dateTime(invoice.dueAt)}</p> : null}
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Đóng"><XIcon className="size-4" /></Button>
         </div>
@@ -253,7 +254,7 @@ function InvoicePanel({ invoiceId, onClose, onChanged }: { invoiceId: string; on
         description="Cước trong hóa đơn sẽ không được thu nữa. Chỉ hủy khi cước bị tính sai hoặc được miễn."
         confirmLabel="Hủy hóa đơn"
         destructive
-        input={{ label: "Lý do", required: true, multiline: true }}
+        input={{ label: "Lý do", required: true, multiline: true, reasons: REASONS.invoiceCancel }}
         loading={saving}
         onCancel={() => setAction(null)}
         onConfirm={run}

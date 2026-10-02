@@ -31,6 +31,7 @@ import {
   canAccessShipmentList,
   canAccessSupportRequests,
   hasAnyPermission,
+  hasAnyRole,
   hasPermission,
 } from "@/lib/auth/access";
 import type { CurrentUser } from "@/lib/auth/contracts";
@@ -57,6 +58,11 @@ export type NavigationModule = {
 
 const NETWORK = ["network.read", "network.manage"];
 const PRICING = ["pricing.read", "pricing.manage"];
+
+/** Accounts and roles are run by the system admin and the operations manager only. */
+function canAccessSystem(user: CurrentUser | null) {
+  return hasAnyRole(user, ["ADMIN", "OPERATIONS_MANAGER"]);
+}
 
 /** Module (top bar) → group (left column) → page (second column), the way field staff navigate. */
 export const navigationModules: NavigationModule[] = [
@@ -200,8 +206,8 @@ export const navigationModules: NavigationModule[] = [
         label: "Tài khoản",
         icon: ShieldCheckIcon,
         items: [
-          { href: "/identity/users", label: "Tài khoản", permission: "identity.users.read" },
-          { href: "/identity/roles", label: "Vai trò & quyền", permission: "identity.roles.read" },
+          { href: "/identity/users", label: "Tài khoản", permission: "identity.users.read", access: canAccessSystem },
+          { href: "/identity/roles", label: "Vai trò & quyền", permission: "identity.roles.read", access: canAccessSystem },
         ],
       },
     ],

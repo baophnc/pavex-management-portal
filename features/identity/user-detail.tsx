@@ -469,8 +469,6 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
               <Fact label="Trạng thái hồ sơ" value={profileLabels[user.profileStatus]} />
               <Fact label="Giới tính" value={user.gender ? genderLabels[user.gender as Gender] ?? user.gender : "Chưa khai báo"} />
               <Fact label="Ngày sinh" value={user.dateOfBirth ?? "Chưa khai báo"} />
-              <Fact label="Mã định danh người dùng" value={user.userId} mono />
-              <Fact label="Phiên bản" value={String(user.version)} mono />
               <Fact label="Vai trò" value={user.roles.length ? user.roles.map((role) => rolePresentation(role).name).join(", ") : "Chưa có vai trò"} />
             </CardContent>
           </Card>

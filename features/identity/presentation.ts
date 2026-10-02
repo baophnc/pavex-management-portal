@@ -48,23 +48,15 @@ const ROLE_PRESENTATION: Record<string, RolePresentation> = {
   ),
   OPERATIONS_MANAGER: headOffice(
     "Quản lý vận hành",
-    "Theo dõi vận đơn, xử lý sự cố, quản lý nhân sự và mạng lưới bưu cục trên toàn quốc.",
-  ),
-  COMMERCIAL_MANAGER: headOffice(
-    "Kinh doanh & CSKH",
-    "Duyệt cửa hàng, quản lý bảng giá và xử lý khiếu nại của khách hàng trên toàn quốc.",
-  ),
-  FINANCE_ACCOUNTANT: headOffice(
-    "Kế toán",
-    "Duyệt tiền bưu tá nộp, đối soát với cửa hàng và quản lý hóa đơn trên toàn quốc.",
+    "Người điều hành công ty: xem mọi bưu cục, duyệt cửa hàng, duyệt tiền và đối soát, quản lý nhân sự và bảng giá.",
   ),
   HUB_MANAGER: hubWorkforce(
     "Trưởng bưu cục",
-    "Điều phối lấy/giao hàng, quản lý nhân viên, vận đơn và tiền thu hộ của bưu cục mình.",
+    "Quản lý một bưu cục: duyệt cửa hàng thuộc bưu cục, duyệt tiền nhân viên báo cáo, điều phối lấy/giao hàng.",
   ),
   WAREHOUSE_OPERATOR: hubWorkforce(
     "Nhân viên bưu cục",
-    "Quét nhập/xuất kho và nhận tiền bưu tá nộp tại bưu cục mình.",
+    "Làm việc tại bưu cục: nhập/xuất kho, nhận gửi tại quầy, kiểm tiền bưu tá nộp, chăm sóc khách và cửa hàng.",
   ),
   COURIER: hubWorkforce(
     "Bưu tá",
@@ -84,7 +76,7 @@ const ROLE_PRESENTATION: Record<string, RolePresentation> = {
     note: "Không gán hoặc gỡ thủ công để tránh lệch với trạng thái hồ sơ cửa hàng.",
   },
   CUSTOMER: {
-    name: "Khách cá nhân",
+    name: "Khách hàng",
     description: "Tài khoản khách hàng mặc định khi tự đăng ký.",
     ownership: "PLATFORM",
     ownershipLabel: "Vai trò mặc định",

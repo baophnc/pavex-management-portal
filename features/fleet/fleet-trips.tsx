@@ -3,6 +3,7 @@
 import { BatteryMediumIcon, ClockIcon, GaugeIcon, RefreshCwIcon, RouteIcon, SignalZeroIcon, TruckIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { UserName } from "@/features/directory/names";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fleetApi, fleetErrorMessage } from "@/features/fleet/api";
@@ -74,7 +75,7 @@ function TripDetail({ trip, track }: { trip: FleetTrip; track: FleetTrack | null
           <p className="text-xs font-black text-muted-foreground">{trip.laneCode}</p>
           <p className="text-base font-black">{trip.fromHub.name} → {trip.toHub.name}</p>
           <p className="text-xs text-muted-foreground">
-            {trip.driverEmail ?? trip.driverUserId}
+            {trip.driverEmail ?? <UserName id={trip.driverUserId} fallback="Tài xế" />}
             {trip.vehiclePlate ? ` · Xe ${trip.vehiclePlate}` : ""}
           </p>
         </div>
@@ -273,7 +274,7 @@ export function FleetTrips() {
                 <p className="text-sm font-black">{trip.fromHub.code} → {trip.toHub.code}</p>
                 <TripBadges trip={trip} />
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">{trip.driverEmail ?? trip.driverUserId}{trip.vehiclePlate ? ` · ${trip.vehiclePlate}` : ""}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{trip.driverEmail ?? <UserName id={trip.driverUserId} fallback="Tài xế" />}{trip.vehiclePlate ? ` · ${trip.vehiclePlate}` : ""}</p>
               <p className="mt-1 text-[0.68rem] text-muted-foreground">
                 {trip.status === "IN_PROGRESS"
                   ? `Dự kiến tới ${dateTime(trip.plannedArrivalAt)} · vị trí ${sinceText(trip.position?.receivedAt ?? null)}`

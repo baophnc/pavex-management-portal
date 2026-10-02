@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { createCounterShipment, findCounterContacts, saveCounterContact } from "@/features/counter/api";
 import type { CounterAddress, CounterContact, ShippingFeePayer } from "@/features/counter/contracts";
 import { counterErrorMessage } from "@/features/counter/errors";
+import { loadHubDirectory } from "@/features/directory/names";
 import { getMyHubScope, type MyHub } from "@/features/operations/hub-scope";
 import { createPricingQuote, getProvinces, getWards } from "@/features/pricing/api";
 import type { PricingOption, PricingQuote, Province, Ward } from "@/features/pricing/contracts";
@@ -89,10 +90,14 @@ export function CounterShipmentForm() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([getMyHubScope(), getProvinces()])
-      .then(([scope, items]) => {
+      .then(async ([scope, items]) => {
+        // Head office may book at any hub's counter, e.g. to help out or to test.
+        const candidates: MyHub[] = scope.allHubs
+          ? [...(await loadHubDirectory()).values()].map((item) => ({ ...item, primary: false }))
+          : scope.hubs;
         if (cancelled) return;
         setProvinces(items);
-        const own = scope.hubs.filter((item) => item.status === "ACTIVE");
+        const own = candidates.filter((item) => item.status === "ACTIVE");
         setHubs(own);
         const first = own.find((item) => item.primary) ?? own[0];
         if (first) {

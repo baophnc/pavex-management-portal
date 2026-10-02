@@ -46,6 +46,7 @@ import {
 } from "@/features/partners/contracts";
 import { changeMerchantStatus, getMerchant, getMerchantReadiness } from "@/features/partners/api";
 import { ApiError } from "@/lib/api/client";
+import { HubName, UserName } from "@/features/directory/names";
 import { cn, formatDateTime } from "@/lib/utils";
 
 type Decision = {
@@ -562,7 +563,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <StatusPill status={merchant.status} />
                   <span className="font-mono text-[0.65rem] text-muted-foreground">
-                    {merchant.id}
+                    {merchant.merchantCode}
                   </span>
                 </div>
               </div>
@@ -655,8 +656,8 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
               <Fact label="Tên doanh nghiệp" value={merchant.businessName} />
               <Fact label="Mã số thuế" value={merchant.taxCode} mono />
               <Fact label="Người liên hệ" value={merchant.contactName} />
-              <Fact label="Mã định danh cửa hàng" value={merchant.id} mono />
-              <Fact label="Mã tài khoản" value={merchant.userId} mono />
+              <Fact label="Tài khoản đăng nhập" value={<UserName id={merchant.userId} fallback="Chủ cửa hàng" />} />
+              <Fact label="Bưu cục phụ trách" value={merchant.servingHubId ? <HubName id={merchant.servingHubId} /> : "Chưa xác định (cửa hàng chưa có địa chỉ kho)"} />
               <Fact label="Ngày tạo" value={formatDateTime(merchant.createdAt)} />
               <Fact
                 label="Cập nhật gần nhất"
@@ -711,8 +712,8 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                   Quyền cửa hàng của tài khoản được cấp hoặc gỡ tự động theo
                   trạng thái hồ sơ; không cần gán thủ công.
                 </p>
-                <p className="mt-3 break-all font-mono text-[0.68rem] font-bold">
-                  {merchant.userId}
+                <p className="mt-3 text-sm font-bold">
+                  <UserName id={merchant.userId} fallback="Chủ cửa hàng" />
                 </p>
                 {canReadIdentity ? (
                   <Link
@@ -1099,11 +1100,11 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
                         <p className="text-xs font-bold">
                           {formatDateTime(item.changedAt)}
                         </p>
-                        <p className="mt-1 max-w-60 break-all font-mono text-[0.62rem] text-muted-foreground">
+                        <p className="mt-1 max-w-60 text-[0.62rem] text-muted-foreground">
                           {item.changedByUserId
                             ? item.changedByUserId === merchant.userId
                               ? "Cửa hàng tự thao tác"
-                              : `Người thực hiện: ${item.changedByUserId}`
+                              : <>Người thực hiện: <UserName id={item.changedByUserId} /></>
                             : "Hệ thống"}
                         </p>
                       </div>

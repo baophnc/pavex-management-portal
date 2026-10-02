@@ -17,8 +17,8 @@ import {
   type SettlementStatementDetail,
   invoiceStatusLabels,
   payoutStatusLabels,
-  shortId,
 } from "@/features/finance/contracts";
+import { MerchantName } from "@/features/directory/names";
 import { financeErrorMessage } from "@/features/finance/errors";
 import { FinanceDialog, StatusPill } from "@/features/finance/ui";
 import { dateTime, money, PricingError, PricingField, PricingLoading, PricingPageHeader, selectClassName } from "@/features/pricing/ui";
@@ -132,7 +132,7 @@ export function Settlements() {
               {items.map((statement) => (
                 <tr key={statement.id} className="cursor-pointer hover:bg-muted/20" onClick={() => setSelected(statement)}>
                   <td className="px-4 py-3"><p className="font-mono font-black">{statement.statementNumber}</p><p className="mt-1 text-muted-foreground">chốt {dateTime(statement.cutoffAt)}</p></td>
-                  <td className="px-4 py-3 font-mono" title={statement.merchantId}>{shortId(statement.merchantId)}</td>
+                  <td className="px-4 py-3 font-bold"><MerchantName id={statement.merchantId} /></td>
                   <td className="px-4 py-3 text-right tabular-nums">{money(statement.codTotal)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{money(statement.feeTotal)}</td>
                   <td className="px-4 py-3 text-right font-black tabular-nums">{money(statement.payoutAmount)}</td>
@@ -226,7 +226,7 @@ function StatementPanel({
           <div>
             <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">Kỳ đối soát</p>
             <h2 className="mt-1 font-mono text-lg font-black">{current.statementNumber}</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Cửa hàng <span className="font-mono">{current.merchantId}</span> · chốt {dateTime(current.cutoffAt)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Cửa hàng <span className="font-bold"><MerchantName id={current.merchantId} /></span> · chốt {dateTime(current.cutoffAt)}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Đóng"><XIcon className="size-4" /></Button>
         </div>

@@ -11,7 +11,7 @@ import { completeCounterSettlement, getCounterSettlements, getHubHeldCash, sendH
 import type { CounterSettlement, CounterSettlementStatus } from "@/features/counter/contracts";
 import { counterErrorMessage } from "@/features/counter/errors";
 import type { CashCollection } from "@/features/finance/contracts";
-import { getMyHubScope, type MyHub } from "@/features/operations/hub-scope";
+import { HubSelect, useHubScope } from "@/features/directory/hub-scope";
 import { selectClassName } from "@/features/pricing/ui";
 import { money } from "@/features/shipments/presentation";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -27,7 +27,7 @@ const KIND_LABEL: Record<CounterSettlement["kind"], string> = {
  * after the sender gives the phone number the shipment was booked with.
  */
 export function CounterSettlements() {
-  const [hubs, setHubs] = useState<MyHub[]>([]);
+  const scope = useHubScope();
   const [hubId, setHubId] = useState("");
   const [status, setStatus] = useState<CounterSettlementStatus | "">("PENDING");
   const [query, setQuery] = useState("");
@@ -36,53 +36,34 @@ export function CounterSettlements() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<CounterSettlement | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    getMyHubScope()
-      .then((scope) => {
-        if (cancelled) return;
-        const own = scope.hubs.filter((item) => item.status === "ACTIVE");
-        setHubs(own);
-        const first = own.find((item) => item.primary) ?? own[0];
-        if (first) setHubId(first.id);
-        else {
-          setError("Tài khoản chưa thuộc bưu cục nào nên chưa xử lý tiền tại quầy được.");
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError("Không tải được bưu cục của bạn.");
-          setLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Start on the user's own hub; head office starts on the first hub and can switch.
+  const activeHubId = hubId || scope.initialHubId || scope.hubs[0]?.id || "";
 
   const load = useCallback(async () => {
-    if (!hubId) return;
+    if (!activeHubId) {
+      if (!scope.loading) setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     const text = query.trim();
     const isCode = /^PAVEX/i.test(text);
     try {
-      setItems(await getCounterSettlements(hubId, { status, phone: isCode ? "" : text, trackingCode: isCode ? text : "" }));
+      setItems(await getCounterSettlements(activeHubId, { status, phone: isCode ? "" : text, trackingCode: isCode ? text : "" }));
     } catch (reason) {
       setItems([]);
       setError(counterErrorMessage(reason, "Không tải được danh sách."));
     } finally {
       setLoading(false);
     }
-  }, [hubId, query, status]);
+  }, [activeHubId, query, scope.loading, status]);
 
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(task);
     // Searching by phone or code runs on submit, not on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hubId, status]);
+  }, [activeHubId, scope.loading, status]);
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -93,17 +74,7 @@ export function CounterSettlements() {
     <div className="grid gap-3">
       <Card className="p-3">
         <form onSubmit={search} className="grid gap-2 sm:grid-cols-[200px_160px_minmax(0,1fr)_auto_auto]">
-          {hubs.length > 1 ? (
-            <select className={selectClassName} value={hubId} onChange={(event) => setHubId(event.target.value)}>
-              {hubs.map((hub) => (
-                <option key={hub.id} value={hub.id}>
-                  {hub.code} · {hub.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="self-center text-sm font-bold">{hubs[0] ? `${hubs[0].code} · ${hubs[0].name}` : ""}</p>
-          )}
+          <HubSelect scope={scope} value={activeHubId} onChange={setHubId} />
           <select className={selectClassName} value={status} onChange={(event) => setStatus(event.target.value as CounterSettlementStatus | "")}>
             <option value="PENDING">Chờ xử lý</option>
             <option value="DONE">Đã xử lý</option>
@@ -119,14 +90,14 @@ export function CounterSettlements() {
         </form>
       </Card>
 
-      {error ? <p className="rounded border border-brand/25 bg-brand/5 px-3 py-2 text-xs text-brand">{error}</p> : null}
+      {scope.error || error ? <p className="rounded border border-brand/25 bg-brand/5 px-3 py-2 text-xs text-brand">{scope.error ?? error}</p> : null}
 
       <Card className="divide-y">
         {loading ? (
           <p className="p-4 text-sm text-muted-foreground">Đang tải…</p>
         ) : items.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">
-            {status === "PENDING" ? "Không có khoản nào đang chờ. Tiền thu hộ chỉ hiện ở đây sau khi đơn giao xong và kế toán đã duyệt tiền bưu tá nộp." : "Không có khoản nào."}
+            {status === "PENDING" ? "Không có khoản nào đang chờ. Tiền thu hộ chỉ hiện ở đây sau khi đơn giao xong và trưởng bưu cục đã duyệt tiền bưu tá nộp." : "Không có khoản nào."}
           </p>
         ) : (
           items.map((item) => (
@@ -158,7 +129,7 @@ export function CounterSettlements() {
         )}
       </Card>
 
-      {hubId ? <HubCash hubId={hubId} /> : null}
+      {activeHubId ? <HubCash hubId={activeHubId} /> : null}
 
       {open ? (
         <CompleteDialog
@@ -256,7 +227,7 @@ function HubCash({ hubId }: { hubId: string }) {
     setSending(collection.id);
     try {
       await sendHubCashToFinance(collection.id);
-      toast.success(`Đã nộp ${money(collection.amount)} cho kế toán.`);
+      toast.success(`Đã nộp ${money(collection.amount)} để trưởng bưu cục duyệt.`);
       setItems((current) => current?.filter((item) => item.id !== collection.id) ?? null);
     } catch (reason) {
       toast.error(counterErrorMessage(reason, "Không nộp được."));
@@ -268,7 +239,7 @@ function HubCash({ hubId }: { hubId: string }) {
   const total = items?.reduce((sum, item) => sum + item.amount, 0) ?? 0;
   return (
     <section className="grid gap-2">
-      <h2 className="mt-2 text-sm font-black">Tiền mặt tại quầy chờ nộp kế toán {items?.length ? `(${money(total)})` : ""}</h2>
+      <h2 className="mt-2 text-sm font-black">Tiền mặt tại quầy chờ gửi duyệt {items?.length ? `(${money(total)})` : ""}</h2>
       <Card className="divide-y">
         {items === null ? (
           <p className="p-4 text-sm text-muted-foreground">Đang tải…</p>
@@ -280,7 +251,7 @@ function HubCash({ hubId }: { hubId: string }) {
               <div>
                 <p className="font-mono font-bold">{item.trackingCode}</p>
                 <p className="text-xs text-muted-foreground">
-                  {item.source === "COUNTER" ? "Cước khách trả tại quầy" : "Kế toán trả lại để kiểm đếm"}
+                  {item.source === "COUNTER" ? "Cước khách trả tại quầy" : "Bị trả lại để kiểm đếm"}
                   {item.lastRejectionReason ? ` · ${item.lastRejectionReason}` : ""} · {formatDateTime(item.collectedAt)}
                 </p>
               </div>
@@ -288,7 +259,7 @@ function HubCash({ hubId }: { hubId: string }) {
                 <strong className="tabular-nums">{money(item.amount)}</strong>
                 <Button size="sm" disabled={sending === item.id} onClick={() => void send(item)}>
                   {sending === item.id ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : null}
-                  Nộp cho kế toán
+                  Gửi trưởng bưu cục duyệt
                 </Button>
               </div>
             </div>

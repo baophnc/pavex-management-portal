@@ -4,6 +4,7 @@ import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { REASONS } from "@/components/forms/reason-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { financeApi } from "@/features/finance/api";
@@ -13,8 +14,9 @@ import {
   type CashRemittance,
   type CashRemittanceStatus,
   remittanceStatusLabels,
-  shortId,
 } from "@/features/finance/contracts";
+import { HubSelect, useHubScope } from "@/features/directory/hub-scope";
+import { HubName, UserName } from "@/features/directory/names";
 import { financeErrorMessage } from "@/features/finance/errors";
 import { FinanceDialog, StatusPill } from "@/features/finance/ui";
 import { dateTime, money, PricingError, PricingLoading, PricingPageHeader, selectClassName } from "@/features/pricing/ui";
@@ -34,11 +36,16 @@ export function CashReview() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [action, setAction] = useState<Action | null>(null);
   const [saving, setSaving] = useState(false);
+  const scope = useHubScope();
+  const [hubId, setHubId] = useState<string | null>(null);
+  const activeHubId = hubId ?? scope.initialHubId;
 
   useEffect(() => {
+    // A hub manager reviews one hub at a time; head office may look at all of them.
+    if (scope.loading || (!scope.allHubs && !activeHubId)) return;
     let active = true;
     // Recent collections of every status, to show each remittance line's tracking code.
-    Promise.all([financeApi.remittances(status), financeApi.collections("")])
+    Promise.all([financeApi.remittances(status, activeHubId), financeApi.collections("", activeHubId)])
       .then(([items, recent]) => {
         if (!active) return;
         setRemittances(items);
@@ -48,7 +55,7 @@ export function CashReview() {
       .catch((reason) => { if (active) setError(financeErrorMessage(reason, "Không thể tải tiền nộp.")); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [status, refreshKey]);
+  }, [status, refreshKey, activeHubId, scope.loading, scope.allHubs]);
 
   const reload = () => { setLoading(true); setRefreshKey((value) => value + 1); };
   const byId = new Map(collections.map((collection) => [collection.id, collection]));
@@ -93,7 +100,7 @@ export function CashReview() {
       <PricingPageHeader
         eyebrow="Tài chính"
         title="Duyệt tiền nộp"
-        description="Bưu tá nộp tiền thu được khi giao hàng về bưu cục theo từng lô. Tài chính duyệt lô khi đã nhận đủ tiền; tiền thu hộ đã duyệt mới được đưa vào đối soát với cửa hàng."
+        description="Bưu tá nộp tiền thu được khi giao hàng về bưu cục theo từng lô. Trưởng bưu cục (hoặc quản lý vận hành) duyệt lô khi đã nhận đủ tiền; tiền thu hộ đã duyệt mới được đưa vào đối soát với cửa hàng."
         help={{
           description: "Duyệt khi bưu cục đã kiểm đếm đủ số tiền của lô. Nếu thiếu hoặc thừa, từ chối kèm lý do: tiền được giữ tại bưu cục và bưu cục gửi duyệt lại sau khi kiểm đếm.",
           bullets: [
@@ -117,7 +124,12 @@ export function CashReview() {
         ))}
       </div>
 
-      {view === "approved" ? <ApprovedCashView /> : <>
+      <div className="flex flex-wrap items-center gap-2">
+        <HubSelect scope={scope} value={activeHubId} allLabel="Tất cả bưu cục" className="w-auto min-w-64 text-xs font-bold" onChange={(next) => { setLoading(true); setHubId(next); }} />
+        {scope.error ? <span className="text-xs text-brand">{scope.error}</span> : null}
+      </div>
+
+      {view === "approved" ? <ApprovedCashView hubId={activeHubId} ready={!scope.loading && (scope.allHubs || Boolean(activeHubId))} /> : <>
       <div className="flex flex-wrap items-center gap-2">
         <select className={`${selectClassName} w-auto text-xs font-bold`} value={status} onChange={(event) => { setLoading(true); setStatus(event.target.value as CashRemittanceStatus | ""); }}>
           <option value="SUBMITTED">Lô chờ duyệt</option>
@@ -138,7 +150,7 @@ export function CashReview() {
                     <div>
                       <p className="font-mono text-sm font-black">{remittance.remittanceNumber}</p>
                       <p className="mt-1 text-[0.68rem] text-muted-foreground">
-                        Bưu tá <span title={remittance.courierUserId}>{shortId(remittance.courierUserId)}</span> · bưu cục <span title={remittance.hubId}>{shortId(remittance.hubId)}</span> · nộp {dateTime(remittance.submittedAt)}
+                        Bưu tá <span className="font-bold text-foreground"><UserName id={remittance.courierUserId} fallback="bưu tá" /></span> · <HubName id={remittance.hubId} /> · nộp {dateTime(remittance.submittedAt)}
                       </p>
                     </div>
                     <StatusPill tone={remittance.status === "APPROVED" ? "success" : remittance.status === "REJECTED" ? "danger" : "warning"}>
@@ -150,7 +162,7 @@ export function CashReview() {
                       const collection = byId.get(item.collectionId);
                       return (
                         <div key={item.collectionId} className="flex items-center justify-between gap-3">
-                          <span className="font-mono" title={item.collectionId}>{collection?.trackingCode ?? shortId(item.collectionId)}</span>
+                          <span className="font-mono">{collection?.trackingCode ?? "Đơn cũ"}</span>
                           <span className="tabular-nums">
                             {collection && collection.feeAmount > 0 ? <span className="mr-2 text-muted-foreground">thu hộ {money(collection.codAmount)} + cước {money(collection.feeAmount)}</span> : null}
                             <strong>{money(item.amount)}</strong>
@@ -177,7 +189,7 @@ export function CashReview() {
           {resubmitted.length ? (
             <section className="grid gap-2">
               <h2 className="mt-2 text-sm font-black">Bưu cục nộp trực tiếp ({resubmitted.length})</h2>
-              <p className="text-[0.68rem] text-muted-foreground">Tiền cước khách trả tại quầy, và tiền kế toán đã từ chối được bưu cục kiểm lại rồi gửi duyệt lại.</p>
+              <p className="text-[0.68rem] text-muted-foreground">Tiền cước khách trả tại quầy, và tiền quản lý đã từ chối được bưu cục kiểm lại rồi gửi duyệt lại.</p>
               <Card className="divide-y">
                 {resubmitted.map((collection) => (
                   <div key={collection.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
@@ -189,7 +201,7 @@ export function CashReview() {
                         ) : null}
                       </p>
                       <p className="mt-1 text-[0.68rem] text-muted-foreground">
-                        Bưu cục <span title={collection.currentHubId ?? ""}>{collection.currentHubId ? shortId(collection.currentHubId) : "—"}</span>
+                        <HubName id={collection.currentHubId} />
                         {collection.lastRejectionReason ? ` · lần trước bị từ chối: ${collection.lastRejectionReason}` : ""}
                       </p>
                     </div>
@@ -216,7 +228,7 @@ export function CashReview() {
           : "Tiền được giữ lại tại bưu cục. Bưu cục kiểm đếm lại rồi gửi duyệt lại."}
         confirmLabel={approving ? "Duyệt" : "Từ chối"}
         destructive={!approving}
-        input={approving ? undefined : { label: "Lý do", placeholder: "Ví dụ: thiếu 50.000 ₫ so với khai báo", required: true, multiline: true }}
+        input={approving ? undefined : { label: "Lý do", placeholder: "Ví dụ: thiếu 50.000 ₫ so với khai báo", required: true, multiline: true, reasons: REASONS.cashReject }}
         loading={saving}
         onCancel={() => setAction(null)}
         onConfirm={run}

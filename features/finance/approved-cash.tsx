@@ -25,7 +25,7 @@ function monthStart() {
  * What finance has approved: the history stays after approval, with the period's revenue. Cash
  * fees and the fees merchants pay themselves are Pavex's; COD is only held for someone else.
  */
-export function ApprovedCashView() {
+export function ApprovedCashView({ hubId, ready }: { hubId: string; ready: boolean }) {
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(today);
   const [data, setData] = useState<ApprovedCash | null>(null);
@@ -33,16 +33,17 @@ export function ApprovedCashView() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!ready) return;
     setLoading(true);
     try {
-      setData(await financeApi.approved(from, to));
+      setData(await financeApi.approved(from, to, hubId));
       setError(null);
     } catch (reason) {
       setError(financeErrorMessage(reason, "Không tải được tiền đã duyệt."));
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, [from, hubId, ready, to]);
 
   useEffect(() => {
     const task = window.setTimeout(() => void load(), 0);
