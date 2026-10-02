@@ -464,10 +464,22 @@ export type ShipmentCaseSummary = {
   updatedAt: string;
 };
 
+/** What a case concluded; the shipment follows it. */
+export type ShipmentCaseOutcome = "CONTINUE" | "RETURN_TO_SENDER" | "LOST" | "DAMAGED" | "OTHER";
+
+export const SHIPMENT_CASE_OUTCOMES: { value: ShipmentCaseOutcome; label: string; effect: string }[] = [
+  { value: "CONTINUE", label: "Hàng ổn, giao tiếp", effect: "Ghi vào hành trình vận đơn; đơn đi tiếp bình thường." },
+  { value: "RETURN_TO_SENDER", label: "Hoàn về người gửi", effect: "Tạo yêu cầu hoàn hàng, trưởng bưu cục duyệt rồi kiện quay về." },
+  { value: "LOST", label: "Thất lạc", effect: "Tạm giữ vận đơn để không ai tiếp tục giao; báo shop và xử lý bồi thường." },
+  { value: "DAMAGED", label: "Hư hỏng", effect: "Tạm giữ vận đơn; chụp ảnh, báo shop quyết định giao tiếp hay hoàn." },
+  { value: "OTHER", label: "Kết luận khác", effect: "Chỉ ghi kết luận vào hành trình vận đơn." },
+];
+
 export type ShipmentCase = ShipmentCaseSummary & {
   description: string;
   reportedByUserId: string;
   resolution: string | null;
+  outcome: ShipmentCaseOutcome | null;
   resolvedAt: string | null;
   closedAt: string | null;
   version: number;
@@ -500,6 +512,7 @@ export type CreateProblemParcelCaseInput = {
   severity: ShipmentCaseSeverity;
   title: string;
   description: string;
+  assignedToUserId?: string | null;
 };
 
 export type CreateUnidentifiedParcelCaseInput = {
@@ -508,6 +521,7 @@ export type CreateUnidentifiedParcelCaseInput = {
   title: string;
   description: string;
   externalBarcode: string | null;
+  assignedToUserId?: string | null;
 };
 
 export const SHIPMENT_CASE_TYPES: ShipmentCaseType[] = ["PROBLEM_PARCEL", "UNIDENTIFIED_PARCEL"];
