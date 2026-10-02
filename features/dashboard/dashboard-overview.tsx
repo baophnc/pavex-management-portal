@@ -100,7 +100,6 @@ const SHORTCUTS = [
   "/operations/assignments",
   "/operations/shifts",
   "/fleet",
-  "/deliveries",
   "/finance/cash",
   "/partners/merchants",
   "/support",

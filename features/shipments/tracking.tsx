@@ -8,6 +8,9 @@ import { DataTable, type Column } from "@/components/workspace/data-table";
 import { EmptyState } from "@/components/workspace/empty-state";
 import { controlClass, ToolbarButton } from "@/components/workspace/filters";
 import { InfoCard, InfoList, Panel } from "@/components/workspace/panel";
+import { useAccess } from "@/features/auth/access-context";
+import { ShipmentTruck } from "@/features/fleet/shipment-truck";
+import { EvidencePhoto, evidenceId } from "@/features/shipments/evidence-photo";
 import { getAdminShipment } from "@/features/shipments/api";
 import type { AdminDeliveryAttempt, AdminShipmentDetail, AdminShipmentEvent, ShipmentAddress } from "@/features/shipments/contracts";
 import {
@@ -75,12 +78,21 @@ const attemptColumns: Column<AdminDeliveryAttempt>[] = [
   { key: "reason", header: "Lý do", width: 180, cell: (row) => (row.failureReason ? deliveryFailureLabel(row.failureReason) : "—") },
   { key: "recipient", header: "Người nhận", width: 150, cell: (row) => row.recipientName ?? "—" },
   { key: "proof", header: "Chứng từ", width: 110, cell: (row) => (row.proofMethod ? proofMethodLabel(row.proofMethod) : "—") },
+  {
+    key: "photo",
+    header: "Ảnh",
+    width: 80,
+    cell: (row) => (row.evidenceReference && evidenceId(row.evidenceReference) ? <EvidencePhoto compact reference={row.evidenceReference} alt={`Ảnh giao kiện ${row.parcelCode}`} /> : "—"),
+  },
   { key: "occurredAt", header: "Thời gian", width: 130, cell: (row) => formatDateTime(row.occurredAt) },
 ];
 
 function ShipmentRecord({ data }: { data: AdminShipmentDetail }) {
   const shipment = data.shipment;
   const chargeable = shipment.parcels.reduce((sum, parcel) => sum + parcel.chargeableWeightKg, 0);
+  const { hasPermission } = useAccess();
+  const canWatchTrucks = hasPermission("fleet.trips.read-hub");
+  const ridingLeg = shipment.parcels.find((parcel) => parcel.status === "IN_TRANSIT" && parcel.currentRouteLegId)?.currentRouteLegId ?? null;
   const events = useMemo(
     () => [...data.events].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)),
     [data.events],
@@ -175,6 +187,8 @@ function ShipmentRecord({ data }: { data: AdminShipmentDetail }) {
           </ul>
         </InfoCard>
       </Panel>
+
+      {ridingLeg && canWatchTrucks ? <ShipmentTruck routeLegId={ridingLeg} /> : null}
 
       <Panel title={`Hành trình (${events.length})`} collapsible bodyClassName="p-0">
         <DataTable columns={eventColumns} rows={events} rowKey={(row) => row.id} emptyText="Chưa có sự kiện" maxHeight="28rem" fill={false} className="rounded-none border-0" />

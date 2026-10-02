@@ -20,7 +20,6 @@ import {
   canAccessControlTower,
   canAccessCounterBooking,
   canAccessCounterSettlements,
-  canAccessCourierDeliveries,
   canAccessDispatchReliability,
   canAccessFleetTrips,
   canAccessOperations,
@@ -112,7 +111,6 @@ export const navigationModules: NavigationModule[] = [
         icon: TruckIcon,
         items: [
           { href: "/fleet", label: "Xe trung chuyển", access: canAccessFleetTrips },
-          { href: "/deliveries", label: "Giao hàng", access: canAccessCourierDeliveries },
         ],
       },
     ],

@@ -16,7 +16,7 @@ export function evidenceId(reference: string | null | undefined) {
  * A delivery photo as a thumbnail; tap to see it full size. Photos are served through the console's
  * backend proxy, so only signed-in staff who may read the shipment can open them.
  */
-export function EvidencePhoto({ reference, alt }: { reference: string; alt: string }) {
+export function EvidencePhoto({ reference, alt, compact = false }: { reference: string; alt: string; compact?: boolean }) {
   const id = evidenceId(reference);
   const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
@@ -33,9 +33,9 @@ export function EvidencePhoto({ reference, alt }: { reference: string; alt: stri
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="mt-2 block overflow-hidden rounded-lg border hover:ring-2 hover:ring-brand/30">
+      <button type="button" onClick={() => setOpen(true)} className={compact ? "block overflow-hidden rounded border hover:ring-2 hover:ring-brand/30" : "mt-2 block overflow-hidden rounded-lg border hover:ring-2 hover:ring-brand/30"}>
         {/* eslint-disable-next-line @next/next/no-img-element -- served by the authenticated proxy, not a static asset */}
-        <img src={src} alt={alt} loading="lazy" className="h-28 w-40 object-cover" onError={() => setBroken(true)} />
+        <img src={src} alt={alt} loading="lazy" className={compact ? "h-9 w-12 object-cover" : "h-28 w-40 object-cover"} onError={() => setBroken(true)} />
       </button>
       {open ? (
         <div className="fixed inset-0 z-[90] grid place-items-center bg-black/80 p-4" role="dialog" aria-modal="true" onClick={() => setOpen(false)}>
