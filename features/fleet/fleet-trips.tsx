@@ -50,7 +50,7 @@ function TripBadges({ trip }: { trip: FleetTrip }) {
       <StatusPill tone="brand">Đang chạy</StatusPill>
       {trip.late ? <StatusPill tone="warning">Trễ {trip.minutesLate} phút</StatusPill> : null}
       {trip.signalLost ? <StatusPill tone="danger">Mất tín hiệu</StatusPill> : null}
-      {trip.position?.mocked ? <StatusPill tone="danger">Vị trí giả</StatusPill> : null}
+      {trip.position?.mocked ? <StatusPill tone="warning">Vị trí giả lập</StatusPill> : null}
     </div>
   );
 }
