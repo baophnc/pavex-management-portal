@@ -12,6 +12,7 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -41,9 +42,11 @@ import {
 import {
   operationalAssignmentEventLabel,
   operationalAssignmentStatusLabel,
+  operationalAssignmentTypeLabel,
   workforceIdentityName,
 } from "@/features/operations/presentation";
-import { getAdminShipment, getAdminShipments } from "@/features/shipments/api";
+import { getAdminShipment } from "@/features/shipments/api";
+import { TrackingCode, UserName } from "@/features/directory/names";
 import { ApiError } from "@/lib/api/client";
 import { formatDateTime } from "@/lib/utils";
 
@@ -52,10 +55,6 @@ const DEAD_PAGE_SIZE = 20;
 
 function apiMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
-}
-
-function shortId(value: string | null) {
-  return value ? `${value.slice(0, 8)}…` : "—";
 }
 
 export function OperationsDispatch() {
@@ -67,14 +66,13 @@ export function OperationsDispatch() {
   const searchParams = useSearchParams();
 
   const eventPage = Math.max(1, Number(searchParams.get("page") || "1") || 1);
-  const assignmentCode = searchParams.get("assignmentCode") ?? "";
+  // Set by "Xem lịch sử" on a job's page; staff filter by tracking code instead.
+  const assignmentId = searchParams.get("assignmentId") ?? "";
   const trackingCode = searchParams.get("trackingCode") ?? "";
   const eventType = (searchParams.get("eventType") ?? "") as OperationalAssignmentEventType | "";
 
-  const [assignmentDraft, setAssignmentDraft] = useState(assignmentCode);
   const [shipmentDraft, setShipmentDraft] = useState(trackingCode);
   const [assignmentLabels, setAssignmentLabels] = useState<Record<string, string>>({});
-  const [shipmentLabels, setShipmentLabels] = useState<Record<string, string>>({});
   const [workerLabels, setWorkerLabels] = useState<Record<string, string>>({});
   const [events, setEvents] = useState<OperationalAssignmentEventPage | null>(null);
   const [summary, setSummary] = useState<OperationsOutboxSummary | null>(null);
@@ -88,10 +86,6 @@ export function OperationsDispatch() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const task = window.setTimeout(() => setAssignmentDraft(assignmentCode), 0);
-    return () => window.clearTimeout(task);
-  }, [assignmentCode]);
-  useEffect(() => {
     const task = window.setTimeout(() => setShipmentDraft(trackingCode), 0);
     return () => window.clearTimeout(task);
   }, [trackingCode]);
@@ -100,36 +94,18 @@ export function OperationsDispatch() {
     setLoadingEvents(true);
     setError(null);
     try {
-      const [assignments, shipmentPage, workforcePage] = await Promise.all([
+      const [assignments, workforcePage] = await Promise.all([
         getOperationalAssignments(new URLSearchParams()),
-        canReadGlobalShipments
-          ? getAdminShipments(new URLSearchParams({ limit: "100" })).catch(() => null)
-          : Promise.resolve(null),
         getWorkforce(new URLSearchParams({ page: "1", pageSize: "100" })).catch(() => null),
       ]);
       const params = new URLSearchParams({ page: String(eventPage), pageSize: String(EVENT_PAGE_SIZE) });
-      if (assignmentCode) {
-        const assignment = assignments.find((item) => item.code === assignmentCode.trim().toUpperCase());
-        if (!assignment) throw new Error("Không tìm thấy mã phân công trong phạm vi truy cập.");
-        params.set("assignmentId", assignment.id);
-      }
-      const nextShipmentLabels = Object.fromEntries(
-        (shipmentPage?.items ?? []).map((shipment) => [shipment.id, shipment.trackingCode]),
-      );
+      if (assignmentId) params.set("assignmentId", assignmentId);
       if (trackingCode && canReadGlobalShipments) {
-        const normalizedTrackingCode = trackingCode.trim().toUpperCase();
-        const knownShipment = shipmentPage?.items.find(
-          (shipment) => shipment.trackingCode === normalizedTrackingCode,
-        );
-        const shipment = knownShipment ?? await getAdminShipment(normalizedTrackingCode);
+        const shipment = await getAdminShipment(trackingCode.trim().toUpperCase());
         params.set("shipmentId", shipment.id);
-        nextShipmentLabels[shipment.id] = "shipment" in shipment
-          ? shipment.shipment.trackingCode
-          : shipment.trackingCode;
       }
       if (eventType) params.set("eventType", eventType);
-      setAssignmentLabels(Object.fromEntries(assignments.map((assignment) => [assignment.id, assignment.code])));
-      setShipmentLabels(nextShipmentLabels);
+      setAssignmentLabels(Object.fromEntries(assignments.map((assignment) => [assignment.id, operationalAssignmentTypeLabel(assignment.type)])));
       setWorkerLabels(Object.fromEntries((workforcePage?.items ?? []).map((member) => [
         member.id,
         `${workforceIdentityName(member.identity ?? {})} · ${member.employeeCode}`,
@@ -142,7 +118,7 @@ export function OperationsDispatch() {
     } finally {
       setLoadingEvents(false);
     }
-  }, [assignmentCode, canReadGlobalShipments, eventPage, eventType, trackingCode]);
+  }, [assignmentId, canReadGlobalShipments, eventPage, eventType, trackingCode]);
 
   const loadOutbox = useCallback(async () => {
     if (!canManageOutbox) return;
@@ -272,10 +248,9 @@ export function OperationsDispatch() {
             <p className="text-sm font-black">Sự kiện điều phối</p>
           </div>
           <div className={canReadGlobalShipments
-            ? "grid gap-2 lg:grid-cols-[1fr_1fr_220px_auto]"
-            : "grid gap-2 lg:grid-cols-[1fr_220px_auto]"}
+            ? "grid gap-2 lg:grid-cols-[1fr_220px_auto]"
+            : "grid gap-2 lg:grid-cols-[220px_auto]"}
           >
-            <Input value={assignmentDraft} onChange={(event) => setAssignmentDraft(event.target.value)} placeholder="Mã phân công, ví dụ OA-..." className="font-mono text-xs uppercase" />
             {canReadGlobalShipments ? (
               <Input value={shipmentDraft} onChange={(event) => setShipmentDraft(event.target.value)} placeholder="Mã vận đơn, ví dụ PAVEX..." className="font-mono text-xs uppercase" />
             ) : null}
@@ -288,7 +263,7 @@ export function OperationsDispatch() {
               {operationalAssignmentEventTypes.map((item) => <option key={item} value={item}>{operationalAssignmentEventLabel(item)}</option>)}
             </select>
             <Button onClick={() => updateFilters({
-              assignmentCode: assignmentDraft.toUpperCase(),
+              assignmentId: "",
               trackingCode: canReadGlobalShipments ? shipmentDraft.toUpperCase() : "",
             })}>
               <SearchIcon className="size-4" /> Lọc
@@ -316,12 +291,12 @@ export function OperationsDispatch() {
                     </p>
                   </div>
                   <div className="text-[0.65rem] text-muted-foreground">
-                    <p>Phân công <span className="font-mono">{assignmentLabels[event.assignmentId] || shortId(event.assignmentId)}</span></p>
-                    <p className="mt-1">Vận đơn <span className="font-mono">{shipmentLabels[event.shipmentId] || shortId(event.shipmentId)}</span></p>
+                    <p>Việc <Link href={`/operations/assignments/${event.assignmentId}`} className="font-bold text-foreground hover:text-brand hover:underline">{assignmentLabels[event.assignmentId] || "Xem việc"}</Link></p>
+                    <p className="mt-1">Vận đơn <TrackingCode id={event.shipmentId} /></p>
                   </div>
                   <div className="text-[0.65rem] text-muted-foreground">
                     <p>Nhân sự <span>{event.workforceMemberId ? workerLabels[event.workforceMemberId] || "Ngoài danh sách hiện tại" : "—"}</span></p>
-                    <p className="mt-1">Người thao tác <span className="font-mono">{shortId(event.actorUserId)}</span></p>
+                    <p className="mt-1">Người thao tác <span className="font-bold text-foreground">{event.actorUserId ? <UserName id={event.actorUserId} /> : "Hệ thống tự động"}</span></p>
                   </div>
                   <div className="text-right text-[0.65rem] text-muted-foreground">
                     <p>{formatDateTime(event.occurredAt)}</p>
@@ -375,7 +350,6 @@ export function OperationsDispatch() {
                     </div>
                     <div className="text-[0.65rem] text-muted-foreground">
                       <p>{item.aggregateType}</p>
-                      <p className="mt-1 font-mono">{shortId(item.aggregateId)}</p>
                     </div>
                     <div className="text-[0.65rem]">
                       <p className="font-black text-destructive">{item.attemptCount} attempts</p>

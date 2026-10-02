@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { HubName } from "@/features/directory/names";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -266,7 +267,7 @@ export function OperationsShifts() {
             {data.items.length ? <div className="divide-y">{data.items.map((shift) => (
               <Link key={shift.id} href={`/operations/shifts/${shift.id}`} className="grid gap-3 px-4 py-4 transition hover:bg-muted/35 sm:grid-cols-[1.2fr_1fr_0.8fr_auto] sm:items-center sm:px-5">
                 <div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{shift.name}</p><span className={`rounded-full border px-2 py-0.5 text-[0.58rem] font-black ${shiftStatusClass(shift.status)}`}>{workShiftStatusLabel(shift.status)}</span></div><p className="mt-1 font-mono text-[0.62rem] text-muted-foreground">{shift.code}</p></div>
-                <div><p className="text-xs font-black">{shift.hubCode || "Bưu cục"}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">{shift.hubName || shift.hubId}</p></div>
+                <div><p className="text-xs font-black">{shift.hubCode || "Bưu cục"}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">{shift.hubName || <HubName id={shift.hubId} />}</p></div>
                 <div><p className="text-xs font-bold">{formatDateTime(shift.startsAt)}</p><p className="mt-1 text-[0.68rem] text-muted-foreground">→ {formatDateTime(shift.endsAt)}</p></div>
                 <div className="flex items-center gap-1.5 text-xs font-black"><UsersRoundIcon className="size-4 text-brand" />{shift.rosterCount}</div>
               </Link>

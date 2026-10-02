@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { REASONS, ReasonPicker } from "@/components/forms/reason-picker";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/features/auth/access-context";
 import { Card, CardContent } from "@/components/ui/card";
@@ -277,7 +278,7 @@ function NewRequestForms({
     <div className="grid gap-3 xl:grid-cols-3">
       <div className="rounded-xl border bg-background p-4">
         <div className="flex items-center gap-2"><RotateCcwIcon className="size-4 text-brand" /><p className="text-sm font-black">Yêu cầu hoàn hàng</p></div>
-        <textarea className={cn(textAreaClass(), "mt-3")} value={returnReason} onChange={(event) => setReturnReason(event.target.value)} maxLength={1000} placeholder="Lý do hoàn hàng..." disabled={pending} />
+        <ReasonPicker className="mt-3" reasons={REASONS.shipmentReturn} value={returnReason} onChange={setReturnReason} maxLength={1000} placeholder="Lý do hoàn hàng..." disabled={pending} />
         <Button className="mt-3" type="button" size="sm" variant="outline" onClick={() => void createReturn()} disabled={pending}>
           Tạo yêu cầu hoàn hàng
         </Button>
@@ -285,7 +286,7 @@ function NewRequestForms({
 
       <div className="rounded-xl border bg-background p-4">
         <div className="flex items-center gap-2"><ArrowRightLeftIcon className="size-4 text-brand" /><p className="text-sm font-black">Yêu cầu chuyển tiếp</p></div>
-        <textarea className={cn(textAreaClass(), "mt-3")} value={forwardReason} onChange={(event) => setForwardReason(event.target.value)} maxLength={1000} placeholder="Lý do chuyển tiếp..." disabled={pending} />
+        <ReasonPicker className="mt-3" reasons={REASONS.shipmentForward} value={forwardReason} onChange={setForwardReason} maxLength={1000} placeholder="Lý do chuyển tiếp..." disabled={pending} />
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <Input placeholder="Tên người nhận" value={recipient.contactName} onChange={(event) => setRecipient((current) => ({ ...current, contactName: event.target.value }))} disabled={pending} />
           <Input placeholder="Số điện thoại" value={recipient.contactPhone} onChange={(event) => setRecipient((current) => ({ ...current, contactPhone: event.target.value }))} disabled={pending} />
@@ -300,7 +301,7 @@ function NewRequestForms({
 
       <div className="rounded-xl border bg-background p-4">
         <div className="flex items-center gap-2"><BanIcon className="size-4 text-destructive" /><p className="text-sm font-black">Yêu cầu hủy vận đơn</p></div>
-        <textarea className={cn(textAreaClass(), "mt-3")} value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} maxLength={1000} placeholder="Lý do hủy vận đơn..." disabled={pending} />
+        <ReasonPicker className="mt-3" reasons={REASONS.shipmentCancel} value={cancelReason} onChange={setCancelReason} maxLength={1000} placeholder="Lý do hủy vận đơn..." disabled={pending} />
         <Button className="mt-3" type="button" size="sm" variant="outline" onClick={() => void createCancellation()} disabled={pending}>
           Tạo yêu cầu hủy
         </Button>
@@ -347,11 +348,11 @@ function HoldPanel({
         </div>
         <span className={cn("rounded-full border px-2.5 py-1 text-[0.62rem] font-black", state.isOnHold ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}>{state.isOnHold ? "ĐANG TẠM GIỮ" : "BÌNH THƯỜNG"}</span>
       </div>
-      {state.heldAt ? <p className="mt-2 text-[0.64rem] text-muted-foreground">Hold từ {formatDateTime(state.heldAt)}</p> : null}
+      {state.heldAt ? <p className="mt-2 text-[0.64rem] text-muted-foreground">Tạm giữ từ {formatDateTime(state.heldAt)}</p> : null}
       <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
-        <textarea className={textAreaClass()} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} placeholder={state.isOnHold ? "Lý do bỏ tạm giữ..." : "Lý do tạm giữ vận đơn..."} disabled={pending} />
+        <ReasonPicker key={state.isOnHold ? "release" : "hold"} reasons={state.isOnHold ? REASONS.shipmentRelease : REASONS.shipmentHold} value={reason} onChange={setReason} maxLength={1000} placeholder={state.isOnHold ? "Lý do bỏ tạm giữ..." : "Lý do tạm giữ vận đơn..."} disabled={pending} />
         <div className="grid content-start gap-2">
-          <label className="grid gap-1.5 text-xs font-bold">Hub context
+          <label className="grid gap-1.5 text-xs font-bold">Bưu cục liên quan
             <select value={hubId} onChange={(event) => setHubId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" disabled={pending}>
               <option value="">Không gắn bưu cục</option>
               {hubOptions.map((hub) => <option key={hub.id} value={hub.id}>{hub.label}</option>)}
@@ -479,7 +480,7 @@ function WeightPanel({
               </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold">Khối lượng thực tế mới (kg)<Input type="number" min="0.001" step="0.001" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="1.250" disabled={pending || state.hasPendingWeightReview} /></label>
-            <label className="grid gap-1.5 text-xs font-bold">Hub context
+            <label className="grid gap-1.5 text-xs font-bold">Bưu cục liên quan
               <select value={hubId} onChange={(event) => setHubId(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" disabled={pending || state.hasPendingWeightReview}>
                 <option value="">Không gắn bưu cục</option>
                 {hubOptions.map((hub) => <option key={hub.id} value={hub.id}>{hub.label}</option>)}

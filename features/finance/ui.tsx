@@ -3,6 +3,7 @@
 import { LoaderCircleIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
+import { ReasonPicker } from "@/components/forms/reason-picker";
 import { Button } from "@/components/ui/button";
 import { textareaClassName } from "@/features/pricing/ui";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ export function FinanceDialog({
   title: string;
   description?: string;
   confirmLabel: string;
-  input?: { label: string; placeholder?: string; required?: boolean; multiline?: boolean };
+  input?: { label: string; placeholder?: string; required?: boolean; multiline?: boolean; reasons?: readonly string[] };
   destructive?: boolean;
   loading?: boolean;
   children?: ReactNode;
@@ -44,7 +45,9 @@ export function FinanceDialog({
         {input ? (
           <label className="mt-4 grid gap-1.5 text-xs font-bold">
             <span>{input.label}{input.required ? "" : " (không bắt buộc)"}</span>
-            {input.multiline ? (
+            {input.reasons ? (
+              <ReasonPicker reasons={input.reasons} value={value} onChange={setValue} disabled={loading} placeholder={input.placeholder} />
+            ) : input.multiline ? (
               <textarea value={value} maxLength={500} disabled={loading} placeholder={input.placeholder} className={textareaClassName} onChange={(event) => setValue(event.target.value)} />
             ) : (
               <input value={value} maxLength={100} disabled={loading} placeholder={input.placeholder} className="h-9 rounded-md border bg-background px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/15" onChange={(event) => setValue(event.target.value)} />

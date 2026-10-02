@@ -15,6 +15,8 @@ export type MerchantProfile = {
   id: string;
   merchantCode: string;
   userId: string;
+  /** The hub serving the shop's warehouse area; its manager approves the shop. */
+  servingHubId: string | null;
   businessName: string;
   contactName: string;
   contactPhone: string;

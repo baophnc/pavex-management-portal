@@ -26,15 +26,15 @@ function query(params: Record<string, string | null | undefined>) {
 const post = (body?: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body ?? {}) });
 
 export const financeApi = {
-  remittances: (status?: CashRemittanceStatus | "") =>
-    apiRequest<CashRemittance[]>(`admin/billing/cash/remittances${query({ status })}`),
-  collections: (status?: CashCollectionStatus | "") =>
-    apiRequest<CashCollection[]>(`admin/billing/cash/collections${query({ status })}`),
+  remittances: (status?: CashRemittanceStatus | "", hubId = "") =>
+    apiRequest<CashRemittance[]>(`admin/billing/cash/remittances${query({ status, hubId })}`),
+  collections: (status?: CashCollectionStatus | "", hubId = "") =>
+    apiRequest<CashCollection[]>(`admin/billing/cash/collections${query({ status, hubId })}`),
   approveRemittance: (id: string) => apiRequest<CashRemittance>(`admin/billing/cash/remittances/${id}/approve`, post()),
   rejectRemittance: (id: string, reason: string) =>
     apiRequest<CashRemittance>(`admin/billing/cash/remittances/${id}/reject`, post({ reason })),
-  approved: (from: string, to: string) =>
-    apiRequest<ApprovedCash>(`admin/billing/cash/approved${query({ from, to })}`),
+  approved: (from: string, to: string, hubId = "") =>
+    apiRequest<ApprovedCash>(`admin/billing/cash/approved${query({ from, to, hubId })}`),
   approveCollection: (id: string) => apiRequest<CashCollection>(`admin/billing/cash/collections/${id}/approve`, post()),
   rejectCollection: (id: string, reason: string) =>
     apiRequest<CashCollection>(`admin/billing/cash/collections/${id}/reject`, post({ reason })),

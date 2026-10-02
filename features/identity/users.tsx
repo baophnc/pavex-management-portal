@@ -420,12 +420,6 @@ export function IdentityUsers() {
                               />
                             ) : null}
                           </div>
-                          <p
-                            className="mt-1 max-w-64 truncate font-mono text-[0.6rem] text-muted-foreground/70"
-                            title={user.userId}
-                          >
-                            {user.userId}
-                          </p>
                         </div>
                       </div>
                     </td>

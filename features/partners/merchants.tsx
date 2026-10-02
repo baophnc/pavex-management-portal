@@ -27,6 +27,8 @@ import {
   type MerchantProfile,
   type MerchantStatus,
 } from "@/features/partners/contracts";
+import { HubSelect, useHubScope } from "@/features/directory/hub-scope";
+import { HubName } from "@/features/directory/names";
 import { searchMerchants } from "@/features/partners/api";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -157,6 +159,8 @@ export function MerchantManagement() {
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const status = parseStatus(searchParams.get("status"));
   const query = searchParams.get("search")?.trim() ?? "";
+  const hubId = searchParams.get("hubId") ?? "";
+  const scope = useHubScope();
 
   const [result, setResult] = useState<MerchantListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +177,7 @@ export function MerchantManagement() {
           pageSize: PAGE_SIZE,
           status,
           search: query,
+          hubId,
         }),
       );
     } catch (reason) {
@@ -184,7 +189,7 @@ export function MerchantManagement() {
     } finally {
       setLoading(false);
     }
-  }, [page, query, status]);
+  }, [hubId, page, query, status]);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
@@ -237,7 +242,7 @@ export function MerchantManagement() {
     (item) =>
       item.status === "PENDING_VERIFICATION" || item.status === "SUSPENDED",
   ).length;
-  const hasFilters = Boolean(status || query);
+  const hasFilters = Boolean(status || query || hubId);
 
   return (
     <div className="space-y-4">
@@ -328,6 +333,14 @@ export function MerchantManagement() {
                 Tìm
               </Button>
             </div>
+
+            <HubSelect
+              scope={scope}
+              value={hubId}
+              allLabel="Tất cả bưu cục"
+              className="h-11 w-auto text-xs font-bold sm:h-10"
+              onChange={(next) => updateQuery({ hubId: next || null, page: 1 })}
+            />
 
             <select
               value={status}
@@ -461,7 +474,7 @@ export function MerchantManagement() {
                       <td className="px-4 py-3.5 align-top">
                         <p className="font-bold">{formatDateTime(merchant.updatedAt)}</p>
                         <p className="mt-1 text-[0.65rem] text-muted-foreground">
-                          v{merchant.version}
+                          {merchant.servingHubId ? <HubName id={merchant.servingHubId} /> : "Chưa xác định bưu cục"}
                         </p>
                       </td>
                       <td className="px-4 py-3.5 text-right align-top">

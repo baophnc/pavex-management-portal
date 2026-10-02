@@ -38,6 +38,7 @@ import {
   shipmentControlAlertSeverityLabel,
   shipmentControlAlertTypeLabel,
 } from "@/features/shipments/presentation";
+import { hubLabel, useHubDirectory } from "@/features/directory/names";
 import { ApiError } from "@/lib/api/client";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -56,10 +57,6 @@ function severityClass(severity: ShipmentControlAlertSeverity) {
     case "INFO":
       return "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-200";
   }
-}
-
-function shortId(value: string | null) {
-  return value ? `${value.slice(0, 8)}…` : "—";
 }
 
 function AlertLink({
@@ -210,9 +207,10 @@ export function ShipmentControlTower() {
     router.push(serialized ? `${pathname}?${serialized}` : pathname);
   };
 
+  const directory = useHubDirectory();
   const hubName = (id: string) => {
-    const hub = hubs.find((item) => item.id === id);
-    return hub ? `${hub.code} · ${hub.name}` : shortId(id);
+    const hub = hubs.find((item) => item.id === id) ?? directory.get(id);
+    return hubLabel(hub);
   };
 
   return (
@@ -388,7 +386,7 @@ export function ShipmentControlTower() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-xs font-bold">{hubName(alert.hubId)}</p>
-                      {alert.routeLegId ? <p className="mt-1 font-mono text-[0.62rem] text-muted-foreground">chặng {shortId(alert.routeLegId)}</p> : null}
+                      {alert.routeLegId ? <p className="mt-1 text-[0.62rem] text-muted-foreground">Đang trên tuyến trung chuyển</p> : null}
                     </td>
                     <td className="px-4 py-3 text-[0.68rem] leading-5 text-muted-foreground">
                       <p>Phát hiện: {formatDateTime(alert.detectedAt)}</p>

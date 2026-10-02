@@ -10,11 +10,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 
+import { REASONS, ReasonPicker } from "@/components/forms/reason-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { getScopedHubs } from "@/features/operations/hub-scope";
 import type { Hub } from "@/features/network/contracts";
 import {
@@ -37,15 +38,12 @@ import {
   workforceIdentityName,
   workforceKindLabel,
 } from "@/features/operations/presentation";
+import { TrackingCode, UserName } from "@/features/directory/names";
 import { ApiError } from "@/lib/api/client";
 import { formatDateTime } from "@/lib/utils";
 
 function apiMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
-}
-
-function shortId(value: string | null) {
-  return value ? `${value.slice(0, 8)}…` : "—";
 }
 
 /** Hub managers take hub handling where there is no clerk, as Operations allows. */
@@ -180,12 +178,16 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
   const hub = hubs.find((item) => item.id === assignment.hubId);
   const assignedMember = workforce.find((item) => item.id === assignment.assigneeWorkforceMemberId);
   const assigningUser = workforce.find((item) => item.userId === assignment.assignedByUserId);
+  const memberName = (id: string) => {
+    const member = workforce.find((item) => item.id === id);
+    return member ? workforceIdentityName(member.identity ?? {}) : "Nhân viên khác";
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link href="/operations/assignments" className="inline-flex items-center gap-2 text-xs font-black text-brand hover:underline">
-          <ArrowLeftIcon className="size-4" /> Assignments
+          <ArrowLeftIcon className="size-4" /> Danh sách việc
         </Link>
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || saving}>
           <RefreshCwIcon className="size-4" /> Làm mới
@@ -195,13 +197,13 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
       <section className="rounded-xl border bg-card p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Chi tiết phân công</p>
-            <h1 className="mt-1 text-xl font-black">{assignment.code}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{operationalAssignmentTypeLabel(assignment.type)} · {workforceKindLabel(assignment.requiredKind)}</p>
+            <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-brand">Chi tiết việc</p>
+            <h1 className="mt-1 text-xl font-black">{operationalAssignmentTypeLabel(assignment.type)}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Vận đơn <TrackingCode id={assignment.shipmentId} /> · cần {workforceKindLabel(assignment.requiredKind).toLowerCase()}</p>
           </div>
           <div className="text-right">
             <p className="text-xs font-black">{operationalAssignmentStatusLabel(assignment.status)}</p>
-            <p className="mt-1 text-[0.68rem] text-muted-foreground">Priority {assignment.priority}</p>
+            <p className="mt-1 text-[0.68rem] text-muted-foreground">Ưu tiên {assignment.priority}</p>
           </div>
         </div>
       </section>
@@ -210,12 +212,10 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
         <Card>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Info label="Mã nội bộ vận đơn" value={shortId(assignment.shipmentId)} />
               <Info label="Bưu cục" value={hub ? `${hub.code} · ${hub.name}` : "Bưu cục trong phạm vi"} />
-              <Info label="Chặng tuyến nội bộ" value={shortId(assignment.routeLegId)} />
               <Info label="Thứ tự thực thi" value={String(assignment.sequence)} />
               <Info label="Nhân sự được phân công" value={assignedMember ? `${assignedMember.employeeCode} · ${workforceIdentityName(assignedMember.identity ?? {})}` : "Chưa phân công"} />
-              <Info label="Người phân công" value={assigningUser ? workforceIdentityName(assigningUser.identity ?? {}) : assignment.assignedByUserId ? "Người điều phối được phân quyền" : "—"} />
+              <Info label="Người phân công" value={assigningUser ? workforceIdentityName(assigningUser.identity ?? {}) : assignment.assignedByUserId ? <UserName id={assignment.assignedByUserId} /> : "Hệ thống tự phân"} />
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Time label="Giao việc" value={assignment.assignedAt} />
@@ -278,7 +278,7 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
                 <p className="text-sm font-black">Hủy phân công</p>
                 <p className="mt-1 text-xs text-muted-foreground">Phân công đã hoàn tất thì không thể hủy.</p>
               </div>
-              <Input value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Lý do hủy..." disabled={!canCancel || saving} />
+              <ReasonPicker reasons={REASONS.assignmentCancel} value={cancelReason} onChange={setCancelReason} placeholder="Lý do hủy..." disabled={!canCancel || saving} />
               <Button variant="destructive" onClick={() => void cancel()} disabled={!canCancel || saving || !cancelReason.trim()}>
                 <BanIcon className="size-4" /> Hủy assignment
               </Button>
@@ -312,8 +312,8 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
                     <p className="text-[0.65rem] text-muted-foreground">{formatDateTime(event.occurredAt)}</p>
                   </div>
                   <div className="mt-2 grid gap-1 text-[0.65rem] text-muted-foreground sm:grid-cols-2">
-                    <p>Nhân viên: <span className="font-mono">{shortId(event.workforceMemberId)}</span></p>
-                    <p>Người thao tác: <span className="font-mono">{shortId(event.actorUserId)}</span></p>
+                    <p>Nhân viên: <span className="font-bold text-foreground">{event.workforceMemberId ? memberName(event.workforceMemberId) : "—"}</span></p>
+                    <p>Người thao tác: <span className="font-bold text-foreground">{event.actorUserId ? <UserName id={event.actorUserId} /> : "Hệ thống tự động"}</span></p>
                   </div>
                   {event.reason ? <p className="mt-2 text-xs leading-5">{event.reason}</p> : null}
                 </div>
@@ -326,8 +326,8 @@ export function OperationsAssignmentDetail({ assignmentId }: { assignmentId: str
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
-  const body = <p className="mt-1 break-all font-mono text-xs">{value}</p>;
+function Info({ label, value }: { label: string; value: ReactNode }) {
+  const body = <p className="mt-1 break-words text-xs font-semibold">{value}</p>;
   return (
     <div className="rounded-lg border bg-muted/15 p-3">
       <p className="text-[0.62rem] font-black uppercase tracking-[0.08em] text-muted-foreground">{label}</p>

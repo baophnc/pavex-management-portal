@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { UserName } from "@/features/directory/names";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -182,7 +183,7 @@ function CreateWorkforceDialog({
             </div>
           </section>
           <p className="-mt-2 text-[0.68rem] text-muted-foreground">
-            Nhân viên trụ sở (quản lý vận hành, kinh doanh, kế toán) được cấp vai trò ở mục Tài khoản, không thêm tại đây.
+            Nhân viên trụ sở (quản trị hệ thống, quản lý vận hành) được cấp vai trò ở mục Tài khoản, không thêm tại đây.
           </p>
 
           <section>
@@ -425,7 +426,7 @@ export function OperationsWorkforce() {
                         <td className="px-4 py-3.5">
                           <Link href={`/operations/workforce/${member.id}`} className="group block">
                             <p className="text-xs font-black group-hover:text-brand">{workforceIdentityName(member.identity ?? {})}</p>
-                            <p className="mt-1 text-[0.68rem] text-muted-foreground">{member.identity?.email ?? member.userId}</p>
+                            <p className="mt-1 text-[0.68rem] text-muted-foreground">{member.identity?.email ?? <UserName id={member.userId} />}</p>
                             <p className="mt-1 font-mono text-[0.6rem] text-muted-foreground">{member.employeeCode}</p>
                           </Link>
                         </td>

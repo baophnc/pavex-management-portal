@@ -242,14 +242,6 @@ function QueueItem({ item, currentUserId, canManage, canOpenShipment, onChanged 
           </div>
         ) : null}
 
-        <details className="text-[0.64rem] text-muted-foreground">
-          <summary className="cursor-pointer font-bold">Thông tin kỹ thuật</summary>
-          <div className="mt-2 grid gap-1 rounded-lg border bg-muted/10 p-2.5 font-mono">
-            <span>Shipment: {item.shipmentId}</span>
-            <span>Workflow: {item.id}</span>
-            {item.parcelId ? <span>Parcel: {item.parcelId}</span> : null}
-          </div>
-        </details>
       </CardContent>
     </Card>
   );

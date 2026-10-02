@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAccess } from "@/features/auth/access-context";
+import { HubName, MerchantName, UserName } from "@/features/directory/names";
 import { Barcode } from "@/features/shipments/barcode";
 import { displayUserName } from "@/features/identity/presentation";
 import {
@@ -162,7 +163,7 @@ function RelatedPeopleCard({
       <div className="mt-4 border-t pt-4">
         <p className="text-[0.62rem] font-bold text-muted-foreground">Người tạo vận đơn</p>
         <p className="mt-1 text-sm font-black">
-          {creator ? displayUserName(creator) : "Chưa tải được thông tin người tạo"}
+          {creator ? displayUserName(creator) : <UserName id={data.createdByUserId} fallback="Không rõ" />}
         </p>
         {creator ? (
           <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -225,8 +226,8 @@ function TechnicalPanel({ data }: { data: AdminShipmentDetail }) {
           </p>
           <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <KeyValue label="ID vận đơn" value={data.id} mono />
-            <KeyValue label="ID đối tác" value={data.merchantId} mono />
-            <KeyValue label="ID người tạo" value={data.createdByUserId} mono />
+            <KeyValue label="Cửa hàng" value={data.merchantId ? <MerchantName id={data.merchantId} /> : "Khách gửi tại quầy"} />
+            <KeyValue label="Người tạo" value={<UserName id={data.createdByUserId} fallback="Không rõ" />} />
             <KeyValue label="Phiên bản dữ liệu" value={String(data.version)} />
             <KeyValue label="ID báo giá" value={data.quoteId} mono />
             <KeyValue label="ID yêu cầu báo giá" value={data.quoteRequestId} mono />
@@ -242,11 +243,11 @@ function TechnicalPanel({ data }: { data: AdminShipmentDetail }) {
           <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <KeyValue label="ID vùng phục vụ gửi" value={data.originServiceAreaId} mono />
             <KeyValue label="ID vùng mạng lưới gửi" value={data.originRegionId} mono />
-            <KeyValue label="ID điểm trung chuyển gửi" value={data.originHubId} mono />
+            <KeyValue label="Bưu cục gửi" value={<HubName id={data.originHubId} />} />
             <KeyValue label="ID lô giữ tải" value={data.capacityReservationBatchId ?? "—"} mono />
             <KeyValue label="ID vùng phục vụ nhận" value={data.destinationServiceAreaId} mono />
             <KeyValue label="ID vùng mạng lưới nhận" value={data.destinationRegionId} mono />
-            <KeyValue label="ID điểm trung chuyển nhận" value={data.destinationHubId} mono />
+            <KeyValue label="Bưu cục nhận" value={<HubName id={data.destinationHubId} />} />
             <KeyValue label="Phiên bản tuyến" value={String(data.shipment.routing.routeRevision)} />
           </div>
         </section>
@@ -264,8 +265,8 @@ function TechnicalPanel({ data }: { data: AdminShipmentDetail }) {
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                     <KeyValue label="ID sự kiện" value={event.id} mono />
                     <KeyValue label="Mã sự kiện" value={event.code} mono />
-                    <KeyValue label="ID người thao tác" value={event.actorUserId ?? "—"} mono />
-                    <KeyValue label="ID điểm trung chuyển" value={event.hubId ?? "—"} mono />
+                    <KeyValue label="Người thao tác" value={event.actorUserId ? <UserName id={event.actorUserId} /> : "Hệ thống"} />
+                    <KeyValue label="Bưu cục" value={<HubName id={event.hubId} />} />
                   </div>
                   {event.dataJson ? (
                     <pre className="mt-2 max-h-44 overflow-auto rounded-lg bg-muted/45 p-3 text-[0.62rem] leading-4">
@@ -285,7 +286,7 @@ function TechnicalPanel({ data }: { data: AdminShipmentDetail }) {
 function actorText(event: AdminShipmentEvent, context: ShipmentDetailContext) {
   if (!event.actorUserId) return null;
   const user = context.users[event.actorUserId];
-  if (!user) return "Nhân viên Pavex";
+  if (!user) return <UserName id={event.actorUserId} fallback="Nhân viên Pavex" />;
   return `${displayUserName(user)} · ${user.email}`;
 }
 
@@ -835,7 +836,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
                       </p>
                     ) : null}
                     <p className="mt-2 text-[0.64rem] text-muted-foreground">
-                      Người thao tác: {actor ? `${displayUserName(actor)} · ${actor.email}` : "Nhân viên Pavex"}
+                      Người thao tác: {actor ? `${displayUserName(actor)} · ${actor.email}` : <UserName id={attempt.actorUserId} fallback="Nhân viên Pavex" />}
                     </p>
                   </div>
                 );
@@ -854,7 +855,7 @@ export function AdminShipmentDetailView({ trackingCode }: { trackingCode: string
         />
         <KeyValue
           label="Người tạo"
-          value={creator ? displayUserName(creator) : "Chưa tải được thông tin"}
+          value={creator ? displayUserName(creator) : <UserName id={data.createdByUserId} fallback="Không rõ" />}
         />
       </Card>
 

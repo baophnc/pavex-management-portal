@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { REASONS, ReasonPicker } from "@/components/forms/reason-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ import {
   workforceStatusLabel,
 } from "@/features/operations/presentation";
 import { ApiError } from "@/lib/api/client";
+import { HubName, UserName } from "@/features/directory/names";
 import { cn, formatDateTime } from "@/lib/utils";
 
 function apiMessage(error: unknown, fallback: string) {
@@ -74,14 +76,13 @@ function HubCard({ membership, onRemove, removing }: { membership: WorkforceHubM
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-black">{membership.hubCode ?? membership.hubId}</p>
+            <p className="text-xs font-black">{membership.hubCode ?? <HubName id={membership.hubId} codeOnly />}</p>
             {membership.isPrimary ? <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[0.58rem] font-black text-brand">CHÍNH</span> : null}
             <span className={cn("rounded-full px-2 py-0.5 text-[0.58rem] font-black", membership.isActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground")}>
-              {membership.isActive ? "ACTIVE" : "INACTIVE"}
+              {membership.isActive ? "Đang làm" : "Đã rời"}
             </span>
           </div>
           <p className="mt-1 text-[0.68rem] text-muted-foreground">{membership.hubName ?? "Chưa có tên bưu cục"}</p>
-          <p className="mt-1 font-mono text-[0.58rem] text-muted-foreground">{membership.hubId}</p>
           <p className="mt-2 text-[0.62rem] text-muted-foreground">Gán {formatDateTime(membership.assignedAt)}{membership.unassignedAt ? ` · Gỡ ${formatDateTime(membership.unassignedAt)}` : ""}</p>
         </div>
         {membership.isActive ? (
@@ -217,7 +218,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
               <div>
                 <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-brand">{member.employeeCode}</p>
                 <h1 className="mt-1 text-xl font-black sm:text-2xl">{workforceIdentityName(member.identity ?? {})}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">{workforceKindLabel(member.kind)} · {member.identity?.email ?? member.userId}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{workforceKindLabel(member.kind)} · {member.identity?.email ?? <UserName id={member.userId} />}</p>
               </div>
             </div>
           </div>
@@ -243,7 +244,6 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
               <Fact label="Mã nhân viên" value={member.employeeCode} mono />
               <Fact label="Loại nhân sự" value={workforceKindLabel(member.kind)} />
               <Fact label="Trạng thái nhân sự" value={workforceStatusLabel(member.status)} />
-              <Fact label="Mã tài khoản" value={member.userId} mono />
               <Fact label="Trạng thái tài khoản" value={member.identity ? accountLabels[member.identity.accountStatus as keyof typeof accountLabels] ?? member.identity.accountStatus : "Không đọc được"} />
               <Fact label="Trạng thái hồ sơ" value={member.identity ? profileLabels[member.identity.profileStatus as keyof typeof profileLabels] ?? member.identity.profileStatus : "Không đọc được"} />
               <Fact label="Vai trò" value={member.identity?.roles.map(roleLabel).join(", ") || "—"} />
@@ -282,7 +282,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                 {activeMemberships.map((membership) => (
                   <div key={membership.id} className="space-y-2">
                     <HubCard membership={membership} onRemove={() => removeHub(membership)} removing={saving === `remove-${membership.hubId}`} />
-                    <Input value={removeReason[membership.hubId] ?? ""} onChange={(event) => setRemoveReason((value) => ({ ...value, [membership.hubId]: event.target.value }))} placeholder="Lý do gỡ bưu cục (tùy chọn)" className="h-9 text-xs" />
+                    <ReasonPicker reasons={REASONS.workforceUnassign} value={removeReason[membership.hubId] ?? ""} onChange={(next) => setRemoveReason((value) => ({ ...value, [membership.hubId]: next }))} placeholder="Lý do gỡ bưu cục (tùy chọn)" />
                   </div>
                 ))}
               </div>
@@ -305,7 +305,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                   {audit.map((item) => (
                     <div key={item.id} className="grid gap-2 rounded-lg border p-3.5 md:grid-cols-[150px_1fr]">
                       <div><p className="text-[0.64rem] font-black text-brand">{workforceAuditLabel(item.action)}</p><p className="mt-1 text-[0.62rem] text-muted-foreground">{formatDateTime(item.occurredAt)}</p></div>
-                      <div className="text-xs leading-5"><p className="font-bold">{item.previousValue ?? "—"} → {item.newValue ?? "—"}</p>{item.reason ? <p className="mt-1 text-muted-foreground">{item.reason}</p> : null}<p className="mt-1 font-mono text-[0.58rem] text-muted-foreground">actor {item.actorUserId}{item.hubId ? ` · hub ${item.hubId}` : ""}</p></div>
+                      <div className="text-xs leading-5"><p className="font-bold">{item.previousValue ?? "—"} → {item.newValue ?? "—"}</p>{item.reason ? <p className="mt-1 text-muted-foreground">{item.reason}</p> : null}<p className="mt-1 text-[0.62rem] text-muted-foreground">Bởi <UserName id={item.actorUserId} />{item.hubId ? <> · <HubName id={item.hubId} /></> : null}</p></div>
                     </div>
                   ))}
                 </div>
@@ -341,7 +341,7 @@ export function OperationsWorkforceDetail({ workforceId }: { workforceId: string
                   <select value={status} disabled={member.status === "OFFBOARDED"} onChange={(event) => setStatus(event.target.value as WorkforceMemberStatus)} className="h-10 w-full rounded-md border bg-background px-3 text-xs font-bold">
                     <option value="ACTIVE">Đang hoạt động</option><option value="SUSPENDED">Tạm ngưng</option><option value="OFFBOARDED">Đã nghỉ</option>
                   </select>
-                  <Input value={statusReason} onChange={(event) => setStatusReason(event.target.value)} placeholder="Lý do (bắt buộc khi suspend/offboard)" />
+                  <ReasonPicker reasons={REASONS.workforceStatus} value={statusReason} onChange={setStatusReason} placeholder="Lý do (bắt buộc khi tạm ngưng hoặc cho nghỉ)" />
                   <Button type="button" className="w-full" variant="outline" onClick={saveStatus} disabled={saving === "status" || member.status === "OFFBOARDED"}>
                     {saving === "status" ? <LoaderCircleIcon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />} Lưu trạng thái
                   </Button>

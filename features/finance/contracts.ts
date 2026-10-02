@@ -146,11 +146,6 @@ export function paymentMethodLabel(payment: Pick<InvoicePayment, "method" | "pro
   return payment.provider === "payos" ? "QR · PayOS" : `QR · ${payment.provider ?? "giả lập"}`;
 }
 
-/** Internal ids are long; show a short prefix with the full value on hover. */
-export function shortId(id: string) {
-  return id.slice(0, 8);
-}
-
 /**
  * Cash finance approved in a period. Fees are Pavex revenue; COD is owed on to merchants
  * (settlement) or to walk-in senders (paid back at the counter).
