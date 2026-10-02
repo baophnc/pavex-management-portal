@@ -11,6 +11,14 @@ export type MerchantStatusReason =
   | "MERCHANT_REQUEST"
   | "OTHER";
 
+export type MerchantBusinessType = "INDIVIDUAL" | "HOUSEHOLD" | "COMPANY";
+
+export const merchantBusinessTypeLabels: Record<MerchantBusinessType, string> = {
+  INDIVIDUAL: "Cá nhân bán hàng online",
+  HOUSEHOLD: "Hộ kinh doanh",
+  COMPANY: "Doanh nghiệp",
+};
+
 export type MerchantProfile = {
   id: string;
   merchantCode: string;
@@ -22,6 +30,13 @@ export type MerchantProfile = {
   contactPhone: string;
   contactEmail: string | null;
   taxCode: string | null;
+  businessType: MerchantBusinessType | null;
+  registrationNumber: string | null;
+  representativeName: string | null;
+  registeredAddress: string | null;
+  salesChannel: string | null;
+  productCategory: string | null;
+  expectedMonthlyOrders: number | null;
   status: MerchantStatus;
   statusReasonCode: MerchantStatusReason | null;
   statusReasonDetail: string | null;

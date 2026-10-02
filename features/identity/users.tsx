@@ -34,6 +34,7 @@ import {
   initialsOf,
   profileLabels,
   roleLabel,
+  rolePresentation,
 } from "@/features/identity/presentation";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -94,6 +95,9 @@ function profileBadge(status: ProfileStatus) {
     </span>
   );
 }
+
+/** The roles people ask about, from the top of the company down to customers. */
+const ROLE_GUIDE = ["ADMIN", "OPERATIONS_MANAGER", "HUB_MANAGER", "WAREHOUSE_OPERATOR", "COURIER", "LINE_HAUL_DRIVER", "MERCHANT", "CUSTOMER"];
 
 export function IdentityUsers() {
   const { hasPermission } = useAccess();
@@ -217,10 +221,22 @@ export function IdentityUsers() {
               </div>
             </div>
             <p className="mt-3 max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-              Tra cứu tài khoản, trạng thái hồ sơ, xác minh email và vai trò trực
-              tiếp từ hệ thống tài khoản. Bộ lọc được giữ trên đường dẫn nên không
-              bị mất khi chuyển sang trang khác.
+              Mọi người đăng nhập vào Pavex: nhân viên, cửa hàng và khách. Mỗi
+              tài khoản có một hoặc vài vai trò; vai trò quyết định người đó
+              thấy và làm được gì.
             </p>
+            <details className="mt-2 max-w-3xl text-xs">
+              <summary className="cursor-pointer font-bold text-brand">Các vai trò nghĩa là gì?</summary>
+              <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                {ROLE_GUIDE.map((code) => (
+                  <li key={code} className="rounded-md border bg-muted/20 p-2">
+                    <b>{rolePresentation(code).name}</b>
+                    <span className="block text-muted-foreground">{rolePresentation(code).description}</span>
+                    <span className="mt-0.5 block text-[0.65rem] text-muted-foreground">{rolePresentation(code).assignmentSummary}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </div>
 
           <div className="flex flex-wrap gap-2">

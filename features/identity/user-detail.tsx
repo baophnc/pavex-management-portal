@@ -417,11 +417,14 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
               </div>
               <h1 className="mt-1 truncate text-xl font-black sm:text-2xl">{displayUserName(user)}</h1>
               <p className="mt-1 break-all text-xs text-muted-foreground sm:text-sm">{user.email}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 grid gap-1.5">
                 {user.roles.map((role) => (
-                  <span key={role} className="rounded-full bg-brand/10 px-2 py-1 text-[0.58rem] font-black text-brand">
-                    {rolePresentation(role).name}
-                  </span>
+                  <p key={role} className="text-xs">
+                    <span className="mr-1.5 rounded-full bg-brand/10 px-2 py-0.5 text-[0.62rem] font-black text-brand">
+                      {rolePresentation(role).name}
+                    </span>
+                    <span className="text-muted-foreground">{rolePresentation(role).description}</span>
+                  </p>
                 ))}
               </div>
             </div>
@@ -431,10 +434,16 @@ export function IdentityUserDetail({ userId }: { userId: string }) {
             <Button variant="outline" onClick={() => void loadUser()}>
               <RefreshCwIcon className="size-4" /> Tải lại
             </Button>
-            {canInvite ? (
-              <Button variant="outline" onClick={() => void sendInvitation()} disabled={saving === "invite"}>
+            {/* Someone who confirmed their email already joined; an invitation would only confuse them. */}
+            {canInvite && !user.emailVerified ? (
+              <Button
+                variant="outline"
+                title="Gửi lại email để người này đặt mật khẩu và xác minh email"
+                onClick={() => void sendInvitation()}
+                disabled={saving === "invite"}
+              >
                 {saving === "invite" ? <LoaderCircleIcon className="size-4 animate-spin" /> : <MailPlusIcon className="size-4" />}
-                Gửi lời mời
+                Gửi lại lời mời
               </Button>
             ) : null}
           </div>

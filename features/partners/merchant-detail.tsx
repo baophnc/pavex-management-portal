@@ -35,6 +35,7 @@ import {
   rolePresentation,
 } from "@/features/identity/presentation";
 import {
+  merchantBusinessTypeLabels,
   merchantReasonLabel,
   merchantStatusLabel,
   merchantStatusReasons,
@@ -47,6 +48,8 @@ import {
 import { changeMerchantStatus, getMerchant, getMerchantReadiness } from "@/features/partners/api";
 import { ApiError } from "@/lib/api/client";
 import { HubName, UserName } from "@/features/directory/names";
+import { financeApi } from "@/features/finance/api";
+import type { PayoutAccount } from "@/features/finance/contracts";
 import { cn, formatDateTime } from "@/lib/utils";
 
 type Decision = {
@@ -281,6 +284,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
   const activeView = detailView(searchParams.get("view"));
   const canManageStatus = hasPermission("partners.merchants.manage-status");
   const canReadIdentity = hasPermission("identity.users.read");
+  const canSeePayout = hasPermission("billing.manage");
 
   const [detail, setDetail] = useState<AdminMerchantResponse | null>(null);
   const [identityUser, setIdentityUser] = useState<UserDetail | null>(null);
@@ -654,7 +658,21 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
             <CardContent className="grid gap-3 sm:grid-cols-2">
               <Fact label="Mã cửa hàng" value={merchant.merchantCode} mono />
               <Fact label="Tên doanh nghiệp" value={merchant.businessName} />
+              <Fact label="Loại hình" value={merchant.businessType ? merchantBusinessTypeLabels[merchant.businessType] : "Chưa khai báo"} />
               <Fact label="Mã số thuế" value={merchant.taxCode} mono />
+              <Fact label="Số giấy phép kinh doanh" value={merchant.registrationNumber ?? "Chưa khai báo"} mono />
+              <Fact label="Người đại diện" value={merchant.representativeName ?? "Chưa khai báo"} />
+              <Fact label="Địa chỉ đăng ký" value={merchant.registeredAddress ?? "Chưa khai báo"} />
+              <Fact label="Ngành hàng chính" value={merchant.productCategory ?? "Chưa khai báo"} />
+              <Fact
+                label="Kênh bán"
+                value={merchant.salesChannel ? (
+                  /^https?:\/\//.test(merchant.salesChannel)
+                    ? <a href={merchant.salesChannel} target="_blank" rel="noreferrer" className="text-brand hover:underline">{merchant.salesChannel}</a>
+                    : merchant.salesChannel
+                ) : "Chưa khai báo"}
+              />
+              <Fact label="Số đơn dự kiến mỗi tháng" value={merchant.expectedMonthlyOrders !== null ? merchant.expectedMonthlyOrders.toLocaleString("vi-VN") : "Chưa khai báo"} />
               <Fact label="Người liên hệ" value={merchant.contactName} />
               <Fact label="Tài khoản đăng nhập" value={<UserName id={merchant.userId} fallback="Chủ cửa hàng" />} />
               <Fact label="Bưu cục phụ trách" value={merchant.servingHubId ? <HubName id={merchant.servingHubId} /> : "Chưa xác định (cửa hàng chưa có địa chỉ kho)"} />
@@ -667,6 +685,7 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
           </Card>
 
           <div className="space-y-4">
+            {canSeePayout ? <PayoutAccountCard merchantId={merchant.id} /> : null}
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -1218,5 +1237,35 @@ export function MerchantDetail({ merchantId }: { merchantId: string }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** Where the shop's COD is paid out; the shop enters it on its settlements page. */
+function PayoutAccountCard({ merchantId }: { merchantId: string }) {
+  const [account, setAccount] = useState<PayoutAccount | null | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    financeApi.payoutAccount(merchantId).then((value) => { if (active) setAccount(value); }).catch(() => { if (active) setAccount(null); });
+    return () => { active = false; };
+  }, [merchantId]);
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="text-sm font-black">Tài khoản nhận tiền thu hộ</h2>
+      </CardHeader>
+      <CardContent className="grid gap-3 text-sm">
+        {account === undefined ? (
+          <p className="text-xs text-muted-foreground">Đang tải…</p>
+        ) : account === null ? (
+          <p className="text-xs text-muted-foreground">Cửa hàng chưa khai báo tài khoản ngân hàng. Shop tự nhập ở trang Đối soát trên web; chưa có tài khoản thì chưa chuyển tiền thu hộ được.</p>
+        ) : (
+          <>
+            <Fact label="Ngân hàng" value={account.bankName} />
+            <Fact label="Số tài khoản" value={account.accountNumber} mono />
+            <Fact label="Chủ tài khoản" value={account.accountName} />
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
