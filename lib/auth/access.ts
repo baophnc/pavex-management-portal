@@ -162,6 +162,11 @@ export function canAccessCounterSettlements(user: CurrentUser | null | undefined
   return hasPermission(user, "billing.counter.settle");
 }
 
+/** Wiping the test data is the system admin's alone (and the backend only allows it locally). */
+export function canAccessDemoReset(user: CurrentUser | null | undefined) {
+  return hasRole(user, "ADMIN");
+}
+
 export function canAccessManagement(user: CurrentUser | null | undefined) {
   return hasAnyPermission(user, MANAGEMENT_PERMISSIONS);
 }
@@ -198,6 +203,9 @@ export function canAccessManagementPath(
   }
   if (pathname.startsWith("/fleet")) {
     return canAccessFleetTrips(user);
+  }
+  if (pathname.startsWith("/system/demo-reset")) {
+    return canAccessDemoReset(user);
   }
   if (pathname.startsWith("/counter/settlements")) {
     return canAccessCounterSettlements(user);
