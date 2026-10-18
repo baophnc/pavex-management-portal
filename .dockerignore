@@ -1,0 +1,15 @@
+.git
+.next
+.claude
+node_modules
+coverage
+npm-debug.log*
+pnpm-debug.log*
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+.DS_Store
+Dockerfile*
+compose*.yaml
+compose*.yml

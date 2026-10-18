@@ -40,8 +40,33 @@ Quality gates:
 
 ```bash
 pnpm check
+pnpm test       # Vitest, headless; fetch is stubbed, no backend needed
 pnpm build
 ```
+
+The tests cover the BFF auth layer: session cookies, the `/api/backend/*` proxy
+(refresh, header forwarding, path checks, 401 handling), refresh coalescing and
+the `proxy.ts` redirects. `pnpm test:watch` keeps Vitest running.
+
+## Production image
+
+```bash
+docker build -t pavex-management-portal .
+docker run -p 3001:3001 -e API_BASE_URL=http://gateway:8080 pavex-management-portal
+```
+
+The image runs the Next.js standalone server as a non-root user on port 3001.
+`API_BASE_URL` is read at runtime, so one image serves every environment. Session
+cookies are `Secure` in production, so serve it over HTTPS (localhost excepted).
+
+## Security headers
+
+`next.config.ts` sends a Content-Security-Policy, `X-Frame-Options: DENY`,
+`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and (in production
+builds) `Strict-Transport-Security` on every route. Images may come from any HTTPS
+origin because avatars are absolute gateway URLs; in production the gateway's public
+address (`PAVEX_PUBLIC_BASE_URL`) must therefore be HTTPS. A production build run
+locally will block the plain-http `localhost:8080` avatars.
 
 ## Authentication and authorization
 
