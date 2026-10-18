@@ -32,6 +32,12 @@ describe("proxy", () => {
     }
   });
 
+  it("serves the MapLibre worker without a session, under the same policy", () => {
+    const response = visit("/vendor/maplibre-gl/6.11.2/maplibre-gl-worker.mjs");
+    expect(redirectTarget(response)).toBeNull();
+    expect(response.headers.get("content-security-policy")).toContain("worker-src 'self'");
+  });
+
   it("treats a refresh cookie alone as signed in", () => {
     expect(redirectTarget(visit("/dashboard", { [REFRESH_COOKIE]: "r" }))).toBeNull();
   });
@@ -55,6 +61,11 @@ describe("proxy", () => {
   it("ignores a stale password-change marker without a session", () => {
     const target = redirectTarget(visit("/dashboard", { [PASSWORD_CHANGE_COOKIE]: "1" }));
     expect(target?.pathname).toBe("/login");
+  });
+
+  it("sends the Content-Security-Policy on pages and redirects", () => {
+    expect(visit("/login").headers.get("content-security-policy")).toContain("default-src 'self'");
+    expect(visit("/dashboard").headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
   });
 
   it("does not run for API routes or static assets", () => {

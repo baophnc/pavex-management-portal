@@ -43,5 +43,6 @@ USER pavex
 
 EXPOSE 3001
 
-# API_BASE_URL (the gateway) is read by the server at runtime; it is not baked into the build.
+# API_BASE_URL (the gateway) and MAP_TILE_PROVIDER / MAP_TILE_API_KEY (the base map) are read by the server at
+# runtime; they are not baked into the build.
 CMD ["node", "server.js"]

@@ -28,6 +28,31 @@ host, use the host address appropriate for the environment, for example:
 API_BASE_URL=http://host.docker.internal:8080
 ```
 
+### Bản đồ nền (`MAP_TILE_PROVIDER`)
+
+Bản đồ ở `/fleet`, chi tiết vận đơn và mạng lưới tuyến dùng nhà cung cấp do server chọn lúc chạy,
+nên một image dùng được cho mọi môi trường:
+
+| Biến | Giá trị | Ghi chú |
+| --- | --- | --- |
+| `MAP_TILE_PROVIDER` | `osm` (mặc định), `goong`, `vietmap` | Giá trị khác hoặc thiếu key: không vẽ bản đồ nền, server ghi cảnh báo. |
+| `MAP_TILE_API_KEY` | key của nhà cung cấp | Goong: *Map tiles key* (không phải REST API key). Bỏ trống với `osm`. |
+
+- `osm` dùng máy chủ tile công cộng `tile.openstreetmap.org`, **chỉ được dùng khi phát triển**: chính
+  sách sử dụng của OpenStreetMap không cho phép dùng nó cho production. Server production chạy với `osm`
+  sẽ ghi cảnh báo. Production dùng `goong` hoặc `vietmap` (bản đồ có giấy phép, thể hiện đúng chủ quyền
+  Việt Nam).
+- Goong và VIETMAP chỉ cung cấp bản đồ đường phố dạng vector (style.json cho MapLibre), không có raster
+  tile (raster của VIETMAP chỉ là ảnh vệ tinh không nhãn). Vì vậy với hai nhà cung cấp này bản đồ nền được
+  vẽ bằng MapLibre GL (chỉ tải khi được cấu hình), còn `osm` vẫn dùng raster tile.
+- Key nằm trong URL style/tile mà trình duyệt gọi, nên là công khai: **bắt buộc giới hạn key theo tên miền
+  của portal** trong console nhà cung cấp (Goong: giới hạn URL/IP; VIETMAP: HTTP referer allowlist tại
+  `maps.vietmap.vn/console-v2`).
+- Content-Security-Policy tự cho phép đúng host của nhà cung cấp đang cấu hình (`tile.openstreetmap.org`,
+  `tiles.goong.io` hoặc `maps.vietmap.vn`).
+- Worker của MapLibre được `scripts/vendor-maplibre.mjs` chép vào `public/vendor/` (không commit) trước
+  `pnpm dev` và `pnpm build`.
+
 ## Development
 
 ```bash
@@ -46,24 +71,28 @@ pnpm build
 
 The tests cover the BFF auth layer: session cookies, the `/api/backend/*` proxy
 (refresh, header forwarding, path checks, 401 handling), refresh coalescing and
-the `proxy.ts` redirects. `pnpm test:watch` keeps Vitest running.
+the `proxy.ts` redirects, plus the map provider's URL, attribution and CSP selection. `pnpm test:watch` keeps Vitest running.
 
 ## Production image
 
 ```bash
 docker build -t pavex-management-portal .
-docker run -p 3001:3001 -e API_BASE_URL=http://gateway:8080 pavex-management-portal
+docker run -p 3001:3001 -e API_BASE_URL=http://gateway:8080 \
+  -e MAP_TILE_PROVIDER=vietmap -e MAP_TILE_API_KEY=... pavex-management-portal
 ```
 
 The image runs the Next.js standalone server as a non-root user on port 3001.
-`API_BASE_URL` is read at runtime, so one image serves every environment. Session
+`API_BASE_URL`, `MAP_TILE_PROVIDER` and `MAP_TILE_API_KEY` are read at runtime, so one image serves every environment. Session
 cookies are `Secure` in production, so serve it over HTTPS (localhost excepted).
 
 ## Security headers
 
-`next.config.ts` sends a Content-Security-Policy, `X-Frame-Options: DENY`,
-`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and (in production
-builds) `Strict-Transport-Security` on every route. Images may come from any HTTPS
+`next.config.ts` sends `X-Frame-Options: DENY`, `X-Content-Type-Options`,
+`Referrer-Policy`, `Permissions-Policy` and (in production builds)
+`Strict-Transport-Security` on every route. Those are fixed at build time, so the pages'
+Content-Security-Policy is set per request by `proxy.ts` (`lib/content-security-policy.ts`)
+from the runtime environment: it allows the gateway in development and the configured map
+provider's host. The BFF (`/api/*`) answers with `default-src 'none'`. Images may come from any HTTPS
 origin because avatars are absolute gateway URLs; in production the gateway's public
 address (`PAVEX_PUBLIC_BASE_URL`) must therefore be HTTPS. A production build run
 locally will block the plain-http `localhost:8080` avatars.
