@@ -3,6 +3,9 @@
 import { MinusIcon, NavigationIcon, PlusIcon } from "lucide-react";
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 
+import { useMapTiles } from "@/features/fleet/map-tiles";
+import { VectorBaseMap } from "@/features/fleet/vector-base-map";
+import { rasterTileUrl } from "@/lib/map-tiles";
 import { cn } from "@/lib/utils";
 
 export type LatLng = { lat: number; lng: number };
@@ -37,8 +40,6 @@ const TILE = 256;
 const MIN_ZOOM = 4;
 const MAX_ZOOM = 18;
 const VIETNAM: View = { center: { lat: 16.2, lng: 106.3 }, zoom: 5 };
-// OpenStreetMap's public tiles are for development; production should use a Vietnamese provider.
-const TILE_URL = "https://tile.openstreetmap.org";
 
 function project({ lat, lng }: LatLng, zoom: number) {
   const scale = TILE * 2 ** zoom;
@@ -92,8 +93,9 @@ const toneClass: Record<MapMarker["tone"], string> = {
 };
 
 /**
- * A small slippy map on OpenStreetMap raster tiles: truck markers, one track line, drag to pan,
- * buttons or double-click to zoom. It re-centres on [focus] whenever [focusKey] changes.
+ * A small slippy map: truck markers, one track line, drag to pan, buttons or double-click to zoom. It re-centres
+ * on [focus] whenever [focusKey] changes. The base map is the server's MAP_TILE_PROVIDER (lib/map-tiles.ts):
+ * raster tiles drawn here, or a vector style drawn by MapLibre underneath the same overlays.
  */
 export function TripMap({
   markers = [],
@@ -117,6 +119,7 @@ export function TripMap({
   className?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const baseMap = useMapTiles();
   const drag = useRef<{ pointerX: number; pointerY: number; centerX: number; centerY: number } | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   // The user's own pan/zoom, kept until the map is asked to focus on something else.
@@ -139,11 +142,11 @@ export function TripMap({
   const tileCount = 2 ** view.zoom;
 
   const tiles: { key: string; x: number; y: number; url: string }[] = [];
-  if (size.width > 0) {
+  if (size.width > 0 && baseMap?.kind === "raster") {
     for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + size.width) / TILE); tx += 1) {
       for (let ty = Math.max(0, Math.floor(top / TILE)); ty <= Math.min(tileCount - 1, Math.floor((top + size.height) / TILE)); ty += 1) {
         const wrapped = ((tx % tileCount) + tileCount) % tileCount;
-        tiles.push({ key: `${view.zoom}/${tx}/${ty}`, x: tx * TILE - left, y: ty * TILE - top, url: `${TILE_URL}/${view.zoom}/${wrapped}/${ty}.png` });
+        tiles.push({ key: `${view.zoom}/${tx}/${ty}`, x: tx * TILE - left, y: ty * TILE - top, url: rasterTileUrl(baseMap.tileUrl, view.zoom, wrapped, ty) });
       }
     }
   }
@@ -161,7 +164,7 @@ export function TripMap({
   const zoomBy = (delta: number) => setView({ center: view.center, zoom: view.zoom + delta });
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).closest("button")) return;
+    if ((event.target as HTMLElement).closest("button, a")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { pointerX: event.clientX, pointerY: event.clientY, centerX: center.x, centerY: center.y };
   };
@@ -185,6 +188,9 @@ export function TripMap({
       onPointerCancel={onPointerUp}
       onDoubleClick={() => zoomBy(1)}
     >
+      {baseMap?.kind === "vector" && size.width > 0 ? (
+        <VectorBaseMap styleUrl={baseMap.styleUrl} attribution={baseMap.attribution} center={view.center} zoom={view.zoom} />
+      ) : null}
       {tiles.map((tile) => (
         <div
           key={tile.key}
@@ -299,9 +305,16 @@ export function TripMap({
           <MinusIcon className="size-4" />
         </button>
       </div>
-      <p className="absolute bottom-0 right-0 bg-background/85 px-1.5 py-0.5 text-[0.6rem] text-muted-foreground">
-        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap</a> contributors
-      </p>
+      {baseMap?.kind === "raster" ? (
+        <p className="absolute bottom-0 right-0 bg-background/85 px-1.5 py-0.5 text-[0.6rem] text-muted-foreground">
+          <a href={baseMap.attribution.href} target="_blank" rel="noreferrer" className="underline">{baseMap.attribution.label}</a>
+        </p>
+      ) : null}
+      {baseMap?.kind === "none" ? (
+        <p className="absolute bottom-0 right-0 bg-background/85 px-1.5 py-0.5 text-[0.6rem] text-muted-foreground">
+          Chưa cấu hình bản đồ nền
+        </p>
+      ) : null}
     </div>
   );
 }

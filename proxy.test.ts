@@ -57,6 +57,11 @@ describe("proxy", () => {
     expect(target?.pathname).toBe("/login");
   });
 
+  it("sends the Content-Security-Policy on pages and redirects", () => {
+    expect(visit("/login").headers.get("content-security-policy")).toContain("default-src 'self'");
+    expect(visit("/dashboard").headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+  });
+
   it("does not run for API routes or static assets", () => {
     const matcher = new RegExp(`^${config.matcher[0]}$`);
     expect(matcher.test("/dashboard")).toBe(true);
