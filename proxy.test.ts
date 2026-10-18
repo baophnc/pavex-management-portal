@@ -32,6 +32,12 @@ describe("proxy", () => {
     }
   });
 
+  it("serves the MapLibre worker without a session, under the same policy", () => {
+    const response = visit("/vendor/maplibre-gl/6.11.2/maplibre-gl-worker.mjs");
+    expect(redirectTarget(response)).toBeNull();
+    expect(response.headers.get("content-security-policy")).toContain("worker-src 'self'");
+  });
+
   it("treats a refresh cookie alone as signed in", () => {
     expect(redirectTarget(visit("/dashboard", { [REFRESH_COOKIE]: "r" }))).toBeNull();
   });

@@ -18,6 +18,8 @@ function route(request: NextRequest) {
 
   // Recovery must remain accessible without a session (also with stale cookies).
   if (isRecovery) return NextResponse.next();
+  // MapLibre's worker (scripts/vendor-maplibre.mjs): public files, but they keep the pages' CSP, which a worker obeys.
+  if (request.nextUrl.pathname.startsWith("/vendor/")) return NextResponse.next();
 
   if (!signedIn && !isLogin) {
     const url = new URL("/login", request.url);
