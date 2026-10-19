@@ -225,6 +225,18 @@ export async function getLanes(params: URLSearchParams) {
   return apiRequest<PageResponse<HubLane>>(`admin/network/lanes?${params.toString()}`);
 }
 
+/** Every lane matching the filters: the nationwide network has thousands, more than one page. */
+export async function getAllLanes(filters: Record<string, string> = {}) {
+  const page = (number: number) =>
+    getLanes(new URLSearchParams({ ...filters, page: String(number), pageSize: "100" }));
+  const first = await page(1);
+  if (first.totalPages <= 1) return first.items;
+  const remaining = await Promise.all(
+    Array.from({ length: first.totalPages - 1 }, (_, index) => page(index + 2)),
+  );
+  return [first, ...remaining].flatMap((result) => result.items);
+}
+
 export async function createLane(payload: CreateHubLanePayload) {
   return apiRequest<HubLane>("admin/network/lanes", {
     method: "POST",

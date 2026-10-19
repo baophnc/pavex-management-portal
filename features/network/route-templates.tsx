@@ -20,8 +20,8 @@ import { useAccess } from "@/features/auth/access-context";
 import {
   createRouteTemplate,
   deleteRouteTemplate,
-  getHubs,
-  getLanes,
+  getAllHubs,
+  getAllLanes,
   getRouteTemplates,
   updateRouteTemplate,
   updateRouteTemplateStatus,
@@ -84,12 +84,12 @@ export function NetworkRouteTemplates({ embedded = false }: { embedded?: boolean
       if (search.trim()) params.set("search", search.trim());
       const [templates, hubPage, lanePage] = await Promise.all([
         getRouteTemplates(params),
-        getHubs(new URLSearchParams({ page: "1", pageSize: "100" })),
-        getLanes(new URLSearchParams({ page: "1", pageSize: "100" })),
+        getAllHubs(),
+        getAllLanes(),
       ]);
       setResult(templates);
-      setHubs(hubPage.items);
-      setLanes(lanePage.items);
+      setHubs(hubPage);
+      setLanes(lanePage);
       setSelected((current) => current ? templates.items.find((item) => item.id === current.id) ?? current : null);
     } catch (reason) {
       setError(networkErrorMessage(reason, "Không thể tải hành trình ưu tiên."));
