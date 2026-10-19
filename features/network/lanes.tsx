@@ -19,7 +19,7 @@ import { useAccess } from "@/features/auth/access-context";
 import {
   createLane,
   createLaneSchedule,
-  getHubs,
+  getAllHubs,
   getLanes,
   getLaneSchedules,
   updateLane,
@@ -106,10 +106,10 @@ export function NetworkLanes({ embedded = false }: { embedded?: boolean } = {}) 
       if (mode) params.set("transportMode", mode);
       const [lanes, hubPage] = await Promise.all([
         getLanes(params),
-        getHubs(new URLSearchParams({ page: "1", pageSize: "100" })),
+        getAllHubs(),
       ]);
       setResult(lanes);
-      setHubs(hubPage.items);
+      setHubs(hubPage);
       setSelected((current) =>
         current ? lanes.items.find((item) => item.id === current.id) ?? current : null,
       );

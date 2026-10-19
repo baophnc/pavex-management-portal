@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  getHubs,
-  getLanes,
+  getAllHubs,
+  getAllLanes,
   getProvinces,
   getWards,
   planRoute,
@@ -67,10 +67,10 @@ export function NetworkRoutePlanner() {
     const task = window.setTimeout(() => {
       void Promise.all([
         getProvinces(),
-        getHubs(new URLSearchParams({ page: "1", pageSize: "100" })),
-        getLanes(new URLSearchParams({ page: "1", pageSize: "100", status: "ACTIVE" })),
+        getAllHubs(),
+        getAllLanes({ status: "ACTIVE" }),
       ])
-        .then(([provinceItems, hubPage, lanePage]) => { setProvinces(provinceItems); setHubs(hubPage.items); setLanes(lanePage.items); })
+        .then(([provinceItems, hubPage, lanePage]) => { setProvinces(provinceItems); setHubs(hubPage); setLanes(lanePage); })
         .catch((reason) => toast.error(networkErrorMessage(reason, "Không thể tải dữ liệu định tuyến.")));
     }, 0);
     return () => window.clearTimeout(task);
